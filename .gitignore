@@ -53,6 +53,7 @@ dist/
 dist-ssr/
 *.local
 .vite/
+*.tsbuildinfo
 
 # --- Logs ---
 logs/

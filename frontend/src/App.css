@@ -287,12 +287,153 @@
   font-size: 12px;
 }
 
+.login-page .login-card {
+  text-align: center;
+}
+
+.login-cta {
+  width: 100%;
+}
+
+.explore-page .explore-card {
+  width: min(640px, 100%);
+  text-align: left;
+}
+
+.explore-greeting {
+  text-align: left;
+}
+
+.explore-lead {
+  text-align: left;
+}
+
+.explore-back {
+  margin: 0 0 12px;
+  position: relative;
+  z-index: 1;
+  text-align: left;
+}
+
+.explore-back a {
+  color: #94a3b8;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.explore-back a:hover {
+  color: #e5e7eb;
+  text-decoration: underline;
+}
+
+.explore-name-error {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #fecaca;
+  position: relative;
+  z-index: 1;
+}
+
+.explore-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.field-full {
+  grid-column: 1 / -1;
+}
+
+.field-label-static {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #9ca3af;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(15, 23, 42, 0.85);
+  color: #cbd5e1;
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.chip-on {
+  border-color: #38bdf8;
+  color: #e0f2fe;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45);
+  background: rgba(14, 116, 144, 0.25);
+}
+
+.field input[type='range'] {
+  width: 100%;
+  padding: 0;
+  accent-color: #38bdf8;
+}
+
+.range-value {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.trip-meta {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: left;
+}
+
+.fallback-note {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #fde68a;
+  text-align: left;
+}
+
+.place-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #cbd5f5;
+}
+
+.place-types {
+  color: #9ca3af;
+}
+
+.place-item .cafe-vibe {
+  margin-top: 4px;
+}
+
 @media (max-width: 600px) {
   .hello-card {
     padding: 22px 18px 18px;
   }
 
   .quest-form {
+    grid-template-columns: 1fr;
+  }
+
+  .explore-form {
     grid-template-columns: 1fr;
   }
 }
