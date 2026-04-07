@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from rate_limit import NearbyPlacesRateLimitMiddleware
 from routes import router as quest_router
 
 app = FastAPI(title="Travel Planner API")
@@ -22,6 +23,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(NearbyPlacesRateLimitMiddleware)
 
 app.include_router(quest_router)
 
