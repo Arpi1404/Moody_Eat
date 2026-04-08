@@ -78,3 +78,20 @@ class NearbyPlacesResponse(BaseModel):
     places: list[PlaceItem]
     count: int
 
+
+class PlaceBlurbIn(BaseModel):
+    provider_id: str
+    name: str
+    types: list[str] = Field(default_factory=list)
+
+
+class PlaceBlurbsRequest(BaseModel):
+    mood: str
+    budget: str
+    people: int = Field(default=2, ge=1, le=50)
+    places: list[PlaceBlurbIn] = Field(max_length=20)
+
+
+class PlaceBlurbsResponse(BaseModel):
+    blurbs: dict[str, str]
+

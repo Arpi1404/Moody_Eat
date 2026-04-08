@@ -88,3 +88,40 @@ export async function searchNearbyPlaces(payload: {
   }
   return res.json()
 }
+
+export async function fetchPlaceBlurbs(payload: {
+  mood: string
+  budget: string
+  people: number
+  places: {
+    provider_id: string
+    name: string
+    types?: string[] | null
+  }[]
+}): Promise<Record<string, string>> {
+  const res = await fetch(`${getApiBase()}/api/places/blurbs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mood: payload.mood,
+      budget: payload.budget,
+      people: payload.people,
+      places: payload.places.map((p) => ({
+        provider_id: p.provider_id,
+        name: p.name,
+        types: p.types ?? [],
+      })),
+    }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    const detail =
+      typeof data.detail === 'string'
+        ? data.detail
+        : (data.detail as { message?: string })?.message ??
+          'Blurbs request failed.'
+    throw new Error(detail)
+  }
+  const data: { blurbs?: Record<string, string> } = await res.json()
+  return data.blurbs ?? {}
+}

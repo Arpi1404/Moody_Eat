@@ -18,7 +18,7 @@ export function LoginPage() {
         <button
           type="button"
           className="generate-button login-cta"
-          onClick={() => navigate('/explore')}
+          onClick={() => navigate('/plan')}
         >
           Continue
         </button>

@@ -2,8 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from data import QUEST_DATA
 from deps import get_nearby_places_service
-from models import NearbyPlacesRequest, NearbyPlacesResponse, QuestRequest, QuestResponse
+from models import (
+    NearbyPlacesRequest,
+    NearbyPlacesResponse,
+    PlaceBlurbsRequest,
+    PlaceBlurbsResponse,
+    QuestRequest,
+    QuestResponse,
+)
 from services.nearby_places_service import NearbyPlacesService, map_provider_error
+from services.place_blurbs_service import generate_place_blurbs
 from services.places_exceptions import PlacesProviderError
 
 router = APIRouter()
@@ -50,4 +58,15 @@ async def nearby_places(
         if exc.provider_status:
             detail["provider_status"] = exc.provider_status
         raise HTTPException(status_code=status_code, detail=detail) from exc
+
+
+@router.post("/api/places/blurbs", response_model=PlaceBlurbsResponse)
+async def place_blurbs(payload: PlaceBlurbsRequest) -> PlaceBlurbsResponse:
+    blurbs = await generate_place_blurbs(
+        payload.places,
+        payload.mood.strip(),
+        payload.budget.strip(),
+        payload.people,
+    )
+    return PlaceBlurbsResponse(blurbs=blurbs)
 
