@@ -29,9 +29,9 @@ app.add_middleware(NearbyPlacesRateLimitMiddleware)
 app.include_router(quest_router)
 
 
-@app.get("/name")
-async def get_name():
-    return {"name": "Traveler"}
+@app.get("/name", response_model=dict[str, str])
+async def get_name(name: str | None = "Traveler"):
+    return {"name": name}
 
 
 @app.get("/")
