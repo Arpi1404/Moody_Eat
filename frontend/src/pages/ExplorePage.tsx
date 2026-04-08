@@ -290,18 +290,24 @@ export function ExplorePage() {
         <div className="divider" />
 
         <div className="results explore-results">
-          <p className="trip-meta">
-            Trip context:{' '}
-            <span className="highlight">
-              {people} {people === 1 ? 'person' : 'people'}
+          <div className="trip-context-pill" role="status" aria-label="Trip context">
+            <span className="trip-context-pill-label">Trip context</span>
+            <span className="trip-context-pill-values">
+              <span className="highlight">
+                {people} {people === 1 ? 'person' : 'people'}
+              </span>
+              <span className="trip-context-sep" aria-hidden>
+                ·
+              </span>
+              <span className="highlight">
+                {BUDGETS.find((b) => b.value === budget)?.label}
+              </span>
+              <span className="trip-context-sep" aria-hidden>
+                ·
+              </span>
+              <span className="highlight">{mood}</span>
             </span>
-            {' · '}
-            <span className="highlight">
-              {BUDGETS.find((b) => b.value === budget)?.label}
-            </span>
-            {' · '}
-            <span className="highlight">{mood}</span>
-          </p>
+          </div>
 
           {error && <p className="error-text">{error}</p>}
           {fallbackNote && (
