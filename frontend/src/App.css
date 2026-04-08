@@ -295,23 +295,99 @@
   width: 100%;
 }
 
+.explore-page.hello-page {
+  padding: clamp(40px, 10vmin, 88px) clamp(12px, 2.5vw, 28px);
+}
+
 .explore-page .explore-card {
   width: min(640px, 100%);
-  text-align: left;
+  min-height: min(88vh, 960px);
+  margin-inline: auto;
+  padding: clamp(48px, 7.8vmin, 80px) clamp(16px, 2.5vw, 28px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
 }
 
 .explore-greeting {
-  text-align: left;
+  text-align: center;
 }
 
 .explore-lead {
-  text-align: left;
+  text-align: center;
 }
 
 .explore-back {
-  margin: 0 0 12px;
+  margin: 0 0 18px;
   position: relative;
   z-index: 1;
+  text-align: center;
+}
+
+.explore-page .hello-label {
+  margin-bottom: 9px;
+  text-align: center;
+}
+
+.explore-page .hello-title {
+  margin-bottom: 11px;
+}
+
+.explore-page .hello-subtitle {
+  margin-bottom: 23px;
+}
+
+.explore-page .explore-form {
+  max-width: 520px;
+  margin-inline: auto;
+  text-align: left;
+  gap: 14px 18px;
+  margin-bottom: 10px;
+}
+
+.explore-page .field {
+  gap: 7px;
+}
+
+.explore-page .field-label-static {
+  margin-bottom: 7px;
+}
+
+.explore-page .chip-row {
+  gap: 9px;
+}
+
+.explore-page .generate-button {
+  margin-top: 6px;
+}
+
+.explore-page .divider {
+  margin: 16px 0 14px;
+}
+
+.explore-page .explore-results {
+  max-width: 560px;
+  margin-inline: auto;
+}
+
+.explore-page .trip-meta {
+  margin: 0 0 14px;
+}
+
+.explore-page .fallback-note {
+  margin: 0 0 12px;
+}
+
+.explore-page .trip-meta,
+.explore-page .fallback-note,
+.explore-page .results-label,
+.explore-page .explore-results .placeholder,
+.explore-page .error-text {
+  text-align: center;
+}
+
+.explore-page .cafe-list {
+  gap: 11px;
   text-align: left;
 }
 
@@ -327,11 +403,12 @@
 }
 
 .explore-name-error {
-  margin: 0 0 8px;
+  margin: 0 0 9px;
   font-size: 13px;
   color: #fecaca;
   position: relative;
   z-index: 1;
+  text-align: center;
 }
 
 .explore-form {
@@ -427,6 +504,15 @@
 @media (max-width: 600px) {
   .hello-card {
     padding: 22px 18px 18px;
+  }
+
+  .explore-page.hello-page {
+    padding: 28px 8px 32px;
+  }
+
+  .explore-page .explore-card {
+    min-height: min(90vh, 880px);
+    padding: 38px 11px 34px;
   }
 
   .quest-form {
