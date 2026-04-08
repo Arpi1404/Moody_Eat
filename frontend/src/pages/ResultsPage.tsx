@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   fetchPlaceBlurbs,
@@ -48,6 +48,35 @@ function BookmarkIcon({ active }: { active: boolean }) {
 
 const PAGE_SIZE = 5
 
+function placeTypeToneClass(type: string): string {
+  const normalized = type
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+  if (normalized.includes('cafe') || normalized.includes('coffee')) {
+    return 'place-type-pill--cafe'
+  }
+  if (normalized.includes('restaurant') || normalized.includes('food')) {
+    return 'place-type-pill--restaurant'
+  }
+  if (normalized.includes('takeaway') || normalized.includes('takeout')) {
+    return 'place-type-pill--takeaway'
+  }
+  if (normalized.includes('bar') || normalized.includes('pub')) {
+    return 'place-type-pill--bar'
+  }
+  if (normalized.includes('bakery') || normalized.includes('dessert')) {
+    return 'place-type-pill--bakery'
+  }
+  return 'place-type-pill--neutral'
+}
+
+function placeMediaToneClass(typeLabels: string[]): string {
+  return typeLabels.length > 0
+    ? placeTypeToneClass(typeLabels[0]).replace('place-type-pill', 'place-media')
+    : 'place-media--neutral'
+}
+
 export function ResultsPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -71,6 +100,8 @@ export function ResultsPage() {
     'idle' | 'loading' | 'done'
   >('idle')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [newlyVisibleFrom, setNewlyVisibleFrom] = useState<number | null>(null)
+  const showMoreButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const { toggle, isSaved } = useBookmarks()
 
@@ -106,6 +137,7 @@ export function ResultsPage() {
     setBlurbs({})
     setBlurbsStatus('idle')
     setVisibleCount(PAGE_SIZE)
+    setNewlyVisibleFrom(null)
 
     const radius_meters = Math.min(
       10000,
@@ -213,6 +245,25 @@ export function ResultsPage() {
     [filters],
   )
 
+  const showMore = useCallback((total: number) => {
+    const previousButtonTop =
+      showMoreButtonRef.current?.getBoundingClientRect().top ?? null
+    setVisibleCount((current) => {
+      const next = Math.min(current + PAGE_SIZE, total)
+      setNewlyVisibleFrom(next > current ? current : null)
+      return next
+    })
+    requestAnimationFrame(() => {
+      if (previousButtonTop == null) return
+      const nextTop = showMoreButtonRef.current?.getBoundingClientRect().top
+      if (nextTop == null) return
+      window.scrollBy({
+        top: nextTop - previousButtonTop,
+        behavior: 'auto',
+      })
+    })
+  }, [])
+
   if (!filters) {
     return null
   }
@@ -314,18 +365,18 @@ export function ResultsPage() {
                             distanceLabel={formatDistance(p.distance_meters)}
                             saved={isSaved(p.provider_id)}
                             onToggleSave={() => toggle(p.provider_id)}
+                            isNewlyVisible={
+                              newlyVisibleFrom != null && i >= newlyVisibleFrom
+                            }
                           />
                         ))}
                     </ul>
                     {visibleCount < filteredPlaces.length && (
                       <button
+                        ref={showMoreButtonRef}
                         type="button"
                         className="results-show-more"
-                        onClick={() =>
-                          setVisibleCount((c) =>
-                            Math.min(c + PAGE_SIZE, filteredPlaces.length),
-                          )
-                        }
+                        onClick={() => showMore(filteredPlaces.length)}
                       >
                         Show more
                       </button>
@@ -349,47 +400,31 @@ export function ResultsPage() {
                     .map((cafe: Cafe, i) => {
                       const id = `quest:${cafe.name}`
                       return (
-                        <li
+                        <PlaceGenericCard
                           key={cafe.name}
-                          className={`cafe-item place-item ${i === 0 ? 'place-item--best' : ''}`}
-                        >
-                          {i === 0 && (
-                            <span className="place-badge-best">Best match</span>
-                          )}
-                          <button
-                            type="button"
-                            className="place-bookmark"
-                            aria-label={
-                              isSaved(id) ? 'Remove saved place' : 'Save place'
-                            }
-                            aria-pressed={isSaved(id)}
-                            onClick={() => toggle(id)}
-                          >
-                            <BookmarkIcon active={isSaved(id)} />
-                          </button>
-                          <div className="cafe-header">
-                            <span className="cafe-name">{cafe.name}</span>
-                            <span className="cafe-distance cafe-distance--brand">
-                              {cafe.distance_minutes_walk} min walk
-                            </span>
-                          </div>
-                          <p className="cafe-blurb">{cafe.vibe}</p>
-                          <div className="place-type-pills">
-                            <span className="place-type-pill">Café</span>
-                          </div>
-                        </li>
+                          index={i}
+                          name={cafe.name}
+                          distanceLabel={`${cafe.distance_minutes_walk} min walk`}
+                          blurb={cafe.vibe}
+                          blurbPending={false}
+                          typeLabels={['Café']}
+                          saved={isSaved(id)}
+                          onToggleSave={() => toggle(id)}
+                          rating={null}
+                          ratingsTotal={null}
+                          isNewlyVisible={
+                            newlyVisibleFrom != null && i >= newlyVisibleFrom
+                          }
+                        />
                       )
                     })}
                 </ul>
                 {visibleCount < showCafeCards.length && (
                   <button
+                    ref={showMoreButtonRef}
                     type="button"
                     className="results-show-more"
-                    onClick={() =>
-                      setVisibleCount((c) =>
-                        Math.min(c + PAGE_SIZE, showCafeCards.length),
-                      )
-                    }
+                    onClick={() => showMore(showCafeCards.length)}
                   >
                     Show more
                   </button>
@@ -411,6 +446,7 @@ function PlaceNearbyCard({
   distanceLabel,
   saved,
   onToggleSave,
+  isNewlyVisible,
 }: {
   place: PlaceItem
   index: number
@@ -419,11 +455,57 @@ function PlaceNearbyCard({
   distanceLabel: string
   saved: boolean
   onToggleSave: () => void
+  isNewlyVisible: boolean
 }) {
   const labels = placeTypeLabels(place.types)
   return (
+    <PlaceGenericCard
+      index={index}
+      name={place.name}
+      distanceLabel={distanceLabel}
+      blurb={blurb}
+      blurbPending={blurbPending}
+      typeLabels={labels}
+      saved={saved}
+      onToggleSave={onToggleSave}
+      rating={place.rating ?? null}
+      ratingsTotal={place.user_ratings_total ?? null}
+      isNewlyVisible={isNewlyVisible}
+    />
+  )
+}
+
+function PlaceGenericCard({
+  index,
+  name,
+  distanceLabel,
+  blurb,
+  blurbPending,
+  typeLabels,
+  saved,
+  onToggleSave,
+  rating,
+  ratingsTotal,
+  isNewlyVisible,
+}: {
+  index: number
+  name: string
+  distanceLabel: string
+  blurb: string
+  blurbPending: boolean
+  typeLabels: string[]
+  saved: boolean
+  onToggleSave: () => void
+  rating: number | null
+  ratingsTotal: number | null
+  isNewlyVisible: boolean
+}) {
+  const mediaToneClass = placeMediaToneClass(typeLabels)
+  return (
     <li
-      className={`cafe-item place-item ${index === 0 ? 'place-item--best' : ''}`}
+      className={`cafe-item place-item ${index === 0 ? 'place-item--best' : ''} ${
+        isNewlyVisible ? 'place-item--new' : ''
+      }`}
     >
       {index === 0 && <span className="place-badge-best">Best match</span>}
       <button
@@ -435,35 +517,56 @@ function PlaceNearbyCard({
       >
         <BookmarkIcon active={saved} />
       </button>
-      <div className="cafe-header">
-        <span className="cafe-name">{place.name}</span>
-        <span className="cafe-distance cafe-distance--brand">
-          {distanceLabel}
-        </span>
-      </div>
-      <p
-        className={`cafe-blurb ${blurbPending ? 'cafe-blurb--loading' : ''}`}
-      >
-        {blurbPending ? 'Crafting your take…' : blurb}
-      </p>
-      <div className="place-meta place-meta--row">
-        {place.rating != null && (
-          <span>
-            {place.rating.toFixed(1)}★
-            {place.user_ratings_total != null &&
-              ` (${place.user_ratings_total} reviews)`}
-          </span>
-        )}
-      </div>
-      {labels.length > 0 && (
-        <div className="place-type-pills">
-          {labels.map((t) => (
-            <span key={t} className="place-type-pill">
-              {t}
-            </span>
-          ))}
+      <div className="place-card-row">
+        <div
+          className={`place-media place-media--loading ${mediaToneClass}`}
+          aria-hidden
+        >
+          <span className="place-media-icon">▦</span>
         </div>
-      )}
+        <div className="place-card-content">
+          <div className="place-title-row">
+            <span className="cafe-name place-name">{name}</span>
+          </div>
+          <div className="place-meta place-meta--row place-meta--top">
+            {rating != null ? (
+              <span className="place-rating-line">
+                <span className="place-star">★</span>
+                {rating.toFixed(1)}
+                {ratingsTotal != null && (
+                  <span className="place-review-count">
+                    ({Math.max(1, Math.round(ratingsTotal / 1000))}k)
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="place-curated-tag">Curated pick</span>
+            )}
+          </div>
+          <div className="place-chip-row">
+            <span className="cafe-distance cafe-distance--brand place-distance-pill">
+              {distanceLabel}
+            </span>
+            {typeLabels.length > 0 && (
+              <div className="place-type-pills">
+                {typeLabels.map((t) => (
+                  <span
+                    key={t}
+                    className={`place-type-pill ${placeTypeToneClass(t)}`}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <p
+            className={`cafe-blurb place-blurb ${blurbPending ? 'cafe-blurb--loading' : ''}`}
+          >
+            {blurbPending ? 'Crafting your take…' : blurb}
+          </p>
+        </div>
+      </div>
     </li>
   )
 }
