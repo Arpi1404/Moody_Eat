@@ -499,8 +499,9 @@ a.explore-edit-filters {
   border: 0;
   background: #13151f;
   box-shadow: none;
+  transform: translateY(0);
   transition:
-    border-color 0.2s ease,
+    transform 0.2s ease,
     box-shadow 0.2s ease,
     background 0.2s ease;
 }
@@ -526,6 +527,13 @@ a.explore-edit-filters {
 .cafe-item.place-item:focus-within::before {
   opacity: 1;
   transform: scaleY(1);
+}
+
+.cafe-item.place-item:hover,
+.cafe-item.place-item:focus-within {
+  background: #191c2a;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .place-card-row {
@@ -555,6 +563,13 @@ a.explore-edit-filters {
     rgba(30, 41, 59, 0.9),
     rgba(51, 65, 85, 0.65)
   );
+  transform: scale(1);
+  transition: transform 0.2s ease;
+}
+
+.cafe-item.place-item:hover .place-media,
+.cafe-item.place-item:focus-within .place-media {
+  transform: scale(1.04);
 }
 
 .place-media--loading::after {
