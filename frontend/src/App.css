@@ -592,14 +592,16 @@ a.explore-edit-filters {
   );
 }
 
-.place-item--new {
-  animation: place-item-enter 0.34s ease both;
+.place-item--enter {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cardIn 0.3s ease forwards;
 }
 
-@keyframes place-item-enter {
+@keyframes cardIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(20px);
   }
 
   to {
@@ -919,8 +921,10 @@ a.explore-edit-filters {
     animation: none;
   }
 
-  .place-item--new {
+  .place-item--enter {
     animation: none;
+    opacity: 1;
+    transform: none;
   }
 
   .place-media--loading::after {

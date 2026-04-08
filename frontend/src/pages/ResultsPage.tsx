@@ -100,7 +100,6 @@ export function ResultsPage() {
     'idle' | 'loading' | 'done'
   >('idle')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [newlyVisibleFrom, setNewlyVisibleFrom] = useState<number | null>(null)
   const showMoreButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const { toggle, isSaved } = useBookmarks()
@@ -137,7 +136,6 @@ export function ResultsPage() {
     setBlurbs({})
     setBlurbsStatus('idle')
     setVisibleCount(PAGE_SIZE)
-    setNewlyVisibleFrom(null)
 
     const radius_meters = Math.min(
       10000,
@@ -250,7 +248,15 @@ export function ResultsPage() {
       showMoreButtonRef.current?.getBoundingClientRect().top ?? null
     setVisibleCount((current) => {
       const next = Math.min(current + PAGE_SIZE, total)
-      setNewlyVisibleFrom(next > current ? current : null)
+      const firstNewIndex = next > current ? current : null
+      if (firstNewIndex != null) {
+        window.setTimeout(() => {
+          const nextCard = document.querySelector<HTMLElement>(
+            `[data-place-index="${firstNewIndex}"]`,
+          )
+          nextCard?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }, 50)
+      }
       return next
     })
     requestAnimationFrame(() => {
@@ -365,9 +371,6 @@ export function ResultsPage() {
                             distanceLabel={formatDistance(p.distance_meters)}
                             saved={isSaved(p.provider_id)}
                             onToggleSave={() => toggle(p.provider_id)}
-                            isNewlyVisible={
-                              newlyVisibleFrom != null && i >= newlyVisibleFrom
-                            }
                           />
                         ))}
                     </ul>
@@ -412,9 +415,6 @@ export function ResultsPage() {
                           onToggleSave={() => toggle(id)}
                           rating={null}
                           ratingsTotal={null}
-                          isNewlyVisible={
-                            newlyVisibleFrom != null && i >= newlyVisibleFrom
-                          }
                         />
                       )
                     })}
@@ -446,7 +446,6 @@ function PlaceNearbyCard({
   distanceLabel,
   saved,
   onToggleSave,
-  isNewlyVisible,
 }: {
   place: PlaceItem
   index: number
@@ -455,7 +454,6 @@ function PlaceNearbyCard({
   distanceLabel: string
   saved: boolean
   onToggleSave: () => void
-  isNewlyVisible: boolean
 }) {
   const labels = placeTypeLabels(place.types)
   return (
@@ -470,7 +468,6 @@ function PlaceNearbyCard({
       onToggleSave={onToggleSave}
       rating={place.rating ?? null}
       ratingsTotal={place.user_ratings_total ?? null}
-      isNewlyVisible={isNewlyVisible}
     />
   )
 }
@@ -486,7 +483,6 @@ function PlaceGenericCard({
   onToggleSave,
   rating,
   ratingsTotal,
-  isNewlyVisible,
 }: {
   index: number
   name: string
@@ -498,14 +494,13 @@ function PlaceGenericCard({
   onToggleSave: () => void
   rating: number | null
   ratingsTotal: number | null
-  isNewlyVisible: boolean
 }) {
   const mediaToneClass = placeMediaToneClass(typeLabels)
   return (
     <li
-      className={`cafe-item place-item ${index === 0 ? 'place-item--best' : ''} ${
-        isNewlyVisible ? 'place-item--new' : ''
-      }`}
+      className={`cafe-item place-item place-item--enter ${index === 0 ? 'place-item--best' : ''}`}
+      data-place-index={index}
+      style={{ animationDelay: `${index * 80}ms` }}
     >
       {index === 0 && <span className="place-badge-best">Best match</span>}
       <button
