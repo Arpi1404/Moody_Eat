@@ -96,6 +96,11 @@ export function ExplorePage() {
     })
   }
 
+  const clampPeople = (n: number) =>
+    Math.min(50, Math.max(1, Math.round(Number.isFinite(n) ? n : 1)))
+
+  const [peopleEdit, setPeopleEdit] = useState<string | null>(null)
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -172,14 +177,20 @@ export function ExplorePage() {
         <form className="explore-form" onSubmit={handleSubmit}>
           <div className="field field-full">
             <label htmlFor="destination">Destination / area</label>
-            <input
-              id="destination"
-              type="text"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              placeholder="e.g. Paris, Indiranagar Bangalore"
-              required
-            />
+            <div className="input-pin-wrap">
+              <span className="input-pin-icon" aria-hidden>
+                📍
+              </span>
+              <input
+                id="destination"
+                className="destination-input"
+                type="text"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                placeholder="e.g. Paris, Indiranagar Bangalore"
+                required
+              />
+            </div>
           </div>
 
           <div className="field">
@@ -203,17 +214,55 @@ export function ExplorePage() {
           </div>
 
           <div className="field">
-            <label htmlFor="people">People</label>
-            <input
-              id="people"
-              type="number"
-              min={1}
-              max={50}
-              value={people}
-              onChange={(e) =>
-                setPeople(Math.max(1, Number(e.target.value) || 1))
-              }
-            />
+            <label htmlFor="people-count" className="field-section-label">
+              People
+            </label>
+            <div className="people-stepper">
+              <button
+                type="button"
+                className="people-stepper-btn"
+                aria-label="Decrease party size"
+                disabled={people <= 1}
+                onClick={() => {
+                  setPeopleEdit(null)
+                  setPeople((p) => Math.max(1, p - 1))
+                }}
+              >
+                −
+              </button>
+              <input
+                id="people-count"
+                className="people-stepper-input"
+                type="text"
+                name="people"
+                inputMode="numeric"
+                autoComplete="off"
+                value={peopleEdit ?? String(people)}
+                onFocus={() => setPeopleEdit(String(people))}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, '')
+                  setPeopleEdit(v)
+                  if (v !== '') setPeople(clampPeople(Number.parseInt(v, 10)))
+                }}
+                onBlur={(e) => {
+                  const v = e.target.value.replace(/\D/g, '')
+                  setPeopleEdit(null)
+                  setPeople(v === '' ? 1 : clampPeople(Number.parseInt(v, 10)))
+                }}
+              />
+              <button
+                type="button"
+                className="people-stepper-btn"
+                aria-label="Increase party size"
+                disabled={people >= 50}
+                onClick={() => {
+                  setPeopleEdit(null)
+                  setPeople((p) => Math.min(50, p + 1))
+                }}
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <div className="field field-full">
