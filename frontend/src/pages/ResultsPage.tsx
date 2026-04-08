@@ -512,6 +512,9 @@ function PlaceGenericCard({
       >
         <BookmarkIcon active={saved} />
       </button>
+      <span className="cafe-distance cafe-distance--brand place-distance-pill place-distance-pill--top">
+        {distanceLabel}
+      </span>
       <div className="place-card-row">
         <div
           className={`place-media place-media--loading ${mediaToneClass}`}
@@ -537,11 +540,6 @@ function PlaceGenericCard({
             ) : (
               <span className="place-curated-tag">Curated pick</span>
             )}
-          </div>
-          <div className="place-chip-row">
-            <span className="cafe-distance cafe-distance--brand place-distance-pill">
-              {distanceLabel}
-            </span>
             {typeLabels.length > 0 && (
               <div className="place-type-pills">
                 {typeLabels.map((t) => (

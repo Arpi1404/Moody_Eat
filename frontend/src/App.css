@@ -489,12 +489,12 @@ a.explore-edit-filters {
 
 .explore-results-only {
   width: 100%;
-  max-width: 560px;
+  max-width: 600px;
 }
 
 .cafe-item.place-item {
   position: relative;
-  padding: 14px 44px 14px 14px;
+  padding: 16px 48px 16px 16px;
   overflow: hidden;
   border: 0;
   background: #13151f;
@@ -539,7 +539,7 @@ a.explore-edit-filters {
 .place-card-row {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 14px;
 }
 
 .place-card-content {
@@ -645,8 +645,8 @@ a.explore-edit-filters {
 
 .place-bookmark {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 14px;
+  right: 14px;
   margin: 0;
   padding: 6px;
   border: none;
@@ -695,9 +695,17 @@ a.explore-edit-filters {
 }
 
 .place-distance-pill {
-  font-size: 11px;
+  font-size: 9.4px;
   font-weight: 600;
-  padding: 3px 9px;
+  padding: 2.5px 7.65px;
+}
+
+.place-distance-pill--top {
+  position: absolute;
+  top: 14px;
+  right: 48px;
+  margin: 0;
+  z-index: 2;
 }
 
 .cafe-blurb--loading {
@@ -729,47 +737,47 @@ a.explore-edit-filters {
 .place-type-pill {
   font-size: 10px;
   text-transform: capitalize;
-  padding: 4px 9px;
+  padding: 2px 8px;
   border-radius: 7px;
   border: 1px solid rgba(148, 163, 184, 0.32);
-  background: rgba(15, 23, 42, 0.7);
-  color: #cbd5e1;
+  background: transparent;
+  color: #e2e8f0;
 }
 
 .place-type-pill--cafe {
   border-color: rgba(34, 211, 238, 0.45);
-  background: rgba(8, 145, 178, 0.2);
-  color: #a5f3fc;
+  background: transparent;
+  color: #67e8f9;
 }
 
 .place-type-pill--restaurant {
   border-color: rgba(167, 139, 250, 0.45);
-  background: rgba(76, 29, 149, 0.25);
+  background: transparent;
   color: #ddd6fe;
 }
 
 .place-type-pill--takeaway {
   border-color: rgba(16, 185, 129, 0.48);
-  background: rgba(6, 95, 70, 0.24);
+  background: transparent;
   color: #a7f3d0;
 }
 
 .place-type-pill--bar {
   border-color: rgba(251, 191, 36, 0.4);
-  background: rgba(146, 64, 14, 0.24);
+  background: transparent;
   color: #fde68a;
 }
 
 .place-type-pill--bakery {
   border-color: rgba(244, 114, 182, 0.45);
-  background: rgba(131, 24, 67, 0.26);
+  background: transparent;
   color: #fbcfe8;
 }
 
 .place-type-pill--neutral {
   border-color: rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.74);
-  color: #cbd5e1;
+  background: transparent;
+  color: #e2e8f0;
 }
 
 .place-media--cafe {
@@ -827,7 +835,8 @@ a.explore-edit-filters {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .place-meta--top {
@@ -836,9 +845,10 @@ a.explore-edit-filters {
 
 .place-title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 2px;
-  padding-right: 34px;
+  padding-right: 0;
+  gap: 10px;
 }
 
 .place-name {
@@ -860,7 +870,7 @@ a.explore-edit-filters {
 }
 
 .place-review-count {
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
   font-weight: 500;
 }
@@ -1000,7 +1010,7 @@ a.explore-edit-filters {
 }
 
 .explore-page .explore-results {
-  max-width: 560px;
+  max-width: 600px;
   margin-inline: 0;
 }
 
