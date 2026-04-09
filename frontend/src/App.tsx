@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import Landing from './pages/Landing'
 import { LoginPage } from './pages/LoginPage'
 import { PlanPage } from './pages/PlanPage'
 import { ResultsPage } from './pages/ResultsPage'
@@ -8,7 +9,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/plan" element={<PlanPage />} />
         <Route path="/results" element={<ResultsPage />} />
         <Route path="/explore" element={<Navigate to="/plan" replace />} />
