@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import type { FoodItem } from '../data/restaurants'
 import FoodCard from './FoodCard'
 
@@ -7,6 +7,7 @@ type FoodTickerProps = {
 }
 
 function FoodTicker({ items }: FoodTickerProps) {
+  const [isPaused, setIsPaused] = useState(false)
   const sourceItems = items.length > 0 ? items : []
   const minVisibleItems = 10
   const repeatsNeeded = Math.max(1, Math.ceil(minVisibleItems / Math.max(sourceItems.length, 1)))
@@ -18,10 +19,14 @@ function FoodTicker({ items }: FoodTickerProps) {
   }
 
   return (
-    <div className="landing-ticker">
+    <div className={`landing-ticker ${isPaused ? 'landing-ticker--paused' : ''}`}>
       <div className="landing-ticker-track" style={tickerStyle}>
         {tickerItems.map((item, index) => (
-          <FoodCard key={`${item.id}-${index}`} item={item} />
+          <FoodCard
+            key={`${item.id}-${index}`}
+            item={item}
+            onHoverChange={setIsPaused}
+          />
         ))}
       </div>
     </div>

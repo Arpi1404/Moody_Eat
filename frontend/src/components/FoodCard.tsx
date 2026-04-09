@@ -2,9 +2,10 @@ import type { FoodItem } from '../data/restaurants'
 
 type FoodCardProps = {
   item: FoodItem
+  onHoverChange?: (hovered: boolean) => void
 }
 
-function FoodCard({ item }: FoodCardProps) {
+function FoodCard({ item, onHoverChange }: FoodCardProps) {
   const iconByName: Record<string, string> = {
     'Butter Chicken': '🍛',
     'Wood-fire Pizza': '🍕',
@@ -23,11 +24,18 @@ function FoodCard({ item }: FoodCardProps) {
   const icon = iconByName[item.name] ?? '🍽️'
 
   return (
-    <article className="food-card">
+    <article
+      className="food-card"
+      onMouseEnter={() => onHoverChange?.(true)}
+      onMouseLeave={() => onHoverChange?.(false)}
+      onFocus={() => onHoverChange?.(true)}
+      onBlur={() => onHoverChange?.(false)}
+    >
       <div
         className="food-card-visual"
         style={{ background: item.bgColor }}
       >
+        <div className="food-card-tone-layer" />
         <div className="food-card-sheen" />
         <div className="food-card-ambient">
           <div className="food-card-blob food-card-blob--left" />
@@ -36,7 +44,7 @@ function FoodCard({ item }: FoodCardProps) {
 
         <div className="food-card-shadow" />
         <div className="food-card-plate">
-          <span>{icon}</span>
+          <span className="food-card-emoji">{icon}</span>
         </div>
 
         <span className="food-card-chip food-card-chip--tag">
