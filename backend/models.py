@@ -1,3 +1,6 @@
+import uuid
+from datetime import datetime, time
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -15,11 +18,6 @@ ALLOWED_NEARBY_TYPES = frozenset(
 )
 
 
-class QuestRequest(BaseModel):
-    location: str
-    mood: str
-
-
 class Cafe(BaseModel):
     name: str
     address: str
@@ -27,10 +25,9 @@ class Cafe(BaseModel):
     vibe: str
 
 
-class QuestResponse(BaseModel):
-    location: str
-    mood: str
-    cafes: list[Cafe]
+class CuratedQuestsResponse(BaseModel):
+    city: str
+    quests: dict[str, list[Cafe]]
 
 
 class NearbyPlacesRequest(BaseModel):
@@ -94,4 +91,77 @@ class PlaceBlurbsRequest(BaseModel):
 
 class PlaceBlurbsResponse(BaseModel):
     blurbs: dict[str, str]
+
+
+# ── Quest enums ────────────────────────────────────────────────────────────────
+
+class Occasion(str, Enum):
+    date = "date"
+    friends = "friends"
+    solo = "solo"
+    family = "family"
+
+
+class CostEstimate(str, Enum):
+    cheap = "cheap"
+    mid = "mid"
+    splurge = "splurge"
+
+
+class TravelMode(str, Enum):
+    walking = "walking"
+    cycling = "cycling"
+    transit = "transit"
+    driving = "driving"
+
+
+class StopCategory(str, Enum):
+    cafe = "cafe"
+    restaurant = "restaurant"
+    bar = "bar"
+    activity = "activity"
+    attraction = "attraction"
+    other = "other"
+
+
+# ── Quest models ───────────────────────────────────────────────────────────────
+
+class Stop(BaseModel):
+    place: PlaceItem
+    category: StopCategory
+    time_block_start: time
+    time_block_end: time
+    # None on the final stop (no onward journey)
+    travel_to_next_minutes: Optional[int] = None
+    travel_mode: Optional[TravelMode] = None
+    why_this_place: str
+
+
+class StopSwapDelta(BaseModel):
+    cost_change: int
+    time_change_minutes: int
+    distance_change_meters: int
+
+
+class StopAlternative(Stop):
+    delta: StopSwapDelta
+
+
+class Quest(BaseModel):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    title: str
+    occasion: Occasion
+    stops: list[Stop]
+    total_duration_minutes: int
+    total_cost_estimate: CostEstimate
+    narrative: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class QuestGenerationRequest(BaseModel):
+    location: str = Field(min_length=1, max_length=500)
+    occasion: Occasion
+    cost_estimate: CostEstimate
+    people: int = Field(default=2, ge=1, le=20)
+    duration_hours: float = Field(default=3.0, ge=1.0, le=8.0)
 

@@ -1,8 +1,6 @@
 from models import Cafe
 
-
-# Hardcoded proof‑of‑concept data
-QUEST_DATA: dict[str, dict[str, list[Cafe]]] = {
+CURATED_QUESTS: dict[str, dict[str, list[Cafe]]] = {
     "paris": {
         "cozy": [
             Cafe(
@@ -88,4 +86,3 @@ QUEST_DATA: dict[str, dict[str, list[Cafe]]] = {
         ],
     },
 }
-

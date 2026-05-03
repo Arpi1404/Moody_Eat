@@ -74,10 +74,16 @@ class NearbyPlacesService:
         self._cache: dict[str, _CacheEntry] = {}
         self._cache_lock = asyncio.Lock()
 
-    def _cache_key(self, req: NearbyPlacesRequest) -> str:
+    def _cache_key(
+        self,
+        req: NearbyPlacesRequest,
+        *,
+        categories: list[str],
+        geocode_query: str,
+    ) -> str:
         payload = {
-            "q": req.query.strip().casefold(),
-            "c": sorted(req.categories),
+            "q": geocode_query.strip().casefold(),
+            "c": sorted({c.strip().casefold() for c in categories}),
             "r": req.radius_meters,
             "l": req.limit,
         }
@@ -110,25 +116,30 @@ class NearbyPlacesService:
             )
 
     async def search(self, req: NearbyPlacesRequest) -> NearbyPlacesResponse:
-        key = self._cache_key(req)
+        inferred_categories = self._infer_categories(req.query)
+        categories = self._effective_categories(req.categories, inferred_categories)
+        geocode_query = self._geocode_query(req.query, inferred_categories)
+        key = self._cache_key(req, categories=categories, geocode_query=geocode_query)
         cached = await self._get_cached(key)
         if cached is not None:
             return cached
 
-        inferred_categories = self._infer_categories(req.query)
-        categories = self._effective_categories(req.categories, inferred_categories)
-        geocode_query = self._geocode_query(req.query, inferred_categories)
-
         resolved: ResolvedLocation = await self._provider.geocode(geocode_query)
-        merged: list[RawPlace] = []
-        for cat in categories:
-            batch = await self._provider.nearby_by_type(
-                lat=resolved.lat,
-                lng=resolved.lng,
-                radius_meters=req.radius_meters,
-                place_type=cat,
-            )
-            merged.extend(batch)
+        category_concurrency = max(1, int(self._settings.category_concurrency))
+        semaphore = asyncio.Semaphore(category_concurrency)
+
+        async def _fetch_category(cat: str) -> list[RawPlace]:
+            async with semaphore:
+                return await self._provider.nearby_by_type(
+                    lat=resolved.lat,
+                    lng=resolved.lng,
+                    radius_meters=req.radius_meters,
+                    place_type=cat,
+                    target_count=req.limit,
+                )
+
+        batches = await asyncio.gather(*(_fetch_category(cat) for cat in categories))
+        merged = [place for batch in batches for place in batch]
 
         unique = dedupe_places(merged)
         quality = self._quality_filter(unique)

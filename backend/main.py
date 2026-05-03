@@ -29,11 +29,6 @@ app.add_middleware(NearbyPlacesRateLimitMiddleware)
 app.include_router(quest_router)
 
 
-@app.get("/name", response_model=dict[str, str])
-async def get_name(name: str | None = "Traveler"):
-    return {"name": name}
-
-
 @app.get("/")
 async def root():
     return {"message": "Travel Planner API is running"}

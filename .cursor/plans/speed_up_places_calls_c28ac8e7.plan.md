@@ -4,16 +4,16 @@ overview: Reduce end-to-end latency for `/api/places/nearby` by removing avoidab
 todos:
   - id: parallelize-categories
     content: Fetch category Nearby calls concurrently with bounded semaphore
-    status: pending
+    status: completed
   - id: cap-pagination
     content: Add config-driven max page limit and early stop when limit reached
-    status: pending
+    status: completed
   - id: tune-timeouts
     content: Lower interactive timeout/retry defaults to reduce tail latency
-    status: pending
+    status: completed
   - id: cache-ux
     content: Increase cache hit ratio and keep blurbs non-blocking
-    status: pending
+    status: completed
 isProject: false
 ---
 

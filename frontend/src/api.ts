@@ -1,39 +1,22 @@
+import type { Quest, StopAlternative } from './types/quest'
+
 const DEFAULT_BASE = 'http://127.0.0.1:8000'
 
 export function getApiBase(): string {
   return import.meta.env.VITE_API_BASE_URL ?? DEFAULT_BASE
 }
 
-export async function fetchUserName(): Promise<string> {
-  const res = await fetch(`${getApiBase()}/name`)
-  if (!res.ok) {
-    throw new Error('Could not load your name from the server.')
-  }
-  const data: { name?: string } = await res.json()
-  return data.name?.trim() || 'Traveler'
-}
-
-export type Cafe = {
-  name: string
-  address: string
-  distance_minutes_walk: number
-  vibe: string
-}
-
-export type QuestResponse = {
+export async function generateQuest(payload: {
   location: string
-  mood: string
-  cafes: Cafe[]
-}
-
-export async function generateQuest(
-  location: string,
-  mood: string,
-): Promise<QuestResponse> {
-  const res = await fetch(`${getApiBase()}/api/generate-quest`, {
+  occasion: string
+  cost_estimate: string
+  people: number
+  duration_hours: number
+}): Promise<Quest> {
+  const res = await fetch(`${getApiBase()}/api/quest/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ location, mood }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
@@ -41,7 +24,31 @@ export async function generateQuest(
       typeof data.detail === 'string'
         ? data.detail
         : (data.detail as { message?: string })?.message ??
-          'Unable to generate suggestions.'
+          'Could not generate quest.'
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
+export async function fetchStopAlternatives(
+  quest: Quest,
+  stopIndex: number,
+): Promise<StopAlternative[]> {
+  const res = await fetch(
+    `${getApiBase()}/api/quest/${quest.id}/stop/${stopIndex}/alternatives`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(quest),
+    },
+  )
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    const detail =
+      typeof data.detail === 'string'
+        ? data.detail
+        : (data.detail as { message?: string })?.message ??
+          'Could not load alternatives.'
     throw new Error(detail)
   }
   return res.json()

@@ -8,6 +8,7 @@ import { CATEGORIES, FOOD_ITEMS, STATS } from '../data/restaurants'
 function Landing() {
   const navigate = useNavigate()
   const [activeCategory, setActiveCategory] = useState('All')
+  const handleQuestRoute = () => navigate('/login')
   const handleExploreRoute = () => navigate('/explore')
 
   const filteredItems = useMemo(
@@ -30,7 +31,7 @@ function Landing() {
           <button
             type="button"
             className="landing-pill-button landing-pill-button--compact"
-            onClick={handleExploreRoute}
+            onClick={handleQuestRoute}
           >
             Sign in
           </button>
@@ -49,7 +50,7 @@ function Landing() {
             Handpicked restaurants, live availability, curated for the occasion.
           </p>
           <div className="landing-actions">
-            <button type="button" className="landing-pill-button" onClick={handleExploreRoute}>
+            <button type="button" className="landing-pill-button" onClick={handleQuestRoute}>
               Plan an outing
             </button>
             <button type="button" className="landing-pill-button" onClick={handleExploreRoute}>

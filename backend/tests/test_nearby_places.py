@@ -32,6 +32,7 @@ class FakeProvider(PlacesProvider):
         lng: float,
         radius_meters: int,
         place_type: str,
+        target_count: int | None = None,
     ) -> list[RawPlace]:
         self.nearby_types.append(place_type)
         if self.empty_nearby:
@@ -165,6 +166,7 @@ def test_query_intent_prefers_matching_type_when_distances_equal() -> None:
             lng: float,
             radius_meters: int,
             place_type: str,
+            target_count: int | None = None,
         ) -> list[RawPlace]:
             self.nearby_types.append(place_type)
             return [
@@ -199,6 +201,7 @@ def test_quality_filter_drops_unrated_noise_when_strict_pool_exists() -> None:
             lng: float,
             radius_meters: int,
             place_type: str,
+            target_count: int | None = None,
         ) -> list[RawPlace]:
             self.nearby_types.append(place_type)
             return [
@@ -223,3 +226,143 @@ def test_quality_filter_drops_unrated_noise_when_strict_pool_exists() -> None:
     assert res.status_code == 200
     names = [p["name"] for p in res.json()["places"]]
     assert "Ravi" not in names
+
+
+def _quest_payload() -> dict:
+    return {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "title": "Test Quest",
+        "occasion": "date",
+        "stops": [
+            {
+                "place": {
+                    "name": "Previous Place",
+                    "address": "Prev Road",
+                    "lat": 0.0,
+                    "lng": 0.0,
+                    "distance_meters": 0,
+                    "rating": 4.2,
+                    "user_ratings_total": 100,
+                    "types": ["cafe"],
+                    "provider_id": "prev",
+                },
+                "category": "cafe",
+                "time_block_start": "19:00",
+                "time_block_end": "19:40",
+                "travel_to_next_minutes": 1,
+                "travel_mode": "walking",
+                "why_this_place": "Previous pick.",
+            },
+            {
+                "place": {
+                    "name": "Original Dinner",
+                    "address": "Original Road",
+                    "lat": 0.001,
+                    "lng": 0.0,
+                    "distance_meters": 111,
+                    "rating": 4.1,
+                    "user_ratings_total": 120,
+                    "types": ["restaurant"],
+                    "provider_id": "orig",
+                },
+                "category": "restaurant",
+                "time_block_start": "19:41",
+                "time_block_end": "20:41",
+                "travel_to_next_minutes": 1,
+                "travel_mode": "walking",
+                "why_this_place": "Original pick.",
+            },
+            {
+                "place": {
+                    "name": "Next Place",
+                    "address": "Next Road",
+                    "lat": 0.002,
+                    "lng": 0.0,
+                    "distance_meters": 222,
+                    "rating": 4.4,
+                    "user_ratings_total": 140,
+                    "types": ["bar"],
+                    "provider_id": "next",
+                },
+                "category": "bar",
+                "time_block_start": "20:42",
+                "time_block_end": "21:27",
+                "travel_to_next_minutes": None,
+                "travel_mode": None,
+                "why_this_place": "Next pick.",
+            },
+        ],
+        "total_duration_minutes": 147,
+        "total_cost_estimate": "mid",
+        "narrative": "A test route.",
+        "created_at": "2026-05-04T00:00:00",
+    }
+
+
+def test_stop_alternatives_returns_top_three_and_filters_existing_places() -> None:
+    class SwapProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                RawPlace("orig", "Original Dinner", "Original Road", 0.001, 0.0, 4.9, ["restaurant"], 500),
+                RawPlace("next", "Next Place", "Next Road", 0.002, 0.0, 4.9, ["restaurant"], 500),
+                RawPlace("alt_best", "Best Bistro", "A Road", 0.0005, 0.0, 4.8, ["restaurant"], 800),
+                RawPlace("alt_close", "Close Bistro", "B Road", 0.0004, 0.0, 4.3, ["restaurant"], 200),
+                RawPlace("alt_far", "Far Bistro", "C Road", 0.003, 0.0, 4.9, ["restaurant"], 900),
+                RawPlace("alt_fourth", "Fourth Bistro", "D Road", 0.004, 0.0, 4.0, ["restaurant"], 100),
+            ]
+
+    settings = get_settings()
+    provider = SwapProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post(
+                "/api/quest/11111111-1111-4111-8111-111111111111/stop/1/alternatives",
+                json=_quest_payload(),
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    body = res.json()
+    assert len(body) == 3
+    provider_ids = {stop["place"]["provider_id"] for stop in body}
+    assert "orig" not in provider_ids
+    assert "next" not in provider_ids
+    assert all(stop["category"] == "restaurant" for stop in body)
+    assert all(set(stop["delta"]) == {"cost_change", "time_change_minutes", "distance_change_meters"} for stop in body)
+    assert body[0]["time_block_start"] == "19:41:00"
+    assert body[0]["time_block_end"] == "20:41:00"
+    assert body[0]["travel_to_next_minutes"] is not None
+    assert provider.geocode_queries == ["0.0,0.0"]
+    assert provider.nearby_types == ["restaurant"]
+
+
+def test_stop_alternatives_rejects_unmapped_category() -> None:
+    payload = _quest_payload()
+    payload["stops"][1]["category"] = "attraction"
+    payload["stops"][1]["place"]["types"] = ["tourist_attraction"]
+
+    settings = get_settings()
+    svc = NearbyPlacesService(FakeProvider(), settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post(
+                "/api/quest/11111111-1111-4111-8111-111111111111/stop/1/alternatives",
+                json=payload,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 422

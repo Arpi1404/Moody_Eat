@@ -121,10 +121,12 @@ class GooglePlacesProvider(PlacesProvider):
         lng: float,
         radius_meters: int,
         place_type: str,
+        target_count: int | None = None,
     ) -> list[RawPlace]:
         collected: list[RawPlace] = []
         next_token: str | None = None
-        for _page in range(3):
+        max_pages = max(1, min(3, int(self._settings.max_nearby_pages)))
+        for _page in range(max_pages):
             params: dict[str, Any] = {
                 "location": f"{lat},{lng}",
                 "radius": str(radius_meters),
@@ -140,6 +142,8 @@ class GooglePlacesProvider(PlacesProvider):
             _map_places_status(status, err_msg)
             for item in data.get("results") or []:
                 collected.append(self._raw_from_nearby_item(item))
+            if target_count is not None and target_count > 0 and len(collected) >= target_count:
+                break
             next_token = data.get("next_page_token")
             if not next_token:
                 break

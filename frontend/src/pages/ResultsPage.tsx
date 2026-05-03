@@ -2,13 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   fetchPlaceBlurbs,
-  fetchUserName,
-  generateQuest,
   searchNearbyPlaces,
-  type Cafe,
   type NearbyPlacesResponse,
   type PlaceItem,
-  type QuestResponse,
 } from '../api'
 import {
   BUDGETS,
@@ -85,16 +81,11 @@ export function ResultsPage() {
     [searchParams],
   )
 
-  const [name, setName] = useState<string | null>(null)
-  const [nameError, setNameError] = useState<string | null>(null)
-
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [nearbyResult, setNearbyResult] = useState<NearbyPlacesResponse | null>(
     null,
   )
-  const [questFallback, setQuestFallback] = useState<QuestResponse | null>(null)
-  const [fallbackNote, setFallbackNote] = useState<string | null>(null)
   const [blurbs, setBlurbs] = useState<Record<string, string>>({})
   const [blurbsStatus, setBlurbsStatus] = useState<
     'idle' | 'loading' | 'done'
@@ -105,24 +96,6 @@ export function ResultsPage() {
   const { toggle, isSaved } = useBookmarks()
 
   useEffect(() => {
-    let cancelled = false
-    fetchUserName()
-      .then((n) => {
-        if (!cancelled) setName(n)
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setNameError(
-            err instanceof Error ? err.message : 'Could not load name.',
-          )
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
     if (!filters) {
       navigate('/plan', { replace: true })
       return
@@ -131,8 +104,6 @@ export function ResultsPage() {
     setLoading(true)
     setError(null)
     setNearbyResult(null)
-    setQuestFallback(null)
-    setFallbackNote(null)
     setBlurbs({})
     setBlurbsStatus('idle')
     setVisibleCount(PAGE_SIZE)
@@ -155,24 +126,6 @@ export function ResultsPage() {
         const message =
           err instanceof Error ? err.message : 'Something went wrong.'
         if (!cancelled) setError(message)
-
-        const locKey = filters.destination.trim().toLowerCase()
-        if (locKey === 'paris' || locKey === 'bangalore') {
-          try {
-            const quest = await generateQuest(
-              filters.destination.trim(),
-              filters.mood,
-            )
-            if (!cancelled) {
-              setQuestFallback(quest)
-              setFallbackNote(
-                'Live nearby search was unavailable, so here are curated café picks for this demo location and mood.',
-              )
-            }
-          } catch {
-            if (!cancelled) setFallbackNote(null)
-          }
-        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -191,7 +144,7 @@ export function ResultsPage() {
   }, [nearbyResult, filters])
 
   useEffect(() => {
-    if (!filters || questFallback) {
+    if (!filters) {
       setBlurbsStatus('done')
       return
     }
@@ -227,9 +180,7 @@ export function ResultsPage() {
     return () => {
       cancelled = true
     }
-  }, [filters, questFallback, filteredPlaces, loading])
-
-  const showCafeCards = questFallback?.cafes ?? []
+  }, [filters, filteredPlaces, loading])
 
   const planHref = filters
     ? `/plan?${filtersToSearchParams(filters).toString()}`
@@ -287,19 +238,6 @@ export function ResultsPage() {
             </Link>
           </div>
 
-          <p className="hello-label">Today</p>
-          <h1 className="hello-title explore-greeting explore-greeting--compact">
-            Hello,{' '}
-            <span className="hello-name">
-              {nameError ? 'there' : name ?? '…'}
-            </span>
-          </h1>
-          {nameError && (
-            <p className="explore-name-error" role="alert">
-              {nameError}
-            </p>
-          )}
-
           <div className="results explore-results">
             <div
               className="trip-context-pill"
@@ -334,11 +272,8 @@ export function ResultsPage() {
             )}
 
             {!loading && error && <p className="error-text">{error}</p>}
-            {!loading && fallbackNote && (
-              <p className="fallback-note">{fallbackNote}</p>
-            )}
 
-            {!loading && nearbyResult && !questFallback && (
+            {!loading && nearbyResult && (
               <>
                 <p className="results-label">
                   Near{' '}
@@ -385,49 +320,6 @@ export function ResultsPage() {
                       </button>
                     )}
                   </>
-                )}
-              </>
-            )}
-
-            {!loading && questFallback && showCafeCards.length > 0 && (
-              <>
-                <p className="results-label">
-                  Curated cafés for{' '}
-                  <span className="highlight">
-                    {questFallback.location} · {questFallback.mood}
-                  </span>
-                </p>
-                <ul className="cafe-list">
-                  {showCafeCards
-                    .slice(0, visibleCount)
-                    .map((cafe: Cafe, i) => {
-                      const id = `quest:${cafe.name}`
-                      return (
-                        <PlaceGenericCard
-                          key={cafe.name}
-                          index={i}
-                          name={cafe.name}
-                          distanceLabel={`${cafe.distance_minutes_walk} min walk`}
-                          blurb={cafe.vibe}
-                          blurbPending={false}
-                          typeLabels={['Café']}
-                          saved={isSaved(id)}
-                          onToggleSave={() => toggle(id)}
-                          rating={null}
-                          ratingsTotal={null}
-                        />
-                      )
-                    })}
-                </ul>
-                {visibleCount < showCafeCards.length && (
-                  <button
-                    ref={showMoreButtonRef}
-                    type="button"
-                    className="results-show-more"
-                    onClick={() => showMore(showCafeCards.length)}
-                  >
-                    Show more
-                  </button>
                 )}
               </>
             )}

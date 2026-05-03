@@ -1,6 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { fetchUserName } from '../api'
 import {
   BUDGETS,
   filtersToSearchParams,
@@ -14,8 +13,6 @@ import '../App.css'
 export function PlanPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [name, setName] = useState<string | null>(null)
-  const [nameError, setNameError] = useState<string | null>(null)
 
   const [filters, setFilters] = useState<ExploreFilters>(() =>
     mergeFiltersFromSearchParams(searchParams),
@@ -26,24 +23,6 @@ export function PlanPage() {
   }, [searchParams])
 
   const [peopleEdit, setPeopleEdit] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    fetchUserName()
-      .then((n) => {
-        if (!cancelled) setName(n)
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setNameError(
-            err instanceof Error ? err.message : 'Could not load name.',
-          )
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const clampPeople = (n: number) =>
     Math.min(50, Math.max(1, Math.round(Number.isFinite(n) ? n : 1)))
@@ -64,8 +43,6 @@ export function PlanPage() {
     navigate(`/results?${filtersToSearchParams(filters).toString()}`)
   }
 
-  const greeting = nameError ? 'there' : name ? name : '…'
-
   return (
     <main className="hello-page explore-page">
       <section className="hello-card explore-card explore-card--plan">
@@ -73,17 +50,7 @@ export function PlanPage() {
           <Link to="/">← Back</Link>
         </p>
         <p className="hello-label">Today</p>
-        <h1 className="hello-title explore-greeting">
-          Hello,{' '}
-          <span className="hello-name">
-            {nameError ? 'there' : name ?? '…'}
-          </span>
-        </h1>
-        {nameError && (
-          <p className="explore-name-error" role="alert">
-            {nameError}
-          </p>
-        )}
+        {/* TODO: replace with quest-related content */}
         <p className="hello-subtitle explore-lead">
           Where do you want to go today? Set your spot, mood, and filters — then
           get place suggestions.
@@ -281,12 +248,6 @@ export function PlanPage() {
           </button>
         </form>
 
-        {greeting !== '…' && (
-          <p className="placeholder explore-form-hint">
-            Hi <span className="pill">{greeting}</span> — set filters and tap{' '}
-            <span className="pill">Suggest places</span>.
-          </p>
-        )}
       </section>
     </main>
   )

@@ -41,6 +41,7 @@ class PlacesProvider(Protocol):
         lng: float,
         radius_meters: int,
         place_type: str,
+        target_count: int | None = None,
     ) -> list[RawPlace]:
         """Places whose primary type matches `place_type` (provider-specific)."""
         ...

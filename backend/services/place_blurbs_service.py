@@ -117,3 +117,78 @@ Places:
         return out
     except (json.JSONDecodeError, TypeError, KeyError):
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
+
+
+def _fallback_narrative(
+    location: str,
+    occasion: str,
+    cost_estimate: str,
+    stop_names: list[str],
+) -> str:
+    if not stop_names:
+        return f"A {cost_estimate} {occasion} outing in {location}."
+    if len(stop_names) == 1:
+        return f"A {cost_estimate} {occasion} outing in {location}, anchored around {stop_names[0]}."
+    mid = ", ".join(stop_names[:-1])
+    return (
+        f"A {cost_estimate} {occasion} outing in {location}: starting at {mid}, "
+        f"then finishing the night at {stop_names[-1]}."
+    )
+
+
+async def generate_quest_narrative(
+    location: str,
+    occasion: str,
+    cost_estimate: str,
+    people: int,
+    stop_summaries: list[dict[str, str]],
+) -> str:
+    """Return a 2-3 sentence scene-setting narrative for the whole quest.
+
+    stop_summaries: list of {"name": ..., "category": ..., "why": ...}
+    Falls back to a heuristic string when the Anthropic API is unavailable.
+    """
+    stop_names = [s["name"] for s in stop_summaries]
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return _fallback_narrative(location, occasion, cost_estimate, stop_names)
+
+    stops_text = "\n".join(
+        f"  {i + 1}. {s['name']} ({s['category']}) — {s['why']}"
+        for i, s in enumerate(stop_summaries)
+    )
+    prompt = f"""You write the opening narrative for a curated city quest in a travel app.
+
+Quest: {occasion} outing, {cost_estimate} budget, {people} {'person' if people == 1 else 'people'}, in {location}.
+Stops:
+{stops_text}
+
+Write exactly 2-3 sentences that set the scene for this outing. Be vivid and specific to the stops and city. No marketing language, no bullet points, no headers — plain prose only."""
+
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    body = {
+        "model": os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL),
+        "max_tokens": 256,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post(ANTHROPIC_URL, headers=headers, json=body)
+            res.raise_for_status()
+            data = res.json()
+        text = ""
+        for block in data.get("content", []):
+            if block.get("type") == "text":
+                text += block.get("text", "")
+        text = text.strip()
+        if text:
+            return text
+    except (httpx.HTTPError, ValueError, KeyError):
+        pass
+
+    return _fallback_narrative(location, occasion, cost_estimate, stop_names)
