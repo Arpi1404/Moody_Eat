@@ -30,6 +30,16 @@ export async function generateQuest(payload: {
   return res.json()
 }
 
+export async function fetchCuratedQuests(city: string): Promise<Quest[]> {
+  const params = new URLSearchParams({ city })
+  const res = await fetch(`${getApiBase()}/api/quests/curated?${params}`)
+  if (!res.ok) {
+    throw new Error('Could not load curated quests.')
+  }
+  const data: Quest[] = await res.json()
+  return Array.isArray(data) ? data : []
+}
+
 export async function fetchStopAlternatives(
   quest: Quest,
   stopIndex: number,

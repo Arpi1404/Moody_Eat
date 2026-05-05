@@ -7,8 +7,6 @@ from curated_quests import CURATED_QUESTS
 from deps import get_nearby_places_service
 from models import (
     ALLOWED_NEARBY_TYPES,
-    Cafe,
-    CuratedQuestsResponse,
     NearbyPlacesRequest,
     NearbyPlacesResponse,
     PlaceBlurbsRequest,
@@ -56,8 +54,8 @@ def _minutes_between(start: time, end: time) -> int:
     return end_min - start_min
 
 
-@router.get("/api/quests/curated", response_model=CuratedQuestsResponse)
-async def get_curated_quests(city: str = Query(min_length=1)) -> CuratedQuestsResponse:
+@router.get("/api/quests/curated", response_model=list[Quest])
+async def get_curated_quests(city: str = Query(min_length=1)) -> list[Quest]:
     key = city.strip().lower()
     if key not in CURATED_QUESTS:
         raise HTTPException(
@@ -67,7 +65,7 @@ async def get_curated_quests(city: str = Query(min_length=1)) -> CuratedQuestsRe
                 "available_cities": list(CURATED_QUESTS.keys()),
             },
         )
-    return CuratedQuestsResponse(city=key, quests=CURATED_QUESTS[key])
+    return CURATED_QUESTS[key]
 
 
 @router.post("/api/quest/generate", response_model=Quest)

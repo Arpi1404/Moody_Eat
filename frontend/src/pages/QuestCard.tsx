@@ -181,11 +181,13 @@ function StopCard({
   index,
   previewing,
   onSwap,
+  readOnly = false,
 }: {
   stop: Stop
   index: number
   previewing: boolean
   onSwap: () => void
+  readOnly?: boolean
 }) {
   return (
     <li
@@ -196,7 +198,9 @@ function StopCard({
         type="button"
         className="qp-stop-swap-btn"
         aria-label={`Swap stop ${index + 1}`}
-        onClick={onSwap}
+        disabled={readOnly}
+        title={readOnly ? 'Swap available after you save this quest' : undefined}
+        onClick={readOnly ? undefined : onSwap}
       >
         <SwapIcon />
       </button>
@@ -237,9 +241,11 @@ function StopCard({
 export function QuestCard({
   quest,
   onQuestChange,
+  readOnly = false,
 }: {
   quest: Quest
   onQuestChange: (quest: Quest) => void
+  readOnly?: boolean
 }) {
   const [activeStopIndex, setActiveStopIndex] = useState<number | null>(null)
   const [alternatives, setAlternatives] = useState<StopAlternative[]>([])
@@ -347,6 +353,7 @@ export function QuestCard({
             index={i}
             previewing={activeStopIndex === i && selectedAlternative != null}
             onSwap={() => setActiveStopIndex(i)}
+            readOnly={readOnly}
           />
         ))}
       </ol>

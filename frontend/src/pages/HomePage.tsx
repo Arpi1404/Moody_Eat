@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { generateQuest } from '../api'
+import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
+import type { Quest } from '../types/quest'
 import '../App.css'
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -33,6 +34,13 @@ const OCCASIONS = [
 ] as const
 
 type OccasionKey = (typeof OCCASIONS)[number]['key']
+
+const OCCASION_ICONS: Record<OccasionKey, string> = {
+  date: '🌹',
+  friends: '🎉',
+  solo: '🎧',
+  family: '👨‍👩‍👧',
+}
 
 const BUDGET_OPTIONS = [
   { value: 'cheap', label: 'Cheap' },
@@ -74,6 +82,63 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   )
 }
 
+function getCurrentPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation not supported'))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8_000 })
+  })
+}
+
+async function detectCity(): Promise<string> {
+  const pos = await getCurrentPosition()
+  const city = (await reverseGeocode(pos.coords.latitude, pos.coords.longitude)).trim()
+  if (!city || city === 'your location') {
+    throw new Error('City not detected')
+  }
+  return city
+}
+
+function formatQuestDuration(minutes: number): string {
+  const hours = minutes / 60
+  return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`
+}
+
+function costLabel(cost: Quest['total_cost_estimate']): string {
+  if (cost === 'cheap') return 'Cheap'
+  if (cost === 'splurge') return 'Splurge'
+  return 'Mid'
+}
+
+function CuratedQuestImage({ quest }: { quest: Quest }) {
+  const [failed, setFailed] = useState(false)
+  const firstStop = quest.stops[0]
+  const placeId = firstStop?.place.provider_id
+  const src = placeId
+    ? `${getApiBase()}/api/places/photo?place_id=${encodeURIComponent(placeId)}&max_width=800`
+    : ''
+
+  if (!src || failed) {
+    return (
+      <div className="curated-quest-image curated-quest-image--fallback">
+        <span aria-hidden>{OCCASION_ICONS[quest.occasion]}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="curated-quest-image">
+      <img
+        src={src}
+        alt={firstStop.place.name}
+        onError={() => setFailed(true)}
+      />
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function HomePage() {
@@ -87,6 +152,7 @@ export function HomePage() {
   const [duration, setDuration] = useState<DurationHours>(3)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [curatedQuests, setCuratedQuests] = useState<Quest[]>([])
 
   const sheetRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
@@ -118,6 +184,33 @@ export function HomePage() {
       },
       { timeout: 8_000 },
     )
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCuratedQuests() {
+      let city = 'Hyderabad'
+      try {
+        city = await detectCity()
+      } catch {
+        city = 'Hyderabad'
+      }
+
+      try {
+        const quests = await fetchCuratedQuests(city)
+        if (!cancelled && quests.length > 0) {
+          setCuratedQuests(quests)
+        }
+      } catch {
+        if (!cancelled) setCuratedQuests([])
+      }
+    }
+
+    loadCuratedQuests()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const openSheet = useCallback(
@@ -174,6 +267,14 @@ export function HomePage() {
     }
   }
 
+  const openCuratedQuest = useCallback(
+    (quest: Quest) => {
+      sessionStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
+      navigate(`/quest/preview/${quest.id}`, { state: { quest } })
+    },
+    [navigate],
+  )
+
   const activeData = OCCASIONS.find((o) => o.key === activeOccasion) ?? null
 
   return (
@@ -206,6 +307,37 @@ export function HomePage() {
             ))}
           </div>
         </section>
+
+        {curatedQuests.length > 0 && (
+          <section className="curated-quests-section">
+            <p className="home-section-label">Pre-made for tonight.</p>
+            <div className="curated-quests-row" aria-label="Curated quests">
+              {curatedQuests.map((quest) => (
+                <button
+                  key={quest.id}
+                  type="button"
+                  className="curated-quest-card"
+                  onClick={() => openCuratedQuest(quest)}
+                >
+                  <CuratedQuestImage quest={quest} />
+                  <div className="curated-quest-body">
+                    <div className="curated-quest-title-row">
+                      <span className="curated-quest-icon" aria-hidden>
+                        {OCCASION_ICONS[quest.occasion]}
+                      </span>
+                      <p className="curated-quest-title">{quest.title}</p>
+                    </div>
+                    <div className="curated-quest-chips">
+                      <span>{formatQuestDuration(quest.total_duration_minutes)}</span>
+                      <span>{costLabel(quest.total_cost_estimate)}</span>
+                      <span>{quest.stops.length} stops</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       {activeOccasion && activeData && (

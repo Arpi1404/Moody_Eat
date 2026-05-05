@@ -18,18 +18,6 @@ ALLOWED_NEARBY_TYPES = frozenset(
 )
 
 
-class Cafe(BaseModel):
-    name: str
-    address: str
-    distance_minutes_walk: int
-    vibe: str
-
-
-class CuratedQuestsResponse(BaseModel):
-    city: str
-    quests: dict[str, list[Cafe]]
-
-
 class NearbyPlacesRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
     categories: list[str] = Field(default_factory=lambda: ["cafe", "restaurant"])

@@ -11,19 +11,40 @@ const BUDGET_LABELS: Record<string, string> = {
   splurge: '$$$ Splurge',
 }
 
+function isQuestSaved(id: string): boolean {
+  try {
+    const quests = JSON.parse(localStorage.getItem('moodyeat:quests') ?? '[]')
+    return (
+      Array.isArray(quests) &&
+      quests.some(
+        (q) =>
+          typeof q === 'object' &&
+          q !== null &&
+          'id' in q &&
+          (q as { id?: unknown }).id === id,
+      )
+    )
+  } catch {
+    return false
+  }
+}
+
 // ── QuestPage ─────────────────────────────────────────────────────────────────
 
-export function QuestPage() {
+export function QuestPage({ preview = false }: { preview?: boolean }) {
   const { id } = useParams<{ id: string }>()
   const { state } = useLocation() as { state: { quest?: Quest } | null }
   const [quest, setQuest] = useState<Quest | null>(null)
   const [title, setTitle] = useState('')
   const [saved, setSaved] = useState(false)
+  const [savedToCollection, setSavedToCollection] = useState(false)
+  const [started, setStarted] = useState(false)
 
   useEffect(() => {
     if (state?.quest) {
       setQuest(state.quest)
       setTitle(state.quest.title)
+      setSavedToCollection(isQuestSaved(state.quest.id))
       return
     }
     if (!id) return
@@ -33,6 +54,7 @@ export function QuestPage() {
       const q = JSON.parse(raw) as Quest
       setQuest(q)
       setTitle(q.title)
+      setSavedToCollection(isQuestSaved(q.id))
     }
   }, [id, state])
 
@@ -61,6 +83,7 @@ export function QuestPage() {
     const updated = [{ ...quest, title }, ...existing.filter((q) => q.id !== quest.id)]
     localStorage.setItem(key, JSON.stringify(updated))
     localStorage.setItem(`quest_${quest.id}`, JSON.stringify({ ...quest, title }))
+    setSavedToCollection(true)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -99,6 +122,14 @@ export function QuestPage() {
     }
   }
 
+  const handleStart = () => {
+    localStorage.setItem(
+      'moodyeat:activeQuest',
+      JSON.stringify({ ...quest, title, started_at: new Date().toISOString() }),
+    )
+    setStarted(true)
+  }
+
   return (
     <main className="qp-page">
       <div className="qp-inner">
@@ -125,7 +156,11 @@ export function QuestPage() {
 
         {quest.narrative && <p className="qp-narrative">{quest.narrative}</p>}
 
-        <QuestCard quest={quest} onQuestChange={handleQuestChange} />
+        <QuestCard
+          quest={quest}
+          onQuestChange={handleQuestChange}
+          readOnly={preview && !savedToCollection}
+        />
 
         <div className="qp-bottom-bar">
           <button
@@ -145,10 +180,9 @@ export function QuestPage() {
           <button
             type="button"
             className="qp-action-btn qp-action-btn--start"
-            disabled
-            title="Coming soon"
+            onClick={handleStart}
           >
-            ▶ Start
+            {started ? '✓ Started' : '▶ Start'}
           </button>
         </div>
       </div>

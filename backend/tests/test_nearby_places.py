@@ -228,6 +228,30 @@ def test_quality_filter_drops_unrated_noise_when_strict_pool_exists() -> None:
     assert "Ravi" not in names
 
 
+def test_curated_quests_return_v1_quest_objects() -> None:
+    with TestClient(app) as c:
+        res = c.get("/api/quests/curated?city=Hyderabad")
+
+    assert res.status_code == 200
+    body = res.json()
+    assert isinstance(body, list)
+    assert len(body) > 0
+    first = body[0]
+    assert set(first) >= {
+        "id",
+        "title",
+        "occasion",
+        "stops",
+        "total_duration_minutes",
+        "total_cost_estimate",
+        "narrative",
+        "created_at",
+    }
+    assert len(first["stops"]) == 3
+    assert "place" in first["stops"][0]
+    assert "why_this_place" in first["stops"][0]
+
+
 def _quest_payload() -> dict:
     return {
         "id": "11111111-1111-4111-8111-111111111111",
