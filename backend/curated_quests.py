@@ -303,7 +303,256 @@ _HYDERABAD_QUESTS = [
     ),
 ]
 
+_GURGAON_QUESTS = [
+    Quest(
+        id=uuid.UUID("20000000-0000-4000-8000-000000000001"),
+        title="CyberHub Date Quest",
+        occasion=Occasion.date,
+        total_duration_minutes=185,
+        total_cost_estimate=CostEstimate.mid,
+        narrative=(
+            "A compact date-night plan around CyberHub: dinner, dessert, and an easy walk so the "
+            "evening feels planned without becoming rushed."
+        ),
+        created_at=_CREATED_AT,
+        stops=[
+            _stop(
+                _place(
+                    "curated-ggn-date-dinner",
+                    "SodaBottleOpenerWala",
+                    "CyberHub, DLF Cyber City, Gurugram",
+                    28.4958,
+                    77.0892,
+                    4.2,
+                    ["restaurant", "food"],
+                ),
+                StopCategory.restaurant,
+                time(19, 0),
+                time(20, 15),
+                "A lively dinner spot that keeps the first stop warm, casual, and conversation-friendly.",
+                6,
+            ),
+            _stop(
+                _place(
+                    "curated-ggn-date-dessert",
+                    "Theobroma",
+                    "CyberHub, DLF Cyber City, Gurugram",
+                    28.4965,
+                    77.0898,
+                    4.3,
+                    ["bakery", "cafe"],
+                ),
+                StopCategory.cafe,
+                time(20, 21),
+                time(20, 55),
+                "A low-commitment dessert stop that gives the date a sweet second beat.",
+                8,
+            ),
+            _stop(
+                _place(
+                    "curated-ggn-date-walk",
+                    "CyberHub Promenade",
+                    "DLF Cyber City, Gurugram",
+                    28.4960,
+                    77.0887,
+                    4.4,
+                    ["tourist_attraction", "activity"],
+                ),
+                StopCategory.activity,
+                time(21, 3),
+                time(22, 5),
+                "An easy final walk with lights, music, and enough energy to end the night naturally.",
+            ),
+        ],
+    ),
+    Quest(
+        id=uuid.UUID("20000000-0000-4000-8000-000000000002"),
+        title="32nd Avenue Friends Trail",
+        occasion=Occasion.friends,
+        total_duration_minutes=210,
+        total_cost_estimate=CostEstimate.mid,
+        narrative=(
+            "A group-friendly route with food, browsing, and dessert clustered tightly enough that "
+            "nobody has to coordinate a long transfer."
+        ),
+        created_at=_CREATED_AT,
+        stops=[
+            _stop(
+                _place(
+                    "curated-ggn-friends-dinner",
+                    "Como Pizzeria",
+                    "32nd Avenue, Sector 15, Gurugram",
+                    28.4597,
+                    77.0474,
+                    4.4,
+                    ["restaurant", "food"],
+                ),
+                StopCategory.restaurant,
+                time(18, 45),
+                time(20, 0),
+                "Pizza works well for groups because it is easy to share and keeps the mood casual.",
+                5,
+            ),
+            _stop(
+                _place(
+                    "curated-ggn-friends-activity",
+                    "32nd Avenue",
+                    "Sector 15, Gurugram",
+                    28.4594,
+                    77.0471,
+                    4.5,
+                    ["activity", "tourist_attraction"],
+                ),
+                StopCategory.activity,
+                time(20, 5),
+                time(21, 25),
+                "A flexible hangout stretch for photos, browsing, and deciding what the group wants next.",
+                6,
+            ),
+            _stop(
+                _place(
+                    "curated-ggn-friends-dessert",
+                    "Sibang Bakery",
+                    "South Point Mall, Golf Course Road, Gurugram",
+                    28.4599,
+                    77.0935,
+                    4.4,
+                    ["bakery", "cafe"],
+                ),
+                StopCategory.cafe,
+                time(21, 31),
+                time(22, 15),
+                "A bakery finish gives the group one last shared stop without making the evening heavier.",
+            ),
+        ],
+    ),
+    Quest(
+        id=uuid.UUID("20000000-0000-4000-8000-000000000003"),
+        title="Solo Aravalli Reset",
+        occasion=Occasion.solo,
+        total_duration_minutes=165,
+        total_cost_estimate=CostEstimate.cheap,
+        narrative=(
+            "A lighter solo plan that pairs a calm cafe stop with greenery and a simple snack, built "
+            "for clearing your head."
+        ),
+        created_at=_CREATED_AT,
+        stops=[
+            _stop(
+                _place(
+                    "curated-ggn-solo-cafe",
+                    "Roots Cafe",
+                    "Leisure Valley Road, Sector 29, Gurugram",
+                    28.4670,
+                    77.0644,
+                    4.2,
+                    ["cafe", "food"],
+                ),
+                StopCategory.cafe,
+                time(17, 30),
+                time(18, 25),
+                "A relaxed first stop for coffee, reading, or easing into a solo evening.",
+                14,
+            ),
+            _stop(
+                _place(
+                    "curated-ggn-solo-walk",
+                    "Aravalli Biodiversity Park",
+                    "MG Road, Gurugram",
+                    28.4806,
+                    77.1074,
+                    4.5,
+                    ["park", "tourist_attraction"],
+                ),
+                StopCategory.attraction,
+                time(18, 39),
+                time(19, 30),
+                "Green space adds the reset part of the quest without requiring a packed schedule.",
+                11,
+            ),
+            _stop(
+                _place(
+                    "curated-ggn-solo-snack",
+                    "Galleria Market",
+                    "DLF Phase IV, Gurugram",
+                    28.4649,
+                    77.0838,
+                    4.3,
+                    ["activity", "food"],
+                ),
+                StopCategory.activity,
+                time(19, 41),
+                time(20, 15),
+                "A flexible final stop where you can grab a small snack or just browse before heading home.",
+            ),
+        ],
+    ),
+    Quest(
+        id=uuid.UUID("20000000-0000-4000-8000-000000000004"),
+        title="Family Galleria Evening",
+        occasion=Occasion.family,
+        total_duration_minutes=175,
+        total_cost_estimate=CostEstimate.mid,
+        narrative=(
+            "A family-friendly route with familiar food, a low-stress market walk, and dessert close by "
+            "so the plan stays easy."
+        ),
+        created_at=_CREATED_AT,
+        stops=[
+            _stop(
+                _place(
+                    "curated-ggn-family-dinner",
+                    "The Big Chill",
+                    "DLF Galleria, Gurugram",
+                    28.4652,
+                    77.0837,
+                    4.4,
+                    ["restaurant", "food"],
+                ),
+                StopCategory.restaurant,
+                time(18, 30),
+                time(19, 45),
+                "A familiar menu and comfortable setting make it easier for mixed preferences.",
+                4,
+            ),
+            _stop(
+                _place(
+                    "curated-ggn-family-walk",
+                    "Galleria Market",
+                    "DLF Phase IV, Gurugram",
+                    28.4649,
+                    77.0838,
+                    4.3,
+                    ["activity", "shopping_mall"],
+                ),
+                StopCategory.activity,
+                time(19, 49),
+                time(20, 35),
+                "A simple walk-and-browse stop keeps the family moving without needing another booking.",
+                6,
+            ),
+            _stop(
+                _place(
+                    "curated-ggn-family-dessert",
+                    "Binge Bakery",
+                    "Galleria Market, Gurugram",
+                    28.4650,
+                    77.0840,
+                    4.2,
+                    ["bakery", "cafe"],
+                ),
+                StopCategory.cafe,
+                time(20, 41),
+                time(21, 25),
+                "A nearby dessert stop gives the outing a clear final milestone before heading back.",
+            ),
+        ],
+    ),
+]
+
 CURATED_QUESTS: dict[str, list[Quest]] = {
     "hyderabad": _HYDERABAD_QUESTS,
     "secunderabad": _HYDERABAD_QUESTS,
+    "gurgaon": _GURGAON_QUESTS,
+    "gurugram": _GURGAON_QUESTS,
 }
