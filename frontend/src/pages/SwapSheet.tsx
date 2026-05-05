@@ -11,8 +11,8 @@ function formatDistanceDelta(meters: number): string {
   return `${sign}${Math.round(meters)}m`
 }
 
-function formatMoneyDelta(value: number): string {
-  if (value === 0) return '₹0'
+function formatMoneyDelta(value: number): string | null {
+  if (value === 0) return null
   return `${value > 0 ? '+' : '-'}₹${Math.abs(value)}`
 }
 
@@ -144,9 +144,12 @@ export function SwapSheet({
                           alternative.delta.time_change_minutes,
                         )}
                       </span>
-                      <span className="swap-delta-badge">
-                        {formatMoneyDelta(alternative.delta.cost_change)}
-                      </span>
+                      {formatMoneyDelta(alternative.delta.cost_change) !==
+                        null && (
+                        <span className="swap-delta-badge">
+                          {formatMoneyDelta(alternative.delta.cost_change)}
+                        </span>
+                      )}
                       <span className="swap-delta-badge">
                         {formatDistanceDelta(
                           alternative.delta.distance_change_meters,
