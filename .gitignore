@@ -80,3 +80,4 @@ lerna-debug.log*
 .cache/
 
 .cursorignore
+.claude/worktrees/
