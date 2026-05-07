@@ -1,13 +1,9 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  fetchUserName,
-  generateQuest,
   searchNearbyPlaces,
-  type Cafe,
   type NearbyPlacesResponse,
   type PlaceItem,
-  type QuestResponse,
 } from '../api'
 import '../App.css'
 
@@ -58,25 +54,10 @@ export function ExplorePage() {
   const [nearbyResult, setNearbyResult] = useState<NearbyPlacesResponse | null>(
     null,
   )
-  const [questFallback, setQuestFallback] = useState<QuestResponse | null>(null)
-  const [fallbackNote, setFallbackNote] = useState<string | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-    fetchUserName()
-      .then((n) => {
-        if (!cancelled) setName(n)
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setNameError(
-            err instanceof Error ? err.message : 'Could not load name.',
-          )
-        }
-      })
-    return () => {
-      cancelled = true
-    }
+    setName(null)
+    setNameError(null)
   }, [])
 
   const filteredPlaces: PlaceItem[] = useMemo(() => {
@@ -101,8 +82,6 @@ export function ExplorePage() {
     setLoading(true)
     setError(null)
     setNearbyResult(null)
-    setQuestFallback(null)
-    setFallbackNote(null)
 
     const radius_meters = Math.min(
       10000,
@@ -121,25 +100,11 @@ export function ExplorePage() {
       const message =
         err instanceof Error ? err.message : 'Something went wrong.'
       setError(message)
-
-      const locKey = destination.trim().toLowerCase()
-      if (locKey === 'paris' || locKey === 'bangalore') {
-        try {
-          const quest = await generateQuest(destination.trim(), mood)
-          setQuestFallback(quest)
-          setFallbackNote(
-            'Live nearby search was unavailable, so here are curated café picks for this demo location and mood.',
-          )
-        } catch {
-          setFallbackNote(null)
-        }
-      }
     } finally {
       setLoading(false)
     }
   }
 
-  const showCafeCards = questFallback?.cafes ?? []
   const greeting = nameError
     ? 'there'
     : name
@@ -304,11 +269,7 @@ export function ExplorePage() {
           </p>
 
           {error && <p className="error-text">{error}</p>}
-          {fallbackNote && (
-            <p className="fallback-note">{fallbackNote}</p>
-          )}
-
-          {nearbyResult && !questFallback && (
+          {nearbyResult && (
             <>
               <p className="results-label">
                 Near{' '}
@@ -355,34 +316,8 @@ export function ExplorePage() {
             </>
           )}
 
-          {questFallback && showCafeCards.length > 0 && (
-            <>
-              <p className="results-label">
-                Curated cafés for{' '}
-                <span className="highlight">
-                  {questFallback.location} · {questFallback.mood}
-                </span>
-              </p>
-              <ul className="cafe-list">
-                {showCafeCards.map((cafe: Cafe) => (
-                  <li key={cafe.name} className="cafe-item">
-                    <div className="cafe-header">
-                      <span className="cafe-name">{cafe.name}</span>
-                      <span className="cafe-distance">
-                        {cafe.distance_minutes_walk} min walk
-                      </span>
-                    </div>
-                    <p className="cafe-address">{cafe.address}</p>
-                    <p className="cafe-vibe">{cafe.vibe}</p>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
           {!error &&
             !nearbyResult &&
-            !questFallback &&
             !loading &&
             greeting !== '…' && (
               <p className="placeholder">

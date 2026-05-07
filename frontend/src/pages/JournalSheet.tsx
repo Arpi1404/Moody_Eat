@@ -67,8 +67,10 @@ export function JournalSheet({
   const toastTimer = useRef<number | null>(null)
 
   useEffect(() => {
+    document.body.style.overflow = 'hidden'
     return () => {
       if (toastTimer.current) window.clearTimeout(toastTimer.current)
+      document.body.style.overflow = ''
     }
   }, [])
 

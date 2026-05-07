@@ -235,6 +235,14 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!shareMenuOpen) return
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [shareMenuOpen])
+
   const showToast = useCallback((message: string) => {
     setToast(message)
     if (toastTimer.current) window.clearTimeout(toastTimer.current)

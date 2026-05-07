@@ -32,6 +32,19 @@
   }
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: #0a0a0a;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --text: #9ca3af;
@@ -77,6 +90,8 @@ body {
   font-family: var(--sans);
   font-optical-sizing: auto;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
   background: #0a0a0a;
 }
 
@@ -152,7 +167,7 @@ code {
 
 .landing-shell {
   --landing-gutter: clamp(18px, 3vw, 30px);
-  --landing-section-gap: clamp(10px, 1.8vh, 18px);
+  --landing-section-gap: clamp(10px, 1.8dvh, 18px);
   position: relative;
   width: 100%;
   min-height: 100svh;
@@ -177,7 +192,7 @@ code {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: clamp(14px, 2.4vh, 20px) var(--landing-gutter) 0;
+  padding: clamp(14px, 2.4dvh, 20px) var(--landing-gutter) 0;
 }
 
 .landing-brand {
@@ -195,7 +210,7 @@ code {
 
 .landing-hero {
   text-align: left;
-  padding: clamp(8px, 1vh, 12px) var(--landing-gutter) 0;
+  padding: clamp(8px, 1dvh, 12px) var(--landing-gutter) 0;
 }
 
 .landing-kicker {
@@ -244,6 +259,7 @@ code {
   font-weight: 640;
   line-height: 1;
   padding: 16px 24px;
+  min-height: 44px;
   cursor: pointer;
   transition:
     border-color 140ms ease,
@@ -253,6 +269,7 @@ code {
 .landing-pill-button--compact {
   font-size: 12px;
   padding: 12px 19px;
+  min-height: 44px;
 }
 
 .landing-pill-button:hover {
@@ -275,6 +292,7 @@ code {
   font-size: 14px;
   line-height: 1;
   padding: 12px 18px;
+  min-height: 44px;
   cursor: pointer;
   transition:
     border-color 140ms ease,
@@ -295,13 +313,13 @@ code {
   display: flex;
   align-items: center;
   margin: 2px 0;
-  min-height: clamp(170px, 27vh, 260px);
+  min-height: clamp(170px, 27dvh, 260px);
 }
 
 .landing-ticker {
   width: 100%;
   overflow: hidden;
-  padding-block: clamp(8px, 1.6vh, 16px);
+  padding-block: clamp(8px, 1.6dvh, 16px);
 }
 
 .landing-ticker-track {
@@ -541,11 +559,13 @@ code {
     padding: 11px 16px;
     font-size: 14px;
     border-radius: 10px;
+    min-height: 44px;
   }
 
   .landing-pill-button--compact {
     padding: 9px 13px;
     font-size: 11px;
+    min-height: 44px;
   }
 
   .landing-chip-row {
@@ -556,6 +576,7 @@ code {
     font-size: 13px;
     border-radius: 10px;
     padding: 9px 14px;
+    min-height: 44px;
   }
 
   .food-card {
