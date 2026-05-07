@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./venv/Scripts/python.exe -c ' *)",
+      "Bash(./venv/Scripts/python.exe -m scripts.verify_curated --help)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ -q)"
+    ]
+  }
+}

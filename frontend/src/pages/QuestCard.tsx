@@ -4,6 +4,7 @@ import L from 'leaflet'
 import { fetchStopAlternatives, getApiBase } from '../api'
 import type { Quest, Stop, StopAlternative } from '../types/quest'
 import { EmptyState } from '../components/states'
+import { track } from '../lib/analytics'
 import { SwapSheet } from './SwapSheet'
 
 const TRAVEL_EMOJI: Record<string, string> = {
@@ -332,10 +333,11 @@ export function QuestCard({
   }, [activeStopIndex, quest])
 
   const confirmSwap = useCallback(() => {
-    if (!previewQuest) return
+    if (!previewQuest || activeStopIndex == null) return
+    track('stop_swapped', { stop_index: activeStopIndex })
     onQuestChange(previewQuest)
     closeSheet()
-  }, [closeSheet, onQuestChange, previewQuest])
+  }, [activeStopIndex, closeSheet, onQuestChange, previewQuest])
 
   return (
     <>

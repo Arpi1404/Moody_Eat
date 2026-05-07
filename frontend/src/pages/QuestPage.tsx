@@ -7,6 +7,7 @@ import type { JournalEntry } from '../types/journal'
 import { useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
 import { ErrorState, LoadingState } from '../components/states'
+import { track } from '../lib/analytics'
 import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
 import { ShareableQuestCard } from './ShareableQuestCard'
@@ -283,6 +284,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     const titledQuest = { ...quest, title }
     saveQuest(titledQuest)
     localStorage.setItem(`quest_${titledQuest.id}`, JSON.stringify(titledQuest))
+    track('quest_saved', { quest_id: titledQuest.id })
     setJustSaved(true)
     setTimeout(() => setJustSaved(false), 2000)
   }
@@ -304,6 +306,10 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const handleCopyShareLink = async () => {
     const titledQuest = { ...quest, title: title.trim() || quest.title }
     await copyToClipboard(makeQuestShareUrl(titledQuest))
+    track('quest_shared', {
+      quest_id: titledQuest.id,
+      share_method: 'clipboard_fallback',
+    })
     setShareMenuOpen(false)
     showToast('Share link copied.')
   }
@@ -337,10 +343,18 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       setShowShareCard(false)
 
       downloadPng(dataUrl, fileName)
+      track('quest_shared', {
+        quest_id: titledQuest.id,
+        share_method: 'download',
+      })
       setShareMenuOpen(false)
       showToast('PNG downloaded.')
     } catch {
       await copyToClipboard(makeQuestTextSummary(titledQuest, shareUrl))
+      track('quest_shared', {
+        quest_id: titledQuest.id,
+        share_method: 'clipboard_fallback',
+      })
       setShareMenuOpen(false)
       showToast("Couldn't make image — copied details instead.")
     } finally {
@@ -355,6 +369,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     writeActiveQuest(titledQuest, [])
     setActiveQuestId(titledQuest.id)
     setCompletedStopIndexes([])
+    track('quest_started', { quest_id: titledQuest.id })
     showToast('Quest started.')
   }
 
@@ -380,6 +395,8 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       localStorage.removeItem(ACTIVE_QUEST_KEY)
       localStorage.removeItem(LEGACY_ACTIVE_QUEST_KEY)
     }
+    track('quest_completed', { quest_id: quest.id })
+    track('journal_entry_created', { had_photo: entry.photos.length > 0 })
     setActiveQuestId(null)
     setCompletedStopIndexes([])
     setJournalOpen(false)

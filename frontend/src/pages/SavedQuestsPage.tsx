@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSavedQuests, type SavedQuest } from '../hooks/useSavedQuests'
 import { EmptyState, LoadingState } from '../components/states'
+import { track } from '../lib/analytics'
 import '../App.css'
 
 const OCCASION_ICONS: Record<string, string> = {
@@ -83,6 +84,7 @@ export function SavedQuestsPage() {
   const confirmDelete = useCallback(
     (id: string, title: string) => {
       removeQuest(id)
+      track('quest_unsaved', { quest_id: id })
       setPendingDelete(null)
       showToast(`Removed "${title}"`)
     },

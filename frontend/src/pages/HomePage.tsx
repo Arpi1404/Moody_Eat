@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
 import type { Quest } from '../types/quest'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
+import { track } from '../lib/analytics'
 import '../App.css'
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -235,6 +236,7 @@ export function HomePage() {
 
   const openSheet = useCallback(
     (key: OccasionKey) => {
+      track('home_tile_tapped', { occasion: key })
       setActiveOccasion(key)
       setSubmitError(null)
       if (!location) tryGeolocation()
@@ -285,6 +287,12 @@ export function HomePage() {
         }),
         wait(200),
       ])
+      track('quest_generated', {
+        occasion: activeOccasion,
+        budget,
+        duration,
+        stop_count: quest.stops.length,
+      })
       const softMessage =
         quest.stops.length > 0 && quest.stops.length < 3
           ? `Found ${quest.stops.length} great stop${quest.stops.length === 1 ? '' : 's'} — couldn't find a good third in this area.`
@@ -307,6 +315,7 @@ export function HomePage() {
 
   const openCuratedQuest = useCallback(
     (quest: Quest) => {
+      track('curated_quest_tapped', { quest_id: quest.id })
       sessionStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
       navigate(`/quest/preview/${quest.id}`, { state: { quest } })
     },
