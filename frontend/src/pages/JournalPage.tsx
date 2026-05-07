@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useJournal } from '../hooks/useJournal'
+import { EmptyState, LoadingState } from '../components/states'
 import type { JournalEntry } from '../types/journal'
 import type { Quest } from '../types/quest'
 import '../App.css'
@@ -66,10 +68,16 @@ function JournalCard({ entry }: { entry: JournalEntry }) {
 
 export function JournalPage() {
   const { entries } = useJournal()
+  const [loading, setLoading] = useState(true)
   const sortedEntries = [...entries].sort(
     (a, b) =>
       new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime(),
   )
+
+  useEffect(() => {
+    const loadingTimer = window.setTimeout(() => setLoading(false), 200)
+    return () => window.clearTimeout(loadingTimer)
+  }, [])
 
   return (
     <main className="journal-page">
@@ -85,19 +93,15 @@ export function JournalPage() {
         </p>
       </header>
 
-      {sortedEntries.length === 0 ? (
-        <div className="saved-empty">
-          <span className="saved-empty-emoji" aria-hidden>
-            ✍️
-          </span>
-          <p className="saved-empty-title">No memories yet</p>
-          <p className="saved-empty-body">
-            Start a quest, mark it done, and save a rating to build your journal.
-          </p>
-          <Link to="/" className="saved-empty-cta">
-            Find a quest
-          </Link>
-        </div>
+      {loading ? (
+        <LoadingState message="Loading memories..." />
+      ) : sortedEntries.length === 0 ? (
+        <EmptyState
+          icon="✍️"
+          title="Start a quest to begin building your memories"
+          description="Complete a quest and save a rating to add your first journal entry."
+          cta={<Link to="/">Find a quest</Link>}
+        />
       ) : (
         <div className="journal-list">
           {sortedEntries.map((entry) => (

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import type { Quest } from '../types/quest'
 import type { JournalEntry } from '../types/journal'
 import { useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
+import { ErrorState, LoadingState } from '../components/states'
 import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
 import { ShareableQuestCard } from './ShareableQuestCard'
@@ -137,11 +138,17 @@ function writeActiveQuest(quest: Quest, completedStopIndexes: number[]) {
 
 export function QuestPage({ preview = false }: { preview?: boolean }) {
   const { id } = useParams<{ id: string }>()
-  const { state } = useLocation() as { state: { quest?: Quest } | null }
+  const navigate = useNavigate()
+  const { state } = useLocation() as {
+    state: { quest?: Quest; softMessage?: string } | null
+  }
   const { saveQuest, isQuestSaved } = useSavedQuests()
   const { addEntry } = useJournal()
   const [quest, setQuest] = useState<Quest | null>(null)
   const [title, setTitle] = useState('')
+  const [questLoading, setQuestLoading] = useState(true)
+  const [questError, setQuestError] = useState<string | null>(null)
+  const [questNotice, setQuestNotice] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
   const [activeQuestId, setActiveQuestId] = useState<string | null>(null)
   const [completedStopIndexes, setCompletedStopIndexes] = useState<number[]>([])
@@ -157,18 +164,56 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const active = quest ? activeQuestId === quest.id : false
 
   useEffect(() => {
-    if (state?.quest) {
-      setQuest(state.quest)
-      setTitle(state.quest.title)
-      return
+    let cancelled = false
+
+    async function loadQuest() {
+      setQuestLoading(true)
+      setQuestError(null)
+
+      try {
+        await wait(200)
+        let nextQuest: Quest | null = null
+        let softMessage = state?.softMessage ?? null
+
+        if (state?.quest) {
+          nextQuest = state.quest
+        } else if (id) {
+          const raw =
+            localStorage.getItem(`quest_${id}`) ??
+            sessionStorage.getItem(`quest_${id}`)
+          if (raw) nextQuest = JSON.parse(raw) as Quest
+        }
+
+        if (!nextQuest) {
+          throw new Error('Quest not found — it may have expired.')
+        }
+
+        if (!softMessage && nextQuest.stops.length > 0 && nextQuest.stops.length < 3) {
+          softMessage = `Found ${nextQuest.stops.length} great stop${nextQuest.stops.length === 1 ? '' : 's'} — couldn't find a good third in this area.`
+        }
+
+        if (!cancelled) {
+          setQuest(nextQuest)
+          setTitle(nextQuest.title)
+          setQuestNotice(softMessage)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setQuest(null)
+          setQuestError(
+            err instanceof Error
+              ? err.message
+              : 'Quest not found — it may have expired.',
+          )
+        }
+      } finally {
+        if (!cancelled) setQuestLoading(false)
+      }
     }
-    if (!id) return
-    const raw =
-      localStorage.getItem(`quest_${id}`) ?? sessionStorage.getItem(`quest_${id}`)
-    if (raw) {
-      const q = JSON.parse(raw) as Quest
-      setQuest(q)
-      setTitle(q.title)
+
+    void loadQuest()
+    return () => {
+      cancelled = true
     }
   }, [id, state])
 
@@ -196,15 +241,26 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     toastTimer.current = window.setTimeout(() => setToast(null), 2600)
   }, [])
 
+  if (questLoading) {
+    return (
+      <main className="qp-page">
+        <div className="qp-inner">
+          <LoadingState message="Loading quest..." />
+        </div>
+      </main>
+    )
+  }
+
   if (!quest) {
     return (
-      <main className="hello-page">
-        <div className="hello-card" style={{ textAlign: 'center' }}>
-          <p className="hello-label">Quest</p>
-          <p className="hello-subtitle">Quest not found — it may have expired.</p>
-          <Link to="/" className="explore-home-link">
-            ← Back home
-          </Link>
+      <main className="qp-page">
+        <div className="qp-inner">
+          <ErrorState
+            title="Quest unavailable"
+            description={questError ?? 'Quest not found — it may have expired.'}
+            retryLabel="Back home"
+            onRetry={() => navigate('/')}
+          />
         </div>
       </main>
     )
@@ -347,6 +403,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
         </header>
 
         {quest.narrative && <p className="qp-narrative">{quest.narrative}</p>}
+        {questNotice && <p className="qp-soft-note">{questNotice}</p>}
 
         <QuestCard
           quest={quest}

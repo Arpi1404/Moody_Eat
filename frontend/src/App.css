@@ -336,6 +336,119 @@
   background: #38bdf8;
 }
 
+/* ── Reusable page states ───────────────────────────────────────────────── */
+
+.state-card {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 28px 22px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.58);
+  color: #e5e7eb;
+  text-align: center;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.state-card--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 116px;
+}
+
+.state-card--loading p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.state-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(125, 211, 252, 0.24);
+  border-top-color: #7dd3fc;
+  animation: state-spin 0.72s linear infinite;
+}
+
+@keyframes state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 12px;
+  border-radius: 16px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #bae6fd;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.state-title {
+  margin: 0 0 7px;
+  color: #f8fafc;
+  font-size: 17px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.state-description {
+  max-width: 360px;
+  margin: 0 auto;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.state-cta {
+  margin-top: 18px;
+}
+
+.state-action,
+.state-cta a,
+.state-cta button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 18px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.state-card--error {
+  border-color: rgba(248, 113, 113, 0.32);
+}
+
+.state-card--error .state-icon {
+  background: rgba(248, 113, 113, 0.13);
+  color: #fecaca;
+}
+
+.state-card--error .state-action {
+  margin-top: 18px;
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.14);
+  color: #fecaca;
+}
+
 .results-label {
   margin: 0 0 10px;
   color: #9ca3af;
@@ -1918,6 +2031,18 @@ a.explore-edit-filters {
   color: #94a3b8;
 }
 
+.qp-soft-note {
+  margin: -10px 0 22px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  background: rgba(120, 53, 15, 0.18);
+  color: #fde68a;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+}
+
 /* Map */
 
 .qp-map-wrap {
@@ -3177,6 +3302,10 @@ a.explore-edit-filters {
   }
 
   .qp-action-spinner {
+    animation: none;
+  }
+
+  .state-spinner {
     animation: none;
   }
 }

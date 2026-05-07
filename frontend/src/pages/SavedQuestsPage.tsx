@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSavedQuests, type SavedQuest } from '../hooks/useSavedQuests'
+import { EmptyState, LoadingState } from '../components/states'
 import '../App.css'
 
 const OCCASION_ICONS: Record<string, string> = {
@@ -29,6 +30,7 @@ function formatSavedDate(iso: string): string {
 export function SavedQuestsPage() {
   const navigate = useNavigate()
   const { savedQuests, removeQuest } = useSavedQuests()
+  const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const longPressTimer = useRef<number | null>(null)
@@ -36,7 +38,9 @@ export function SavedQuestsPage() {
   const toastTimer = useRef<number | null>(null)
 
   useEffect(() => {
+    const loadingTimer = window.setTimeout(() => setLoading(false), 200)
     return () => {
+      window.clearTimeout(loadingTimer)
       if (longPressTimer.current) window.clearTimeout(longPressTimer.current)
       if (toastTimer.current) window.clearTimeout(toastTimer.current)
     }
@@ -99,19 +103,15 @@ export function SavedQuestsPage() {
         </p>
       </header>
 
-      {savedQuests.length === 0 ? (
-        <div className="saved-empty">
-          <span className="saved-empty-emoji" aria-hidden>
-            ✨
-          </span>
-          <p className="saved-empty-title">Nothing saved yet</p>
-          <p className="saved-empty-body">
-            Generate a quest from the home page and tap <strong>Save</strong> to keep it here.
-          </p>
-          <Link to="/" className="saved-empty-cta">
-            Plan a quest
-          </Link>
-        </div>
+      {loading ? (
+        <LoadingState message="Loading saved quests..." />
+      ) : savedQuests.length === 0 ? (
+        <EmptyState
+          icon="✨"
+          title="Save your first quest to see it here"
+          description="Generate or open a curated quest, then tap Save to keep it handy."
+          cta={<Link to="/">Plan a quest</Link>}
+        />
       ) : (
         <ul className="saved-list">
           {savedQuests.map((quest) => {

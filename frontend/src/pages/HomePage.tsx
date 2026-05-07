@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
 import type { Quest } from '../types/quest'
+import { EmptyState, ErrorState, LoadingState } from '../components/states'
 import '../App.css'
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -101,6 +102,12 @@ async function detectCity(): Promise<string> {
   return city
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
 function formatQuestDuration(minutes: number): string {
   const hours = minutes / 60
   return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`
@@ -151,11 +158,16 @@ export function HomePage() {
   const [budget, setBudget] = useState<Budget>('mid')
   const [duration, setDuration] = useState<DurationHours>(3)
   const [submitting, setSubmitting] = useState(false)
+  const [submitSlow, setSubmitSlow] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [curatedQuests, setCuratedQuests] = useState<Quest[]>([])
+  const [curatedCity, setCuratedCity] = useState('Hyderabad')
+  const [curatedLoading, setCuratedLoading] = useState(true)
+  const [curatedError, setCuratedError] = useState<string | null>(null)
 
   const sheetRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
+  const submitSlowTimer = useRef<number | null>(null)
 
   const tryGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -186,30 +198,38 @@ export function HomePage() {
     )
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
+  const loadCuratedQuests = useCallback(async () => {
+    setCuratedLoading(true)
+    setCuratedError(null)
+    let city = 'Hyderabad'
 
-    async function loadCuratedQuests() {
-      let city = 'Hyderabad'
-      try {
-        city = await detectCity()
-      } catch {
-        city = 'Hyderabad'
-      }
-
-      try {
-        const quests = await fetchCuratedQuests(city)
-        if (!cancelled && quests.length > 0) {
-          setCuratedQuests(quests)
-        }
-      } catch {
-        if (!cancelled) setCuratedQuests([])
-      }
+    try {
+      city = await detectCity()
+    } catch {
+      city = 'Hyderabad'
     }
+    setCuratedCity(city)
 
-    loadCuratedQuests()
+    try {
+      const [quests] = await Promise.all([fetchCuratedQuests(city), wait(200)])
+      setCuratedQuests(quests)
+    } catch (err) {
+      setCuratedQuests([])
+      setCuratedError(
+        err instanceof Error ? err.message : 'Could not load curated quests.',
+      )
+    } finally {
+      setCuratedLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadCuratedQuests()
+  }, [loadCuratedQuests])
+
+  useEffect(() => {
     return () => {
-      cancelled = true
+      if (submitSlowTimer.current) window.clearTimeout(submitSlowTimer.current)
     }
   }, [])
 
@@ -248,22 +268,40 @@ export function HomePage() {
     e.preventDefault()
     if (!activeOccasion || !location.trim() || submitting) return
     setSubmitting(true)
+    setSubmitSlow(false)
     setSubmitError(null)
+    submitSlowTimer.current = window.setTimeout(() => {
+      setSubmitSlow(true)
+    }, 3000)
+
     try {
-      const quest = await generateQuest({
-        location: location.trim(),
-        occasion: activeOccasion,
-        cost_estimate: budget,
-        people: PEOPLE_BY_OCCASION[activeOccasion],
-        duration_hours: duration,
-      })
+      const [quest] = await Promise.all([
+        generateQuest({
+          location: location.trim(),
+          occasion: activeOccasion,
+          cost_estimate: budget,
+          people: PEOPLE_BY_OCCASION[activeOccasion],
+          duration_hours: duration,
+        }),
+        wait(200),
+      ])
+      const softMessage =
+        quest.stops.length > 0 && quest.stops.length < 3
+          ? `Found ${quest.stops.length} great stop${quest.stops.length === 1 ? '' : 's'} — couldn't find a good third in this area.`
+          : undefined
       localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
-      navigate(`/quest/${quest.id}`, { state: { quest } })
+      navigate(`/quest/${quest.id}`, { state: { quest, softMessage } })
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : 'Something went wrong.',
       )
       setSubmitting(false)
+    } finally {
+      if (submitSlowTimer.current) {
+        window.clearTimeout(submitSlowTimer.current)
+        submitSlowTimer.current = null
+      }
+      setSubmitSlow(false)
     }
   }
 
@@ -308,9 +346,23 @@ export function HomePage() {
           </div>
         </section>
 
-        {curatedQuests.length > 0 && (
-          <section className="curated-quests-section">
-            <p className="home-section-label">Pre-made for tonight.</p>
+        <section className="curated-quests-section">
+          <p className="home-section-label">Pre-made for tonight.</p>
+          {curatedLoading ? (
+            <LoadingState message="Loading curated quests..." />
+          ) : curatedError ? (
+            <ErrorState
+              title="Could not load pre-made quests"
+              description="Check your connection and try again."
+              onRetry={loadCuratedQuests}
+            />
+          ) : curatedQuests.length === 0 ? (
+            <EmptyState
+              icon="🧭"
+              title="No pre-made quests here yet"
+              description={`We do not have curated quests for ${curatedCity} yet. You can still make one from any occasion above.`}
+            />
+          ) : (
             <div className="curated-quests-row" aria-label="Curated quests">
               {curatedQuests.map((quest) => (
                 <button
@@ -336,8 +388,8 @@ export function HomePage() {
                 </button>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
       </main>
 
       {activeOccasion && activeData && (
@@ -446,10 +498,20 @@ export function HomePage() {
                 {submitting ? 'Finding spots…' : 'Plan my evening'}
               </button>
 
+              {submitting && submitSlow && (
+                <LoadingState message="Finding good spots near you..." />
+              )}
+
               {submitError && (
-                <p className="sheet-error" role="alert">
-                  {submitError}
-                </p>
+                <ErrorState
+                  title="Could not plan that quest"
+                  description={submitError}
+                  retryLabel="Try again"
+                  onRetry={() => {
+                    setSubmitError(null)
+                    sheetRef.current?.querySelector('form')?.requestSubmit()
+                  }}
+                />
               )}
             </form>
           </div>

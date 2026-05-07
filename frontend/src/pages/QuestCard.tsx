@@ -3,6 +3,7 @@ import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet
 import L from 'leaflet'
 import { fetchStopAlternatives, getApiBase } from '../api'
 import type { Quest, Stop, StopAlternative } from '../types/quest'
+import { EmptyState } from '../components/states'
 import { SwapSheet } from './SwapSheet'
 
 const TRAVEL_EMOJI: Record<string, string> = {
@@ -338,6 +339,14 @@ export function QuestCard({
 
   return (
     <>
+      {displayQuest.stops.length === 0 && (
+        <EmptyState
+          icon="🧭"
+          title="No stops found"
+          description="We could not find enough good matches for this quest. Try another location or occasion."
+        />
+      )}
+
       {positions.length > 0 && (
         <div className="qp-map-wrap">
           <MapContainer
@@ -374,23 +383,25 @@ export function QuestCard({
         </div>
       )}
 
-      <ol className="qp-stops" aria-live="polite">
-        {displayQuest.stops.map((stop, i) => (
-          <StopCard
-            key={`${stop.place.provider_id}-${i}`}
-            stop={stop}
-            index={i}
-            previewing={activeStopIndex === i && selectedAlternative != null}
-            onSwap={() => setActiveStopIndex(i)}
-            active={active}
-            checked={completedStops.has(i)}
-            onCheck={() => onToggleStopComplete?.(i)}
-            readOnly={readOnly}
-          />
-        ))}
-      </ol>
+      {displayQuest.stops.length > 0 && (
+        <ol className="qp-stops" aria-live="polite">
+          {displayQuest.stops.map((stop, i) => (
+            <StopCard
+              key={`${stop.place.provider_id}-${i}`}
+              stop={stop}
+              index={i}
+              previewing={activeStopIndex === i && selectedAlternative != null}
+              onSwap={() => setActiveStopIndex(i)}
+              active={active}
+              checked={completedStops.has(i)}
+              onCheck={() => onToggleStopComplete?.(i)}
+              readOnly={readOnly}
+            />
+          ))}
+        </ol>
+      )}
 
-      {active && (
+      {active && displayQuest.stops.length > 0 && (
         <button type="button" className="qp-mark-done-btn" onClick={onMarkDone}>
           Mark as done
         </button>
