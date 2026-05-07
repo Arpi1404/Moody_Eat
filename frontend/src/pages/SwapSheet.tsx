@@ -139,18 +139,24 @@ export function SwapSheet({
                       {alternative.why_this_place}
                     </span>
                     <span className="swap-delta-row">
-                      <span className="swap-delta-badge">
+                      <span
+                        className={`swap-delta-badge${alternative.delta.time_change_minutes > 0 ? ' swap-delta-badge--negative' : alternative.delta.time_change_minutes < 0 ? ' swap-delta-badge--positive' : ''}`}
+                      >
                         {formatMinuteDelta(
                           alternative.delta.time_change_minutes,
                         )}
                       </span>
                       {formatMoneyDelta(alternative.delta.cost_change) !==
                         null && (
-                        <span className="swap-delta-badge">
+                        <span
+                          className={`swap-delta-badge${alternative.delta.cost_change > 0 ? ' swap-delta-badge--negative' : ' swap-delta-badge--positive'}`}
+                        >
                           {formatMoneyDelta(alternative.delta.cost_change)}
                         </span>
                       )}
-                      <span className="swap-delta-badge">
+                      <span
+                        className={`swap-delta-badge${alternative.delta.distance_change_meters > 0 ? ' swap-delta-badge--negative' : alternative.delta.distance_change_meters < 0 ? ' swap-delta-badge--positive' : ''}`}
+                      >
                         {formatDistanceDelta(
                           alternative.delta.distance_change_meters,
                         )}
