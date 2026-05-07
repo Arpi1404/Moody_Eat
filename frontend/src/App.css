@@ -1966,6 +1966,57 @@ a.explore-edit-filters {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
+.qp-stop-check {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.qp-stop-check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.qp-stop-check span {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(203, 213, 225, 0.72);
+  background: rgba(15, 23, 42, 0.55);
+  box-sizing: border-box;
+}
+
+.qp-stop-check input:checked + span {
+  border-color: transparent;
+  background:
+    linear-gradient(135deg, #38bdf8, #a855f7);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.72) inset;
+}
+
+.qp-stop-check input:checked + span::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 4px;
+  margin: 4px 0 0 3px;
+  border-left: 2px solid #06101f;
+  border-bottom: 2px solid #06101f;
+  transform: rotate(-45deg);
+}
+
 .qp-stop-card--preview {
   border-color: rgba(56, 189, 248, 0.55);
   animation: qp-stop-preview 0.34s ease;
@@ -2137,6 +2188,22 @@ a.explore-edit-filters {
   font-size: 12px;
   color: #64748b;
   border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.qp-mark-done-btn {
+  width: 100%;
+  margin: 18px 0 92px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(120deg, #38bdf8, #a855f7);
+  color: #06101f;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 13px 16px;
+  cursor: pointer;
+  box-shadow:
+    0 10px 28px rgba(56, 189, 248, 0.18),
+    0 0 0 1px rgba(15, 23, 42, 0.88);
 }
 
 /* Stop swap sheet */
@@ -2429,10 +2496,24 @@ a.explore-edit-filters {
 }
 
 .qp-action-btn--start {
-  border-color: rgba(148, 163, 184, 0.2);
-  color: #475569;
-  cursor: not-allowed;
-  opacity: 0.5;
+  border-color: rgba(34, 197, 94, 0.42);
+  color: #bbf7d0;
+}
+
+.qp-action-btn--start:hover:not(:disabled) {
+  background: rgba(22, 101, 52, 0.28);
+  border-color: rgba(34, 197, 94, 0.65);
+}
+
+.qp-action-btn--started {
+  background: rgba(22, 101, 52, 0.24);
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #bbf7d0;
+}
+
+.qp-action-btn--started:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 /* Share action sheet */
@@ -2596,6 +2677,200 @@ a.explore-edit-filters {
 .qp-share-cancel:disabled {
   cursor: wait;
   opacity: 0.58;
+}
+
+/* Journal capture sheet */
+.journal-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+.journal-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.journal-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 520px);
+  max-height: min(86vh, 720px);
+  overflow-y: auto;
+  border-radius: 26px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: linear-gradient(170deg, #101827, #0b1120);
+  color: #e5e7eb;
+  padding: 14px 16px 16px;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.journal-sheet-handle {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto 18px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.3);
+}
+
+.journal-sheet-header {
+  text-align: left;
+  margin-bottom: 18px;
+}
+
+.journal-sheet-eyebrow {
+  margin: 0 0 6px;
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.journal-sheet-header h2 {
+  margin: 0 0 7px;
+  color: #f8fafc;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.journal-sheet-header p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.journal-field {
+  display: block;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.journal-field-label {
+  display: block;
+  margin-bottom: 9px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.journal-rating-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.journal-rating-btn {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.72);
+  font-size: 24px;
+  padding: 11px 4px;
+  cursor: pointer;
+}
+
+.journal-rating-btn--active,
+.journal-rating-btn:hover {
+  border-color: rgba(56, 189, 248, 0.58);
+  background: rgba(14, 116, 144, 0.22);
+}
+
+.journal-upload input {
+  display: none;
+}
+
+.journal-upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 78px;
+  border-radius: 18px;
+  border: 1px dashed rgba(125, 211, 252, 0.4);
+  background: rgba(14, 116, 144, 0.12);
+  color: #bae6fd;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.journal-photo-preview-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-top: 10px;
+}
+
+.journal-photo-preview-row img,
+.journal-thumb-row img {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.journal-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.78);
+  color: #e5e7eb;
+  padding: 12px 15px;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.journal-note-input:focus {
+  border-color: rgba(56, 189, 248, 0.62);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.28);
+}
+
+.journal-save-btn,
+.journal-cancel-btn {
+  width: 100%;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.journal-save-btn {
+  border: 0;
+  background: linear-gradient(120deg, #38bdf8, #a855f7);
+  color: #06101f;
+}
+
+.journal-save-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.journal-cancel-btn {
+  margin-top: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: transparent;
+  color: #cbd5e1;
 }
 
 /* Off-screen story card captured by html-to-image. */
@@ -2965,6 +3240,7 @@ a.explore-edit-filters {
 /* Reserve space at the bottom of pages so the nav doesn't cover content. */
 .home-page,
 .saved-page,
+.journal-page,
 .hello-page {
   padding-bottom: calc(72px + env(safe-area-inset-bottom));
 }
@@ -3199,5 +3475,100 @@ a.explore-edit-filters {
   font-size: 13px;
   font-weight: 500;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Journal page ───────────────────────────────────────────────────────── */
+
+.journal-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px 20px 96px;
+  color: #e2e8f0;
+}
+
+.journal-header {
+  margin-bottom: 18px;
+}
+
+.journal-title {
+  margin: 8px 0 4px;
+  color: #f1f5f9;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.journal-sub {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.journal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.journal-card {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.72);
+  color: inherit;
+  padding: 15px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.14s ease;
+}
+
+.journal-card:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(15, 23, 42, 0.9);
+  transform: translateY(-1px);
+}
+
+.journal-card-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.journal-card-title {
+  margin: 0 0 4px;
+  color: #f8fafc;
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.journal-card-date {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.journal-card-rating {
+  flex: 0 0 auto;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.journal-card-note {
+  margin: 12px 0 0;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.journal-thumb-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-top: 12px;
 }
 

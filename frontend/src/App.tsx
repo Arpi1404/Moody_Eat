@@ -5,6 +5,7 @@ import { PlanPage } from './pages/PlanPage'
 import { QuestPage } from './pages/QuestPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { SavedQuestsPage } from './pages/SavedQuestsPage'
+import { JournalPage } from './pages/JournalPage'
 import { BottomNav } from './components/BottomNav'
 import './App.css'
 
@@ -27,6 +28,7 @@ function App() {
         <Route path="/plan" element={<PlanPage />} />
         <Route path="/results" element={<ResultsPage />} />
         <Route path="/saved" element={<SavedQuestsPage />} />
+        <Route path="/journal" element={<JournalPage />} />
         <Route path="/quest/preview/:id" element={<QuestPage preview />} />
         <Route path="/quest/:id" element={<QuestPage />} />
         <Route path="/explore" element={<Navigate to="/plan" replace />} />

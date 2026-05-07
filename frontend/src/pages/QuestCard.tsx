@@ -181,12 +181,18 @@ function StopCard({
   index,
   previewing,
   onSwap,
+  active = false,
+  checked = false,
+  onCheck,
   readOnly = false,
 }: {
   stop: Stop
   index: number
   previewing: boolean
   onSwap: () => void
+  active?: boolean
+  checked?: boolean
+  onCheck?: () => void
   readOnly?: boolean
 }) {
   return (
@@ -194,6 +200,17 @@ function StopCard({
       className={`qp-stop-card${previewing ? ' qp-stop-card--preview' : ''}`}
     >
       <StopPhoto placeId={stop.place.provider_id} name={stop.place.name} />
+      {active && (
+        <label className="qp-stop-check">
+          <input
+            type="checkbox"
+            checked={checked}
+            aria-label={`Mark stop ${index + 1} as visited`}
+            onChange={onCheck}
+          />
+          <span aria-hidden />
+        </label>
+      )}
       <button
         type="button"
         className="qp-stop-swap-btn"
@@ -241,10 +258,18 @@ function StopCard({
 export function QuestCard({
   quest,
   onQuestChange,
+  active = false,
+  completedStopIndexes = [],
+  onToggleStopComplete,
+  onMarkDone,
   readOnly = false,
 }: {
   quest: Quest
   onQuestChange: (quest: Quest) => void
+  active?: boolean
+  completedStopIndexes?: number[]
+  onToggleStopComplete?: (index: number) => void
+  onMarkDone?: () => void
   readOnly?: boolean
 }) {
   const [activeStopIndex, setActiveStopIndex] = useState<number | null>(null)
@@ -260,6 +285,10 @@ export function QuestCard({
   }, [activeStopIndex, quest, selectedAlternative])
 
   const displayQuest = previewQuest ?? quest
+  const completedStops = useMemo(
+    () => new Set(completedStopIndexes),
+    [completedStopIndexes],
+  )
   const positions: [number, number][] = displayQuest.stops.map((s) => [
     s.place.lat,
     s.place.lng,
@@ -353,10 +382,19 @@ export function QuestCard({
             index={i}
             previewing={activeStopIndex === i && selectedAlternative != null}
             onSwap={() => setActiveStopIndex(i)}
+            active={active}
+            checked={completedStops.has(i)}
+            onCheck={() => onToggleStopComplete?.(i)}
             readOnly={readOnly}
           />
         ))}
       </ol>
+
+      {active && (
+        <button type="button" className="qp-mark-done-btn" onClick={onMarkDone}>
+          Mark as done
+        </button>
+      )}
 
       {activeStopIndex != null && (
         <SwapSheet

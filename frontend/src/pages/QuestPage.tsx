@@ -3,7 +3,10 @@ import { toPng } from 'html-to-image'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import type { Quest } from '../types/quest'
+import type { JournalEntry } from '../types/journal'
 import { useSavedQuests } from '../hooks/useSavedQuests'
+import { useJournal } from '../hooks/useJournal'
+import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
 import { ShareableQuestCard } from './ShareableQuestCard'
 import '../App.css'
@@ -15,6 +18,13 @@ const BUDGET_LABELS: Record<string, string> = {
 }
 
 const SHARE_BASE_URL = 'https://moodyeat.app'
+const ACTIVE_QUEST_KEY = 'moodyeat:active_quest'
+const LEGACY_ACTIVE_QUEST_KEY = 'moodyeat:activeQuest'
+
+interface ActiveQuest extends Quest {
+  started_at: string
+  completedStopIndexes?: number[]
+}
 
 function makeQuestShareUrl(quest: Quest): string {
   return `${SHARE_BASE_URL}/quest/${quest.id}`
@@ -89,16 +99,53 @@ async function copyToClipboard(text: string): Promise<void> {
   ])
 }
 
+function readActiveQuest(): ActiveQuest | null {
+  try {
+    const raw =
+      localStorage.getItem(ACTIVE_QUEST_KEY) ??
+      localStorage.getItem(LEGACY_ACTIVE_QUEST_KEY)
+    if (!raw) return null
+    const value = JSON.parse(raw) as Partial<ActiveQuest>
+    if (typeof value.id !== 'string' || !Array.isArray(value.stops)) return null
+    return {
+      ...(value as Quest),
+      started_at:
+        typeof value.started_at === 'string'
+          ? value.started_at
+          : new Date().toISOString(),
+      completedStopIndexes: Array.isArray(value.completedStopIndexes)
+        ? value.completedStopIndexes.filter((item): item is number => typeof item === 'number')
+        : [],
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeActiveQuest(quest: Quest, completedStopIndexes: number[]) {
+  const current = readActiveQuest()
+  const started_at =
+    current?.id === quest.id ? current.started_at : new Date().toISOString()
+  localStorage.setItem(
+    ACTIVE_QUEST_KEY,
+    JSON.stringify({ ...quest, started_at, completedStopIndexes }),
+  )
+  localStorage.removeItem(LEGACY_ACTIVE_QUEST_KEY)
+}
+
 // ── QuestPage ─────────────────────────────────────────────────────────────────
 
 export function QuestPage({ preview = false }: { preview?: boolean }) {
   const { id } = useParams<{ id: string }>()
   const { state } = useLocation() as { state: { quest?: Quest } | null }
   const { saveQuest, isQuestSaved } = useSavedQuests()
+  const { addEntry } = useJournal()
   const [quest, setQuest] = useState<Quest | null>(null)
   const [title, setTitle] = useState('')
   const [justSaved, setJustSaved] = useState(false)
-  const [started, setStarted] = useState(false)
+  const [activeQuestId, setActiveQuestId] = useState<string | null>(null)
+  const [completedStopIndexes, setCompletedStopIndexes] = useState<number[]>([])
+  const [journalOpen, setJournalOpen] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
@@ -107,6 +154,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const toastTimer = useRef<number | null>(null)
 
   const savedToCollection = quest ? isQuestSaved(quest.id) : false
+  const active = quest ? activeQuestId === quest.id : false
 
   useEffect(() => {
     if (state?.quest) {
@@ -123,6 +171,18 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       setTitle(q.title)
     }
   }, [id, state])
+
+  useEffect(() => {
+    if (!quest) return
+    const activeQuest = readActiveQuest()
+    if (activeQuest?.id === quest.id) {
+      setActiveQuestId(activeQuest.id)
+      setCompletedStopIndexes(activeQuest.completedStopIndexes ?? [])
+    } else {
+      setActiveQuestId(null)
+      setCompletedStopIndexes([])
+    }
+  }, [quest])
 
   useEffect(() => {
     return () => {
@@ -226,11 +286,40 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   const handleStart = () => {
-    localStorage.setItem(
-      'moodyeat:activeQuest',
-      JSON.stringify({ ...quest, title, started_at: new Date().toISOString() }),
-    )
-    setStarted(true)
+    const titledQuest = { ...quest, title: title.trim() || quest.title }
+    localStorage.setItem(`quest_${titledQuest.id}`, JSON.stringify(titledQuest))
+    writeActiveQuest(titledQuest, [])
+    setActiveQuestId(titledQuest.id)
+    setCompletedStopIndexes([])
+    showToast('Quest started.')
+  }
+
+  const handleToggleStopComplete = (index: number) => {
+    if (!active) return
+    const titledQuest = { ...quest, title: title.trim() || quest.title }
+    setCompletedStopIndexes((current) => {
+      const next = current.includes(index)
+        ? current.filter((item) => item !== index)
+        : [...current, index].sort((a, b) => a - b)
+      writeActiveQuest(titledQuest, next)
+      return next
+    })
+  }
+
+  const handleSaveMemory = (entry: JournalEntry) => {
+    if (!addEntry(entry)) {
+      showToast('Could not save memory. Try fewer photos.')
+      return
+    }
+    const activeQuest = readActiveQuest()
+    if (activeQuest?.id === quest.id) {
+      localStorage.removeItem(ACTIVE_QUEST_KEY)
+      localStorage.removeItem(LEGACY_ACTIVE_QUEST_KEY)
+    }
+    setActiveQuestId(null)
+    setCompletedStopIndexes([])
+    setJournalOpen(false)
+    showToast('Memory saved.')
   }
 
   return (
@@ -262,6 +351,10 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
         <QuestCard
           quest={quest}
           onQuestChange={handleQuestChange}
+          active={active}
+          completedStopIndexes={completedStopIndexes}
+          onToggleStopComplete={handleToggleStopComplete}
+          onMarkDone={() => setJournalOpen(true)}
           readOnly={preview && !savedToCollection}
         />
 
@@ -295,12 +388,21 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           </button>
           <button
             type="button"
-            className="qp-action-btn qp-action-btn--start"
+            className={`qp-action-btn qp-action-btn--start${active ? ' qp-action-btn--started' : ''}`}
             onClick={handleStart}
+            disabled={active}
           >
-            {started ? '✓ Started' : '▶ Start'}
+            {active ? '✓ In progress' : '▶ Start'}
           </button>
         </div>
+
+        {journalOpen && (
+          <JournalSheet
+            quest={{ ...quest, title: title.trim() || quest.title }}
+            onSave={handleSaveMemory}
+            onCancel={() => setJournalOpen(false)}
+          />
+        )}
 
         {shareMenuOpen && (
           <div className="qp-share-overlay" role="presentation">

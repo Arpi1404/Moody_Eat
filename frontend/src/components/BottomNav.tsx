@@ -26,6 +26,25 @@ function SavedIcon() {
   )
 }
 
+function JournalIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden fill="none">
+      <path
+        d="M6 4.5h9.5A2.5 2.5 0 0 1 18 7v12.5H7A2.5 2.5 0 0 1 4.5 17V6A1.5 1.5 0 0 1 6 4.5z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 9h6m-6 4h4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function ProfileIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden fill="none">
@@ -50,6 +69,10 @@ export function BottomNav() {
       <NavLink to="/saved" className="bottom-nav-item">
         <SavedIcon />
         <span>Saved</span>
+      </NavLink>
+      <NavLink to="/journal" className="bottom-nav-item">
+        <JournalIcon />
+        <span>Journal</span>
       </NavLink>
       <button
         type="button"
