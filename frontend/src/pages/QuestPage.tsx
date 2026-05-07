@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import type { Quest } from '../types/quest'
+import { useSavedQuests } from '../hooks/useSavedQuests'
 import { QuestCard } from './QuestCard'
 import '../App.css'
 
@@ -11,40 +12,23 @@ const BUDGET_LABELS: Record<string, string> = {
   splurge: '$$$ Splurge',
 }
 
-function isQuestSaved(id: string): boolean {
-  try {
-    const quests = JSON.parse(localStorage.getItem('moodyeat:quests') ?? '[]')
-    return (
-      Array.isArray(quests) &&
-      quests.some(
-        (q) =>
-          typeof q === 'object' &&
-          q !== null &&
-          'id' in q &&
-          (q as { id?: unknown }).id === id,
-      )
-    )
-  } catch {
-    return false
-  }
-}
-
 // ── QuestPage ─────────────────────────────────────────────────────────────────
 
 export function QuestPage({ preview = false }: { preview?: boolean }) {
   const { id } = useParams<{ id: string }>()
   const { state } = useLocation() as { state: { quest?: Quest } | null }
+  const { saveQuest, isQuestSaved } = useSavedQuests()
   const [quest, setQuest] = useState<Quest | null>(null)
   const [title, setTitle] = useState('')
-  const [saved, setSaved] = useState(false)
-  const [savedToCollection, setSavedToCollection] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
   const [started, setStarted] = useState(false)
+
+  const savedToCollection = quest ? isQuestSaved(quest.id) : false
 
   useEffect(() => {
     if (state?.quest) {
       setQuest(state.quest)
       setTitle(state.quest.title)
-      setSavedToCollection(isQuestSaved(state.quest.id))
       return
     }
     if (!id) return
@@ -54,7 +38,6 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       const q = JSON.parse(raw) as Quest
       setQuest(q)
       setTitle(q.title)
-      setSavedToCollection(isQuestSaved(q.id))
     }
   }, [id, state])
 
@@ -78,30 +61,19 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     : `${durationHours.toFixed(1)}h`
 
   const handleSave = () => {
-    const key = 'moodyeat:quests'
-    const existing: Quest[] = JSON.parse(localStorage.getItem(key) ?? '[]')
-    const updated = [{ ...quest, title }, ...existing.filter((q) => q.id !== quest.id)]
-    localStorage.setItem(key, JSON.stringify(updated))
-    localStorage.setItem(`quest_${quest.id}`, JSON.stringify({ ...quest, title }))
-    setSavedToCollection(true)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    const titledQuest = { ...quest, title }
+    saveQuest(titledQuest)
+    localStorage.setItem(`quest_${titledQuest.id}`, JSON.stringify(titledQuest))
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 2000)
   }
 
   const handleQuestChange = (nextQuest: Quest) => {
     const titledQuest = { ...nextQuest, title }
     setQuest(titledQuest)
     localStorage.setItem(`quest_${titledQuest.id}`, JSON.stringify(titledQuest))
-
-    const key = 'moodyeat:quests'
-    const existing = JSON.parse(localStorage.getItem(key) ?? '[]') as Quest[]
-    if (existing.some((q) => q.id === titledQuest.id)) {
-      localStorage.setItem(
-        key,
-        JSON.stringify(
-          existing.map((q) => (q.id === titledQuest.id ? titledQuest : q)),
-        ),
-      )
+    if (isQuestSaved(titledQuest.id)) {
+      saveQuest(titledQuest)
     }
   }
 
@@ -165,10 +137,14 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
         <div className="qp-bottom-bar">
           <button
             type="button"
-            className={`qp-action-btn qp-action-btn--save${saved ? ' qp-action-btn--saved' : ''}`}
+            className={`qp-action-btn qp-action-btn--save${savedToCollection ? ' qp-action-btn--saved' : ''}`}
             onClick={handleSave}
           >
-            {saved ? '✓ Saved' : '♡ Save'}
+            {justSaved
+              ? '✓ Saved'
+              : savedToCollection
+                ? 'Saved ✓'
+                : 'Save'}
           </button>
           <button
             type="button"
