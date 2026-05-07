@@ -12,7 +12,6 @@ import {
   placeTypeLabels,
   searchParamsToFilters,
 } from '../exploreParams'
-import { useBookmarks } from '../hooks/useBookmarks'
 import '../App.css'
 
 function formatDistance(m: number): string {
@@ -20,26 +19,6 @@ function formatDistance(m: number): string {
     return `${(m / 1000).toFixed(1)} km`
   }
   return `${Math.round(m)} m`
-}
-
-function BookmarkIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      className="place-bookmark-svg"
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      aria-hidden
-    >
-      <path
-        d="M7 3.5h10A2.5 2.5 0 0120 6v14.5l-8-4.2L4 20.5V6A2.5 2.5 0 017 3.5z"
-        fill={active ? 'rgba(56,189,248,0.25)' : 'none'}
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }
 
 const PAGE_SIZE = 5
@@ -92,8 +71,6 @@ export function ResultsPage() {
   >('idle')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const showMoreButtonRef = useRef<HTMLButtonElement | null>(null)
-
-  const { toggle, isSaved } = useBookmarks()
 
   useEffect(() => {
     if (!filters) {
@@ -304,8 +281,6 @@ export function ResultsPage() {
                             }
                             blurbPending={blurbsStatus === 'loading'}
                             distanceLabel={formatDistance(p.distance_meters)}
-                            saved={isSaved(p.provider_id)}
-                            onToggleSave={() => toggle(p.provider_id)}
                           />
                         ))}
                     </ul>
@@ -336,16 +311,12 @@ function PlaceNearbyCard({
   blurb,
   blurbPending,
   distanceLabel,
-  saved,
-  onToggleSave,
 }: {
   place: PlaceItem
   index: number
   blurb: string
   blurbPending: boolean
   distanceLabel: string
-  saved: boolean
-  onToggleSave: () => void
 }) {
   const labels = placeTypeLabels(place.types)
   return (
@@ -356,8 +327,6 @@ function PlaceNearbyCard({
       blurb={blurb}
       blurbPending={blurbPending}
       typeLabels={labels}
-      saved={saved}
-      onToggleSave={onToggleSave}
       rating={place.rating ?? null}
       ratingsTotal={place.user_ratings_total ?? null}
     />
@@ -371,8 +340,6 @@ function PlaceGenericCard({
   blurb,
   blurbPending,
   typeLabels,
-  saved,
-  onToggleSave,
   rating,
   ratingsTotal,
 }: {
@@ -382,8 +349,6 @@ function PlaceGenericCard({
   blurb: string
   blurbPending: boolean
   typeLabels: string[]
-  saved: boolean
-  onToggleSave: () => void
   rating: number | null
   ratingsTotal: number | null
 }) {
@@ -395,15 +360,6 @@ function PlaceGenericCard({
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {index === 0 && <span className="place-badge-best">Best match</span>}
-      <button
-        type="button"
-        className="place-bookmark"
-        aria-label={saved ? 'Remove saved place' : 'Save place'}
-        aria-pressed={saved}
-        onClick={onToggleSave}
-      >
-        <BookmarkIcon active={saved} />
-      </button>
       <span className="cafe-distance cafe-distance--brand place-distance-pill place-distance-pill--top">
         {distanceLabel}
       </span>

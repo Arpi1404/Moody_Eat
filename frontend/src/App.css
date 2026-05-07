@@ -2431,3 +2431,299 @@ a.explore-edit-filters {
     animation: none;
   }
 }
+
+/* ── Bottom navigation ──────────────────────────────────────────────────── */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 12px max(10px, env(safe-area-inset-bottom));
+  background: rgba(11, 17, 32, 0.92);
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  max-width: 600px;
+  margin-inline: auto;
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+
+.bottom-nav-item:hover:not(:disabled),
+.bottom-nav-item.active {
+  color: #f8fafc;
+}
+
+.bottom-nav-item.active {
+  background: rgba(56, 189, 248, 0.1);
+  color: #7dd3fc;
+}
+
+.bottom-nav-item--placeholder {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Reserve space at the bottom of pages so the nav doesn't cover content. */
+.home-page,
+.saved-page,
+.hello-page {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+/* ── Saved quests page ──────────────────────────────────────────────────── */
+
+.saved-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px 20px 96px;
+  color: #e2e8f0;
+}
+
+.saved-header {
+  margin-bottom: 18px;
+}
+
+.saved-back a {
+  color: #94a3b8;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.saved-back a:hover {
+  color: #e2e8f0;
+}
+
+.saved-title {
+  margin: 8px 0 4px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.saved-sub {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.saved-empty {
+  margin-top: 60px;
+  padding: 40px 24px;
+  text-align: center;
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.saved-empty-emoji {
+  display: inline-block;
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.saved-empty-title {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.saved-empty-body {
+  margin: 0 0 18px;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.saved-empty-cta {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  color: #7dd3fc;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.saved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.saved-card-wrap {
+  position: relative;
+}
+
+.saved-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.7);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.14s ease;
+}
+
+.saved-card:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.saved-card--pending {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.saved-card-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(56, 189, 248, 0.1);
+  border-radius: 10px;
+}
+
+.saved-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.saved-card-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f5f9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-card-meta {
+  margin: 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.saved-card-delete {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+
+.saved-card-delete:hover {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.saved-confirm {
+  margin-top: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(127, 29, 29, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.saved-confirm-text {
+  margin: 0;
+  font-size: 13px;
+  color: #fecaca;
+}
+
+.saved-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.saved-confirm-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saved-confirm-btn--delete {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecaca;
+}
+
+.saved-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
