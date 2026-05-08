@@ -1,5 +1,5 @@
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
 import type { Quest } from '../types/quest'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
@@ -11,37 +11,51 @@ import '../App.css'
 const OCCASIONS = [
   {
     key: 'date',
-    emoji: '🌹',
+    emoji: '🕯️',
     title: 'Date Night',
-    desc: 'A romantic evening for two',
+    desc: 'For nights worth remembering',
   },
   {
     key: 'friends',
-    emoji: '🎉',
+    emoji: '🥂',
     title: 'Friends Hangout',
-    desc: 'A great night out with the crew',
+    desc: "The gang's all here",
   },
   {
     key: 'solo',
-    emoji: '🎧',
+    emoji: '🍵',
     title: 'Solo Time',
-    desc: 'Your city, your pace',
+    desc: 'Just you, on purpose',
   },
   {
     key: 'family',
-    emoji: '👨‍👩‍👧',
+    emoji: '🧆',
     title: 'Family Outing',
-    desc: 'Fun for everyone',
+    desc: 'All of you, fed and happy',
   },
 ] as const
 
 type OccasionKey = (typeof OCCASIONS)[number]['key']
 
 const OCCASION_ICONS: Record<OccasionKey, string> = {
-  date: '🌹',
-  friends: '🎉',
-  solo: '🎧',
-  family: '👨‍👩‍👧',
+  date: '🕯️',
+  friends: '🥂',
+  solo: '🍵',
+  family: '🧆',
+}
+
+const OCCASION_LABELS: Record<OccasionKey, string> = {
+  date: 'Date Night',
+  friends: 'Friends',
+  solo: 'Solo Time',
+  family: 'Family',
+}
+
+const OCCASION_TINTS: Record<OccasionKey, string> = {
+  date: 'rgba(199, 82, 42, 0.10)',
+  friends: 'rgba(232, 176, 75, 0.16)',
+  solo: 'rgba(92, 113, 72, 0.14)',
+  family: 'rgba(199, 82, 42, 0.09)',
 }
 
 const BUDGET_OPTIONS = [
@@ -128,10 +142,20 @@ function CuratedQuestImage({ quest }: { quest: Quest }) {
     ? `${getApiBase()}/api/places/photo?place_id=${encodeURIComponent(placeId)}&max_width=800`
     : ''
 
+  const badge = (
+    <span className="curated-quest-occasion-badge">
+      <span className="curated-quest-occasion-badge-emoji" aria-hidden>
+        {OCCASION_ICONS[quest.occasion]}
+      </span>
+      {OCCASION_LABELS[quest.occasion]}
+    </span>
+  )
+
   if (!src || failed) {
     return (
       <div className="curated-quest-image curated-quest-image--fallback">
         <span aria-hidden>{OCCASION_ICONS[quest.occasion]}</span>
+        {badge}
       </div>
     )
   }
@@ -143,14 +167,37 @@ function CuratedQuestImage({ quest }: { quest: Quest }) {
         alt={firstStop.place.name}
         onError={() => setFailed(true)}
       />
+      {badge}
+    </div>
+  )
+}
+
+function StopTrail({ count }: { count: number }) {
+  const items: ReactNode[] = []
+  for (let i = 0; i < count; i++) {
+    if (i > 0) items.push(<span key={`l${i}`} className="stop-trail-line" />)
+    items.push(
+      <span
+        key={`d${i}`}
+        className={`stop-trail-dot${i === 0 ? '' : ' stop-trail-dot--empty'}`}
+      />,
+    )
+  }
+  return (
+    <div className="stop-trail" aria-hidden>
+      {items}
+      <span className="stop-trail-label">{count} {count === 1 ? 'stop' : 'stops'}</span>
     </div>
   )
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+const PLAN_PARAM_KEYS = new Set<OccasionKey>(['date', 'friends', 'solo', 'family'])
+
 export function HomePage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [activeOccasion, setActiveOccasion] = useState<OccasionKey | null>(null)
   const [location, setLocation] = useState('')
@@ -169,6 +216,18 @@ export function HomePage() {
   const sheetRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const submitSlowTimer = useRef<number | null>(null)
+  const curatedScrollRef = useRef<HTMLDivElement>(null)
+
+  const scrollCurated = useCallback((direction: 'prev' | 'next') => {
+    const el = curatedScrollRef.current
+    if (!el) return
+    const card = el.querySelector<HTMLElement>('.curated-quest-card')
+    const step = (card?.offsetWidth ?? 296) + 16 // card + gap
+    el.scrollBy({
+      left: direction === 'next' ? step : -step,
+      behavior: 'smooth',
+    })
+  }, [])
 
   const tryGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -233,6 +292,44 @@ export function HomePage() {
       if (submitSlowTimer.current) window.clearTimeout(submitSlowTimer.current)
     }
   }, [])
+
+  // Auto-open the occasion sheet when arriving with ?plan=<occasion>
+  useEffect(() => {
+    const plan = searchParams.get('plan') as OccasionKey | null
+    if (plan && PLAN_PARAM_KEYS.has(plan)) {
+      setActiveOccasion(plan)
+      setSubmitError(null)
+      const next = new URLSearchParams(searchParams)
+      next.delete('plan')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  // Fade sections in as they enter the viewport
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
+      return
+    }
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const els = Array.from(document.querySelectorAll<HTMLElement>('[data-fade]'))
+    if (reduced) {
+      els.forEach((el) => el.classList.add('fade-up--visible'))
+      return
+    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('fade-up--visible')
+            obs.unobserve(e.target)
+          }
+        })
+      },
+      { threshold: 0.12 },
+    )
+    els.forEach((el) => obs.observe(el))
+    return () => obs.disconnect()
+  }, [curatedLoading, curatedError, curatedQuests.length])
 
   const openSheet = useCallback(
     (key: OccasionKey) => {
@@ -324,18 +421,50 @@ export function HomePage() {
 
   const activeData = OCCASIONS.find((o) => o.key === activeOccasion) ?? null
 
+  const browseQuests = useCallback(() => {
+    document
+      .getElementById('curated-quests')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
   return (
     <>
       <main className="home-page">
-        <header className="home-header">
-          <h1 className="home-brand">
-            Moody<span>Eat</span>
+        <header className="home-hero">
+          <span className="home-eyebrow">
+            <span className="home-eyebrow-dot" aria-hidden />
+            Now live in Hyderabad
+          </span>
+          <h1 className="home-hero-title">
+            Tell us the mood.<br />
+            <em>We'll handle the plans.</em>
           </h1>
-          <p className="home-tagline">Pick a vibe. We'll handle the rest.</p>
+          <p className="home-hero-sub">
+            Pick your vibe and we'll build a curated 2–3 stop quest for your
+            night out — food, drinks, and the right room to end up in.
+          </p>
+          <div className="home-cta-row">
+            <button
+              type="button"
+              className="home-cta-primary"
+              onClick={() => openSheet('date')}
+            >
+              Start a quest <span aria-hidden>→</span>
+            </button>
+            <button type="button" className="home-cta-ghost" onClick={browseQuests}>
+              Browse quests
+            </button>
+          </div>
+          <span className="home-city-pill">
+            <span className="home-city-pill-flag" aria-hidden>🇮🇳</span>
+            Hyderabad · more cities coming soon
+          </span>
         </header>
 
-        <section>
-          <p className="home-section-label">What's the occasion?</p>
+        <section data-fade className="fade-up">
+          <div className="home-section-header">
+            <h2 className="home-section-title">What's the occasion?</h2>
+          </div>
           <div className="home-grid">
             {OCCASIONS.map((o) => (
               <button
@@ -344,19 +473,28 @@ export function HomePage() {
                 className={`occasion-tile occasion-tile--${o.key}`}
                 onClick={() => openSheet(o.key)}
                 aria-haspopup="dialog"
+                aria-label={`${o.title}: ${o.desc}`}
               >
-                <span className="occasion-tile-emoji" aria-hidden>
+                <span className="occasion-tile-chip" aria-hidden>
                   {o.emoji}
                 </span>
-                <p className="occasion-tile-title">{o.title}</p>
-                <p className="occasion-tile-desc">{o.desc}</p>
+                <div>
+                  <p className="occasion-tile-title">{o.title}</p>
+                  <p className="occasion-tile-desc">{o.desc}</p>
+                </div>
               </button>
             ))}
           </div>
         </section>
 
-        <section className="curated-quests-section">
-          <p className="home-section-label">Pre-made for tonight.</p>
+        <section
+          className="curated-quests-section fade-up"
+          id="curated-quests"
+          data-fade
+        >
+          <div className="home-section-header">
+            <h2 className="home-section-title">We made these for you</h2>
+          </div>
           {curatedLoading ? (
             <LoadingState message="Loading curated quests..." />
           ) : curatedError ? (
@@ -372,30 +510,70 @@ export function HomePage() {
               description={`We do not have curated quests for ${curatedCity} yet. You can still make one from any occasion above.`}
             />
           ) : (
-            <div className="curated-quests-row" aria-label="Curated quests">
-              {curatedQuests.map((quest) => (
-                <button
-                  key={quest.id}
-                  type="button"
-                  className="curated-quest-card"
-                  onClick={() => openCuratedQuest(quest)}
-                >
-                  <CuratedQuestImage quest={quest} />
-                  <div className="curated-quest-body">
-                    <div className="curated-quest-title-row">
-                      <span className="curated-quest-icon" aria-hidden>
-                        {OCCASION_ICONS[quest.occasion]}
-                      </span>
+            <div className="curated-quests-outer">
+              <button
+                type="button"
+                className="curated-nav curated-nav--prev"
+                aria-label="Scroll quests left"
+                onClick={() => scrollCurated('prev')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path
+                    d="M15 6l-6 6 6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="curated-nav curated-nav--next"
+                aria-label="Scroll quests right"
+                onClick={() => scrollCurated('next')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path
+                    d="M9 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <div
+                ref={curatedScrollRef}
+                className="curated-quests-row"
+                aria-label="Curated quests"
+              >
+                {curatedQuests.map((quest) => (
+                  <button
+                    key={quest.id}
+                    type="button"
+                    className="curated-quest-card"
+                    onClick={() => openCuratedQuest(quest)}
+                  >
+                    <CuratedQuestImage quest={quest} />
+                    <div className="curated-quest-body">
                       <p className="curated-quest-title">{quest.title}</p>
+                      <div className="curated-quest-chips">
+                        <span className="chip chip--accent">
+                          {formatQuestDuration(quest.total_duration_minutes)}
+                        </span>
+                        <span className="chip chip--gold">
+                          {costLabel(quest.total_cost_estimate)}
+                        </span>
+                        <span className="chip chip--sage">
+                          {quest.stops.length} stops
+                        </span>
+                      </div>
+                      <StopTrail count={quest.stops.length} />
                     </div>
-                    <div className="curated-quest-chips">
-                      <span>{formatQuestDuration(quest.total_duration_minutes)}</span>
-                      <span>{costLabel(quest.total_cost_estimate)}</span>
-                      <span>{quest.stops.length} stops</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </section>
@@ -419,8 +597,29 @@ export function HomePage() {
             className="sheet"
           >
             <div className="sheet-handle" aria-hidden />
+            <button
+              type="button"
+              className="sheet-close"
+              aria-label="Close"
+              onClick={closeSheet}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+                <path
+                  d="M3 3l8 8M11 3l-8 8"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
 
-            <div className="sheet-occasion-badge">
+            <div
+              className="sheet-occasion-badge"
+              style={{
+                background: OCCASION_TINTS[activeData.key],
+                borderColor: 'transparent',
+              }}
+            >
               <span className="sheet-occasion-badge-emoji" aria-hidden>
                 {activeData.emoji}
               </span>
@@ -504,7 +703,13 @@ export function HomePage() {
                 className="sheet-submit"
                 disabled={submitting || !location.trim()}
               >
-                {submitting ? 'Finding spots…' : 'Plan my evening'}
+                {submitting ? (
+                  'Finding spots…'
+                ) : (
+                  <>
+                    Build my quest <span aria-hidden>✦</span>
+                  </>
+                )}
               </button>
 
               {submitting && submitSlow && (

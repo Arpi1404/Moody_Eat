@@ -406,9 +406,27 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   return (
     <main className="qp-page">
       <div className="qp-inner">
-        <p className="qp-back">
-          <Link to="/">← Home</Link>
-        </p>
+        <div className="qp-back">
+          <Link to="/" className="qp-back-link" aria-label="Back to home">
+            <svg
+              className="qp-back-icon"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden
+            >
+              <path
+                d="M15 6l-6 6 6 6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Back</span>
+          </Link>
+        </div>
 
         <header className="qp-header">
           <input

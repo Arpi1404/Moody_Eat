@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 function HomeIcon() {
   return (
@@ -60,6 +60,9 @@ function ProfileIcon() {
 }
 
 export function BottomNav() {
+  const navigate = useNavigate()
+  const openPlanner = () => navigate('/?plan=date')
+
   return (
     <nav className="bottom-nav" aria-label="Primary">
       <NavLink to="/" end className="bottom-nav-item">
@@ -70,6 +73,14 @@ export function BottomNav() {
         <SavedIcon />
         <span>Saved</span>
       </NavLink>
+      <button
+        type="button"
+        className="bottom-nav-fab"
+        onClick={openPlanner}
+        aria-label="Plan a quest"
+      >
+        <span className="bottom-nav-fab-glyph" aria-hidden>✦</span>
+      </button>
       <NavLink to="/journal" className="bottom-nav-item">
         <JournalIcon />
         <span>Journal</span>
@@ -79,6 +90,7 @@ export function BottomNav() {
         className="bottom-nav-item bottom-nav-item--placeholder"
         disabled
         aria-label="Profile (coming soon)"
+        title="Coming soon"
       >
         <ProfileIcon />
         <span>Profile</span>
