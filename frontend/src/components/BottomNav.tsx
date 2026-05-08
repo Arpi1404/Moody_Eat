@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 function HomeIcon() {
   return (
@@ -45,7 +45,24 @@ function JournalIcon() {
   )
 }
 
+function ProfileIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden fill="none">
+      <circle cx="12" cy="8.5" r="3.6" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M4.5 20c1.4-3.6 4.4-5.4 7.5-5.4s6.1 1.8 7.5 5.4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export function BottomNav() {
+  const navigate = useNavigate()
+  const openPlanner = () => navigate('/?plan=date')
+
   return (
     <nav className="bottom-nav" aria-label="Primary">
       <NavLink to="/" end className="bottom-nav-item">
@@ -56,10 +73,28 @@ export function BottomNav() {
         <SavedIcon />
         <span>Saved</span>
       </NavLink>
+      <button
+        type="button"
+        className="bottom-nav-fab"
+        onClick={openPlanner}
+        aria-label="Plan a quest"
+      >
+        <span className="bottom-nav-fab-glyph" aria-hidden>✦</span>
+      </button>
       <NavLink to="/journal" className="bottom-nav-item">
         <JournalIcon />
         <span>Journal</span>
       </NavLink>
+      <button
+        type="button"
+        className="bottom-nav-item bottom-nav-item--placeholder"
+        disabled
+        aria-label="Profile (coming soon)"
+        title="Coming soon"
+      >
+        <ProfileIcon />
+        <span>Profile</span>
+      </button>
     </nav>
   )
 }

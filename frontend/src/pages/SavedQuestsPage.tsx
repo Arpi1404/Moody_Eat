@@ -1,15 +1,67 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { getApiBase } from '../api'
 import { useSavedQuests, type SavedQuest } from '../hooks/useSavedQuests'
 import { EmptyState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import '../App.css'
 
 const OCCASION_ICONS: Record<string, string> = {
-  date: '🌹',
-  friends: '🎉',
-  solo: '🎧',
-  family: '👨‍👩‍👧',
+  date: '🕯️',
+  friends: '🥂',
+  solo: '🍵',
+  family: '🧆',
+}
+
+const OCCASION_LABELS: Record<string, string> = {
+  date: 'Date Night',
+  friends: 'Friends',
+  solo: 'Solo Time',
+  family: 'Family',
+}
+
+function formatTotalDuration(minutes: number | undefined): string | null {
+  if (!minutes || !Number.isFinite(minutes)) return null
+  const hours = minutes / 60
+  if (hours >= 1) {
+    return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`
+  }
+  return `${Math.round(minutes)}m`
+}
+
+function costLabel(cost: SavedQuest['total_cost_estimate']): string | null {
+  if (cost === 'cheap') return '₹ Light'
+  if (cost === 'splurge') return '₹₹₹ Splurge'
+  if (cost === 'mid') return '₹₹ Easy'
+  return null
+}
+
+function SavedCardImage({ quest }: { quest: SavedQuest }) {
+  const [failed, setFailed] = useState(false)
+  const firstStop = quest.stops[0]
+  const placeId = firstStop?.place.provider_id
+  const src = placeId
+    ? `${getApiBase()}/api/places/photo?place_id=${encodeURIComponent(placeId)}&max_width=600`
+    : ''
+  const occIcon = OCCASION_ICONS[quest.occasion] ?? '✦'
+
+  if (!src || failed) {
+    return (
+      <div className="saved-card-image saved-card-image--fallback" aria-hidden>
+        <span>{occIcon}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="saved-card-image">
+      <img
+        src={src}
+        alt={firstStop?.place.name ?? quest.title}
+        onError={() => setFailed(true)}
+      />
+    </div>
+  )
 }
 
 const LONG_PRESS_MS = 550
@@ -94,9 +146,6 @@ export function SavedQuestsPage() {
   return (
     <main className="saved-page">
       <header className="saved-header">
-        <p className="saved-back">
-          <Link to="/">← Home</Link>
-        </p>
         <h1 className="saved-title">My quests</h1>
         <p className="saved-sub">
           {savedQuests.length === 0
@@ -118,8 +167,11 @@ export function SavedQuestsPage() {
         <ul className="saved-list">
           {savedQuests.map((quest) => {
             const stopCount = quest.stops.length
-            const occasionIcon = OCCASION_ICONS[quest.occasion] ?? '✨'
+            const occasionIcon = OCCASION_ICONS[quest.occasion] ?? '✦'
+            const occasionLabel = OCCASION_LABELS[quest.occasion] ?? 'Quest'
             const isPending = pendingDelete === quest.id
+            const duration = formatTotalDuration(quest.total_duration_minutes)
+            const cost = costLabel(quest.total_cost_estimate)
             return (
               <li key={quest.id} className="saved-card-wrap">
                 <button
@@ -133,17 +185,34 @@ export function SavedQuestsPage() {
                   onTouchEnd={handlePressEnd}
                   onTouchCancel={handlePressEnd}
                 >
-                  <span className="saved-card-icon" aria-hidden>
-                    {occasionIcon}
-                  </span>
+                  <SavedCardImage quest={quest} />
                   <div className="saved-card-body">
+                    <span className="saved-card-eyebrow">
+                      <span className="saved-card-eyebrow-emoji" aria-hidden>
+                        {occasionIcon}
+                      </span>
+                      {occasionLabel}
+                    </span>
                     <p className="saved-card-title">{quest.title}</p>
-                    <p className="saved-card-meta">
-                      <span>
+                    <div className="saved-card-chips">
+                      {duration && (
+                        <span className="chip chip--accent">{duration}</span>
+                      )}
+                      {cost && <span className="chip chip--gold">{cost}</span>}
+                      <span className="chip chip--sage">
                         {stopCount} stop{stopCount === 1 ? '' : 's'}
                       </span>
-                      <span aria-hidden>·</span>
-                      <span>Saved {formatSavedDate(quest.saved_at)}</span>
+                    </div>
+                    <span className="saved-card-trail" aria-hidden>
+                      {Array.from({ length: Math.min(stopCount, 5) }).map((_, i) => (
+                        <span
+                          key={i}
+                          className={`saved-card-dot${i === 0 ? ' saved-card-dot--first' : ''}`}
+                        />
+                      ))}
+                    </span>
+                    <p className="saved-card-saved">
+                      Saved {formatSavedDate(quest.saved_at)}
                     </p>
                   </div>
                 </button>

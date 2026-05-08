@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
 import type { Quest } from '../types/quest'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
@@ -11,37 +11,37 @@ import '../App.css'
 const OCCASIONS = [
   {
     key: 'date',
-    emoji: '🌹',
+    emoji: '🕯️',
     title: 'Date Night',
-    desc: 'A romantic evening for two',
+    desc: 'For nights worth remembering',
   },
   {
     key: 'friends',
-    emoji: '🎉',
+    emoji: '🥂',
     title: 'Friends Hangout',
-    desc: 'A great night out with the crew',
+    desc: "The gang's all here",
   },
   {
     key: 'solo',
-    emoji: '🎧',
+    emoji: '🍵',
     title: 'Solo Time',
-    desc: 'Your city, your pace',
+    desc: 'Just you, on purpose',
   },
   {
     key: 'family',
-    emoji: '👨‍👩‍👧',
+    emoji: '🧆',
     title: 'Family Outing',
-    desc: 'Fun for everyone',
+    desc: 'All of you, fed and happy',
   },
 ] as const
 
 type OccasionKey = (typeof OCCASIONS)[number]['key']
 
 const OCCASION_ICONS: Record<OccasionKey, string> = {
-  date: '🌹',
-  friends: '🎉',
-  solo: '🎧',
-  family: '👨‍👩‍👧',
+  date: '🕯️',
+  friends: '🥂',
+  solo: '🍵',
+  family: '🧆',
 }
 
 const OCCASION_LABELS: Record<OccasionKey, string> = {
@@ -193,8 +193,11 @@ function StopTrail({ count }: { count: number }) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+const PLAN_PARAM_KEYS = new Set<OccasionKey>(['date', 'friends', 'solo', 'family'])
+
 export function HomePage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [activeOccasion, setActiveOccasion] = useState<OccasionKey | null>(null)
   const [location, setLocation] = useState('')
@@ -213,6 +216,18 @@ export function HomePage() {
   const sheetRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const submitSlowTimer = useRef<number | null>(null)
+  const curatedScrollRef = useRef<HTMLDivElement>(null)
+
+  const scrollCurated = useCallback((direction: 'prev' | 'next') => {
+    const el = curatedScrollRef.current
+    if (!el) return
+    const card = el.querySelector<HTMLElement>('.curated-quest-card')
+    const step = (card?.offsetWidth ?? 296) + 16 // card + gap
+    el.scrollBy({
+      left: direction === 'next' ? step : -step,
+      behavior: 'smooth',
+    })
+  }, [])
 
   const tryGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -277,6 +292,18 @@ export function HomePage() {
       if (submitSlowTimer.current) window.clearTimeout(submitSlowTimer.current)
     }
   }, [])
+
+  // Auto-open the occasion sheet when arriving with ?plan=<occasion>
+  useEffect(() => {
+    const plan = searchParams.get('plan') as OccasionKey | null
+    if (plan && PLAN_PARAM_KEYS.has(plan)) {
+      setActiveOccasion(plan)
+      setSubmitError(null)
+      const next = new URLSearchParams(searchParams)
+      next.delete('plan')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Fade sections in as they enter the viewport
   useEffect(() => {
@@ -484,7 +511,43 @@ export function HomePage() {
             />
           ) : (
             <div className="curated-quests-outer">
-              <div className="curated-quests-row" aria-label="Curated quests">
+              <button
+                type="button"
+                className="curated-nav curated-nav--prev"
+                aria-label="Scroll quests left"
+                onClick={() => scrollCurated('prev')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path
+                    d="M15 6l-6 6 6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="curated-nav curated-nav--next"
+                aria-label="Scroll quests right"
+                onClick={() => scrollCurated('next')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path
+                    d="M9 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <div
+                ref={curatedScrollRef}
+                className="curated-quests-row"
+                aria-label="Curated quests"
+              >
                 {curatedQuests.map((quest) => (
                   <button
                     key={quest.id}
@@ -534,6 +597,21 @@ export function HomePage() {
             className="sheet"
           >
             <div className="sheet-handle" aria-hidden />
+            <button
+              type="button"
+              className="sheet-close"
+              aria-label="Close"
+              onClick={closeSheet}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+                <path
+                  d="M3 3l8 8M11 3l-8 8"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
 
             <div
               className="sheet-occasion-badge"

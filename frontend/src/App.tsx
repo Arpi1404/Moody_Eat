@@ -7,20 +7,39 @@ import { ResultsPage } from './pages/ResultsPage'
 import { SavedQuestsPage } from './pages/SavedQuestsPage'
 import { JournalPage } from './pages/JournalPage'
 import { BottomNav } from './components/BottomNav'
+import { Footer } from './components/Footer'
+import { TopNav } from './components/TopNav'
 import './App.css'
 
-const HIDE_NAV_PREFIXES = ['/quest/', '/landing']
+const HIDE_TOPNAV_PREFIXES = ['/landing']
+const HIDE_BOTTOMNAV_PREFIXES = ['/quest/', '/landing']
+const HIDE_FOOTER_PREFIXES = ['/landing', '/quest/']
 
-function NavGate() {
+function TopNavGate() {
   const { pathname } = useLocation()
-  const hide = HIDE_NAV_PREFIXES.some((p) => pathname.startsWith(p))
+  const hide = HIDE_TOPNAV_PREFIXES.some((p) => pathname.startsWith(p))
+  if (hide) return null
+  return <TopNav />
+}
+
+function BottomNavGate() {
+  const { pathname } = useLocation()
+  const hide = HIDE_BOTTOMNAV_PREFIXES.some((p) => pathname.startsWith(p))
   if (hide) return null
   return <BottomNav />
+}
+
+function FooterGate() {
+  const { pathname } = useLocation()
+  const hide = HIDE_FOOTER_PREFIXES.some((p) => pathname.startsWith(p))
+  if (hide) return null
+  return <Footer />
 }
 
 function App() {
   return (
     <BrowserRouter>
+      <TopNavGate />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/landing" element={<Landing />} />
@@ -34,7 +53,8 @@ function App() {
         <Route path="/explore" element={<Navigate to="/plan" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <NavGate />
+      <FooterGate />
+      <BottomNavGate />
     </BrowserRouter>
   )
 }
