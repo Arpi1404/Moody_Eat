@@ -204,7 +204,7 @@ export function HomePage() {
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [budget, setBudget] = useState<Budget>('mid')
-  const [duration, setDuration] = useState<DurationHours>(3)
+  const [duration, setDuration] = useState<DurationHours>(4)
   const [submitting, setSubmitting] = useState(false)
   const [submitSlow, setSubmitSlow] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
