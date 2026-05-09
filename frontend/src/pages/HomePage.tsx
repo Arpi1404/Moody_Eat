@@ -67,9 +67,9 @@ const BUDGET_OPTIONS = [
 type Budget = (typeof BUDGET_OPTIONS)[number]['value']
 
 const DURATION_OPTIONS = [
-  { value: 2, label: '2 hr' },
-  { value: 3, label: 'Half Evening' },
-  { value: 5, label: 'Full Night' },
+  { value: 2, label: 'Less than 2 hr' },
+  { value: 4, label: 'Around 4 hr' },
+  { value: 7, label: '6+ hr' },
 ] as const
 
 type DurationHours = (typeof DURATION_OPTIONS)[number]['value']
@@ -395,7 +395,9 @@ export function HomePage() {
           ? `Found ${quest.stops.length} great stop${quest.stops.length === 1 ? '' : 's'} — couldn't find a good third in this area.`
           : undefined
       localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
-      navigate(`/quest/${quest.id}`, { state: { quest, softMessage } })
+      navigate(`/quest/${quest.id}`, {
+        state: { quest, softMessage, justCreated: true },
+      })
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : 'Something went wrong.',

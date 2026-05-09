@@ -3,7 +3,12 @@
     "allow": [
       "Bash(./venv/Scripts/python.exe -c ' *)",
       "Bash(./venv/Scripts/python.exe -m scripts.verify_curated --help)",
-      "Bash(./venv/Scripts/python.exe -m pytest tests/ -q)"
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ -q)",
+      "Bash(dir)",
+      "WebFetch(domain:opencode.ai)",
+      "WebFetch(domain:api-docs.deepseek.com)",
+      "Bash(python -m py_compile quest_templates.py quest_generator.py models.py services/place_blurbs_service.py)",
+      "Bash(python -m py_compile quest_generator.py services/google_places.py services/places_provider.py services/nearby_places_service.py models.py)"
     ]
   }
 }

@@ -54,14 +54,22 @@ export function JournalSheet({
   quest,
   onSave,
   onCancel,
+  initialEntry,
+  mode = 'create',
+  onDelete,
 }: {
   quest: Quest
   onSave: (entry: JournalEntry) => void
   onCancel: () => void
+  initialEntry?: JournalEntry
+  mode?: 'create' | 'edit'
+  onDelete?: () => void
 }) {
-  const [rating, setRating] = useState<number | null>(null)
-  const [photos, setPhotos] = useState<string[]>([])
-  const [note, setNote] = useState('')
+  const [rating, setRating] = useState<number | null>(
+    initialEntry?.rating ?? null,
+  )
+  const [photos, setPhotos] = useState<string[]>(initialEntry?.photos ?? [])
+  const [note, setNote] = useState(initialEntry?.note ?? '')
   const [processingPhotos, setProcessingPhotos] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
@@ -110,11 +118,15 @@ export function JournalSheet({
     if (rating == null) return
     onSave({
       questId: quest.id,
-      completedAt: new Date().toISOString(),
+      completedAt: initialEntry?.completedAt ?? new Date().toISOString(),
       rating,
       photos,
       note: note.trim(),
     })
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos((current) => current.filter((_, i) => i !== index))
   }
 
   return (
@@ -133,8 +145,12 @@ export function JournalSheet({
       >
         <div className="journal-sheet-handle" aria-hidden />
         <header className="journal-sheet-header">
-          <p className="journal-sheet-eyebrow">Quest complete</p>
-          <h2 id="journal-sheet-title">Capture the memory</h2>
+          <p className="journal-sheet-eyebrow">
+            {mode === 'edit' ? 'Edit memory' : 'Quest complete'}
+          </p>
+          <h2 id="journal-sheet-title">
+            {mode === 'edit' ? 'Update your memory' : 'Capture the memory'}
+          </h2>
           <p>{quest.title}</p>
         </header>
 
@@ -176,7 +192,20 @@ export function JournalSheet({
           {photos.length > 0 && (
             <div className="journal-photo-preview-row">
               {photos.map((photo, index) => (
-                <img key={`${photo.slice(0, 32)}-${index}`} src={photo} alt="" />
+                <div
+                  key={`${photo.slice(0, 32)}-${index}`}
+                  className="journal-photo-preview"
+                >
+                  <img src={photo} alt="" />
+                  <button
+                    type="button"
+                    className="journal-photo-remove"
+                    aria-label="Remove photo"
+                    onClick={() => removePhoto(index)}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -199,11 +228,20 @@ export function JournalSheet({
           disabled={rating == null || processingPhotos}
           onClick={handleSave}
         >
-          Save memory
+          {mode === 'edit' ? 'Save changes' : 'Save memory'}
         </button>
         <button type="button" className="journal-cancel-btn" onClick={onCancel}>
-          Not now
+          {mode === 'edit' ? 'Cancel' : 'Not now'}
         </button>
+        {mode === 'edit' && onDelete && (
+          <button
+            type="button"
+            className="journal-delete-btn"
+            onClick={onDelete}
+          >
+            Delete memory
+          </button>
+        )}
       </section>
 
       {toast && (

@@ -1,4 +1,4 @@
-"""Generate short one-line blurbs for place cards (Claude or heuristic fallback)."""
+"""Generate short one-line blurbs for place cards (OpenCode Zen / DeepSeek or heuristic fallback)."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ import httpx
 
 from models import PlaceBlurbIn
 
-ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
-DEFAULT_MODEL = "claude-3-5-haiku-20241022"
+OPENCODE_URL = "https://opencode.ai/zen/v1/chat/completions"
+MODEL = "deepseek-v4-flash"
 
 
 def _fallback_blurb(place: PlaceBlurbIn, mood: str, budget: str) -> str:
@@ -37,6 +37,20 @@ def _fallback_blurb(place: PlaceBlurbIn, mood: str, budget: str) -> str:
     return f"{vibe} {tail} — {place.name.split()[0]} matches your {budget} plan."
 
 
+def _opencode_headers(api_key: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "content-type": "application/json",
+    }
+
+
+def _extract_text(data: dict[str, Any]) -> str:
+    try:
+        return (data["choices"][0]["message"]["content"] or "").strip()
+    except (KeyError, IndexError, TypeError):
+        return ""
+
+
 async def generate_place_blurbs(
     places: list[PlaceBlurbIn],
     mood: str,
@@ -46,7 +60,7 @@ async def generate_place_blurbs(
     if not places:
         return {}
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    api_key = os.environ.get("OPENCODE_API_KEY", "").strip()
     if not api_key:
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
@@ -76,32 +90,22 @@ Places:
 {json.dumps(payload_places, ensure_ascii=False)}
 """
 
-    headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
     body = {
-        "model": os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL),
+        "model": MODEL,
         "max_tokens": 2048,
         "messages": [{"role": "user", "content": prompt}],
     }
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            res = await client.post(ANTHROPIC_URL, headers=headers, json=body)
+            res = await client.post(OPENCODE_URL, headers=_opencode_headers(api_key), json=body)
             res.raise_for_status()
             data = res.json()
     except (httpx.HTTPError, ValueError, KeyError):
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
     try:
-        text = ""
-        for block in data.get("content", []):
-            if block.get("type") == "text":
-                text += block.get("text", "")
-        text = text.strip()
-        # Strip accidental fences
+        text = _extract_text(data)
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```\s*$", "", text)
         parsed = json.loads(text)
@@ -146,10 +150,10 @@ async def generate_quest_narrative(
     """Return a 2-3 sentence scene-setting narrative for the whole quest.
 
     stop_summaries: list of {"name": ..., "category": ..., "why": ...}
-    Falls back to a heuristic string when the Anthropic API is unavailable.
+    Falls back to a heuristic string when the OpenCode API is unavailable.
     """
     stop_names = [s["name"] for s in stop_summaries]
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    api_key = os.environ.get("OPENCODE_API_KEY", "").strip()
     if not api_key:
         return _fallback_narrative(location, occasion, cost_estimate, stop_names)
 
@@ -165,27 +169,18 @@ Stops:
 
 Write exactly 2-3 sentences that set the scene for this outing. Be vivid and specific to the stops and city. No marketing language, no bullet points, no headers — plain prose only."""
 
-    headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
     body = {
-        "model": os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL),
+        "model": MODEL,
         "max_tokens": 256,
         "messages": [{"role": "user", "content": prompt}],
     }
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            res = await client.post(ANTHROPIC_URL, headers=headers, json=body)
+            res = await client.post(OPENCODE_URL, headers=_opencode_headers(api_key), json=body)
             res.raise_for_status()
             data = res.json()
-        text = ""
-        for block in data.get("content", []):
-            if block.get("type") == "text":
-                text += block.get("text", "")
-        text = text.strip()
+        text = _extract_text(data)
         if text:
             return text
     except (httpx.HTTPError, ValueError, KeyError):

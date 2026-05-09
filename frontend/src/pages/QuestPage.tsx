@@ -141,8 +141,16 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { state } = useLocation() as {
-    state: { quest?: Quest; softMessage?: string } | null
+    state: {
+      quest?: Quest
+      softMessage?: string
+      justCreated?: boolean
+      from?: string
+      fromLabel?: string
+    } | null
   }
+  const backTo = state?.from ?? '/'
+  const backLabel = state?.fromLabel ?? 'Home'
   const { saveQuest, isQuestSaved } = useSavedQuests()
   const { addEntry } = useJournal()
   const [quest, setQuest] = useState<Quest | null>(null)
@@ -157,9 +165,15 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const [sharing, setSharing] = useState(false)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{
+    message: string
+    actionLabel?: string
+    onAction?: () => void
+  } | null>(null)
+  const [createdBanner, setCreatedBanner] = useState(false)
   const shareCardRef = useRef<HTMLDivElement | null>(null)
   const toastTimer = useRef<number | null>(null)
+  const createdBannerTimer = useRef<number | null>(null)
 
   const savedToCollection = quest ? isQuestSaved(quest.id) : false
   const active = quest ? activeQuestId === quest.id : false
@@ -233,8 +247,21 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   useEffect(() => {
     return () => {
       if (toastTimer.current) window.clearTimeout(toastTimer.current)
+      if (createdBannerTimer.current)
+        window.clearTimeout(createdBannerTimer.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!quest || !state?.justCreated) return
+    setCreatedBanner(true)
+    if (createdBannerTimer.current)
+      window.clearTimeout(createdBannerTimer.current)
+    createdBannerTimer.current = window.setTimeout(
+      () => setCreatedBanner(false),
+      5200,
+    )
+  }, [quest, state?.justCreated])
 
   useEffect(() => {
     if (!shareMenuOpen) return
@@ -244,11 +271,24 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     }
   }, [shareMenuOpen])
 
-  const showToast = useCallback((message: string) => {
-    setToast(message)
-    if (toastTimer.current) window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600)
-  }, [])
+  const showToast = useCallback(
+    (
+      message: string,
+      options?: { actionLabel?: string; onAction?: () => void; durationMs?: number },
+    ) => {
+      setToast({
+        message,
+        actionLabel: options?.actionLabel,
+        onAction: options?.onAction,
+      })
+      if (toastTimer.current) window.clearTimeout(toastTimer.current)
+      toastTimer.current = window.setTimeout(
+        () => setToast(null),
+        options?.durationMs ?? 2600,
+      )
+    },
+    [],
+  )
 
   if (questLoading) {
     return (
@@ -400,14 +440,22 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     setActiveQuestId(null)
     setCompletedStopIndexes([])
     setJournalOpen(false)
-    showToast('Memory saved.')
+    showToast('Memory saved.', {
+      actionLabel: 'Go to memory →',
+      onAction: () => navigate('/journal'),
+      durationMs: 6000,
+    })
   }
 
   return (
     <main className="qp-page">
       <div className="qp-inner">
         <div className="qp-back">
-          <Link to="/" className="qp-back-link" aria-label="Back to home">
+          <Link
+            to={backTo}
+            className="qp-back-link"
+            aria-label={`Back to ${backLabel.toLowerCase()}`}
+          >
             <svg
               className="qp-back-icon"
               width="16"
@@ -424,7 +472,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
                 strokeLinejoin="round"
               />
             </svg>
-            <span>Back</span>
+            <span>Back to {backLabel}</span>
           </Link>
         </div>
 
@@ -444,6 +492,29 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
             <span className="qp-chip qp-chip--occasion">{quest.occasion}</span>
           </div>
         </header>
+
+        {createdBanner && (
+          <div className="qp-create-banner" role="status" aria-live="polite">
+            <button
+              type="button"
+              className="qp-create-banner-close"
+              aria-label="Dismiss"
+              onClick={() => setCreatedBanner(false)}
+            >
+              ×
+            </button>
+            <span className="qp-create-banner-icon" aria-hidden>
+              ✦
+            </span>
+            <span className="qp-create-banner-shimmer" aria-hidden />
+            <div className="qp-create-banner-text">
+              <span className="qp-create-banner-eyebrow">New quest created</span>
+              <span className="qp-create-banner-title">
+                Your custom plan is ready to go.
+              </span>
+            </div>
+          </div>
+        )}
 
         {quest.narrative && <p className="qp-narrative">{quest.narrative}</p>}
         {questNotice && <p className="qp-soft-note">{questNotice}</p>}
@@ -589,8 +660,24 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       </div>
 
       {toast && (
-        <div className="saved-toast" role="status" aria-live="polite">
-          {toast}
+        <div
+          className={`saved-toast${toast.actionLabel ? ' saved-toast--action' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="saved-toast-msg">{toast.message}</span>
+          {toast.actionLabel && toast.onAction && (
+            <button
+              type="button"
+              className="saved-toast-action"
+              onClick={() => {
+                toast.onAction?.()
+                setToast(null)
+              }}
+            >
+              {toast.actionLabel}
+            </button>
+          )}
         </div>
       )}
     </main>

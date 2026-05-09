@@ -242,7 +242,15 @@ function StopCard({
           )}
           <p className="qp-stop-why">{stop.why_this_place}</p>
           <span className="qp-stop-time-chip">
-            {formatTime(stop.time_block_start)} - {formatTime(stop.time_block_end)}
+            {stop.place.open_24h_today
+              ? 'Open 24 hrs'
+              : stop.place.opens_today && stop.place.closes_today
+                ? `Opens ${formatTime(stop.place.opens_today)} • Closes ${formatTime(stop.place.closes_today)}`
+                : stop.place.opens_today
+                  ? `Opens ${formatTime(stop.place.opens_today)}`
+                  : stop.place.closes_today
+                    ? `Closes ${formatTime(stop.place.closes_today)}`
+                    : `${formatTime(stop.time_block_start)} - ${formatTime(stop.time_block_end)}`}
           </span>
         </div>
       </div>

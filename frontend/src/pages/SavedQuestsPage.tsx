@@ -112,7 +112,9 @@ export function SavedQuestsPage() {
         return
       }
       localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
-      navigate(`/quest/${quest.id}`, { state: { quest } })
+      navigate(`/quest/${quest.id}`, {
+        state: { quest, from: '/saved', fromLabel: 'Saved' },
+      })
     },
     [navigate],
   )

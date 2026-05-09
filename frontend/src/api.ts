@@ -75,6 +75,12 @@ export type PlaceItem = {
   business_status?: string | null
   types?: string[] | null
   provider_id: string
+  /** "HH:MM" 24-hour, today only. null when unknown. */
+  opens_today?: string | null
+  /** "HH:MM" 24-hour, today only. null when unknown. */
+  closes_today?: string | null
+  /** True when the place is open 24h today. */
+  open_24h_today?: boolean
 }
 
 export type NearbyPlacesResponse = {

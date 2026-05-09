@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
-from datetime import time
+from datetime import datetime, time
 from typing import NamedTuple
 
 from models import (
@@ -63,6 +64,13 @@ _WEIGHTS: dict[CostEstimate, tuple[float, float]] = {
     CostEstimate.splurge: (0.60, 0.25),
 }
 _POP_W = 0.15
+
+# ── Search expansion + quality bar ────────────────────────────────────────────
+# Tried in order. Stop expanding once we have enough "strong" candidates.
+_RADIUS_TIERS_M: tuple[int, ...] = (3_000, 6_000, 10_000)
+_STRONG_RATING_FLOOR: float = 4.0
+_STRONG_RATINGS_TOTAL_FLOOR: int = 100
+_STRONG_TARGET_COUNT: int = 3
 
 # ── Quest title lookup ────────────────────────────────────────────────────────
 
@@ -234,6 +242,64 @@ def _schedule(
     return stops
 
 
+# ── Search with progressive radius expansion ──────────────────────────────────
+
+def _is_strong(p: PlaceItem) -> bool:
+    """A place worth recommending: well-rated AND with broad consensus."""
+    return (
+        (p.rating or 0.0) >= _STRONG_RATING_FLOOR
+        and (p.user_ratings_total or 0) >= _STRONG_RATINGS_TOTAL_FLOOR
+    )
+
+
+async def _search_with_expansion(
+    service: NearbyPlacesService,
+    location: str,
+    place_type: str,
+) -> list[PlaceItem]:
+    """Try increasing radii until we have at least a few strong candidates.
+
+    Returns the first tier with >=_STRONG_TARGET_COUNT strong picks. If no tier
+    has enough strong picks, returns the broadest tier's full pool as fallback
+    (still better than abandoning the stop).
+    """
+    fallback: list[PlaceItem] = []
+    for radius in _RADIUS_TIERS_M:
+        try:
+            result = await service.search(NearbyPlacesRequest(
+                query=location,
+                categories=[place_type],
+                radius_meters=radius,
+                limit=20,
+            ))
+        except PlacesProviderError as exc:
+            logger.warning(
+                "Places search failed type=%s radius=%dm location=%r: %s",
+                place_type, radius, location, exc,
+            )
+            continue
+
+        if not result.places:
+            continue
+
+        # Always remember the broadest non-empty tier as last-resort.
+        fallback = result.places
+        strong = [p for p in result.places if _is_strong(p)]
+        if len(strong) >= _STRONG_TARGET_COUNT:
+            logger.info(
+                "Strong-pool hit type=%s radius=%dm strong=%d",
+                place_type, radius, len(strong),
+            )
+            return strong
+
+    if fallback:
+        logger.info(
+            "Falling back to broad pool for type=%s — no tier had %d strong picks",
+            place_type, _STRONG_TARGET_COUNT,
+        )
+    return fallback
+
+
 # ── Main orchestration ────────────────────────────────────────────────────────
 
 async def assemble_quest(
@@ -247,36 +313,29 @@ async def assemble_quest(
     prev_lng: float | None = None
 
     for tmpl in template:
-        if tmpl.places_type is None:
-            logger.info(
-                "Skipping %s stop — no ALLOWED_NEARBY_TYPES mapping: %s",
-                tmpl.category,
-                tmpl.places_gap,
+        place: PlaceItem | None = None
+        for place_type in tmpl.places_types:
+            candidates = await _search_with_expansion(
+                service, req.location, place_type
             )
-            continue
+            if not candidates:
+                logger.info(
+                    "No places at any radius for type=%s — trying next fallback",
+                    place_type,
+                )
+                continue
 
-        try:
-            result = await service.search(NearbyPlacesRequest(
-                query=req.location,
-                categories=[tmpl.places_type],
-                radius_meters=3_000,
-                limit=20,
-            ))
-        except PlacesProviderError as exc:
-            logger.warning(
-                "Places search failed for type=%s location=%r: %s",
-                tmpl.places_type,
-                req.location,
-                exc,
-            )
-            continue
+            picked = _pick(candidates, req.cost_estimate, prev_lat, prev_lng, used_ids)
+            if picked is not None:
+                place = picked
+                break
 
-        if not result.places:
-            logger.info("No places returned for type=%s", tmpl.places_type)
-            continue
-
-        place = _pick(result.places, req.cost_estimate, prev_lat, prev_lng, used_ids)
         if place is None:
+            logger.info(
+                "All fallback types exhausted for stop category=%s in %r",
+                tmpl.category,
+                req.location,
+            )
             continue
 
         dist_m = (
@@ -292,6 +351,30 @@ async def assemble_quest(
             f"No places could be found for any stop in {req.location!r}. "
             "Check that the location is recognisable and the Places API key is valid."
         )
+
+    # Enrich picked places with today's opening/closing hours (concurrent).
+    # Google's weekday convention: 0=Sunday, 1=Monday, ..., 6=Saturday.
+    weekday_g = (datetime.now().weekday() + 1) % 7
+    hours_results = await asyncio.gather(
+        *(service.get_place_hours(s.place.provider_id, weekday_g) for s in slots),
+        return_exceptions=True,
+    )
+    enriched_slots: list[_Slot] = []
+    for slot, hours in zip(slots, hours_results):
+        if isinstance(hours, BaseException):
+            enriched_slots.append(slot)
+            continue
+        place_with_hours = slot.place.model_copy(update={
+            "opens_today": hours.opens_today,
+            "closes_today": hours.closes_today,
+            "open_24h_today": hours.open_24h_today,
+        })
+        enriched_slots.append(_Slot(
+            tmpl=slot.tmpl,
+            place=place_with_hours,
+            dist_from_prev_m=slot.dist_from_prev_m,
+        ))
+    slots = enriched_slots
 
     stops = _schedule(slots, req.cost_estimate, req.occasion, req.duration_hours)
 

@@ -26,7 +26,7 @@ from services.places_exceptions import (
     ProviderQuotaError,
     ProviderTimeoutError,
 )
-from services.places_provider import PlacesProvider, RawPlace, ResolvedLocation
+from services.places_provider import PlaceHours, PlacesProvider, RawPlace, ResolvedLocation
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CATEGORY_SET = frozenset({"cafe", "restaurant"})
@@ -114,6 +114,13 @@ class NearbyPlacesService:
                 expires_at=time.monotonic() + float(ttl),
                 response=response,
             )
+
+    async def get_place_hours(self, provider_id: str, weekday: int) -> PlaceHours:
+        """Pass-through to the provider's place_hours; safe to call for any place_id."""
+        return await self._provider.place_hours(
+            provider_id=provider_id,
+            weekday=weekday,
+        )
 
     async def search(self, req: NearbyPlacesRequest) -> NearbyPlacesResponse:
         inferred_categories = self._infer_categories(req.query)

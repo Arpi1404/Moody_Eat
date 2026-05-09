@@ -65,5 +65,39 @@ export function useJournal() {
     return writeJournal(next)
   }, [])
 
-  return { entries, addEntry }
+  const updateEntry = useCallback(
+    (
+      questId: string,
+      completedAt: string,
+      patch: Partial<Omit<JournalEntry, 'questId' | 'completedAt'>>,
+    ): boolean => {
+      const current = readJournal()
+      let changed = false
+      const next = current.map((entry) => {
+        if (entry.questId === questId && entry.completedAt === completedAt) {
+          changed = true
+          return { ...entry, ...patch }
+        }
+        return entry
+      })
+      if (!changed) return false
+      return writeJournal(next)
+    },
+    [],
+  )
+
+  const removeEntry = useCallback(
+    (questId: string, completedAt: string): boolean => {
+      const current = readJournal()
+      const next = current.filter(
+        (entry) =>
+          !(entry.questId === questId && entry.completedAt === completedAt),
+      )
+      if (next.length === current.length) return false
+      return writeJournal(next)
+    },
+    [],
+  )
+
+  return { entries, addEntry, updateEntry, removeEntry }
 }

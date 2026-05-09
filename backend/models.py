@@ -8,12 +8,31 @@ from pydantic import BaseModel, Field, field_validator
 # Google Places Nearby Search (legacy) `type` values we support for this API.
 ALLOWED_NEARBY_TYPES = frozenset(
     {
+        # Food & drink
         "restaurant",
         "cafe",
         "bar",
         "bakery",
         "meal_takeaway",
         "meal_delivery",
+        "night_club",
+        # Attractions / outdoors
+        "tourist_attraction",
+        "park",
+        "museum",
+        "art_gallery",
+        "zoo",
+        "aquarium",
+        # Activities / play
+        "amusement_park",
+        "bowling_alley",
+        "movie_theater",
+        "stadium",
+        "shopping_mall",
+        "spa",
+        # Quiet / chill
+        "book_store",
+        "library",
     }
 )
 
@@ -56,6 +75,11 @@ class PlaceItem(BaseModel):
     business_status: Optional[str] = None
     types: Optional[list[str]] = None
     provider_id: str
+    # "HH:MM" 24-hour, today only. None when unknown or 24h.
+    opens_today: Optional[str] = None
+    closes_today: Optional[str] = None
+    # True when the place is open 24h today.
+    open_24h_today: bool = False
 
 
 class NearbyPlacesResponse(BaseModel):

@@ -15,12 +15,46 @@ from services.places_exceptions import (
     ProviderQuotaError,
     ProviderTimeoutError,
 )
-from services.places_provider import PlacesProvider, RawPlace, ResolvedLocation
+from services.places_provider import PlaceHours, PlacesProvider, RawPlace, ResolvedLocation
 
 logger = logging.getLogger(__name__)
 
 _GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 _NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
+
+
+def _fmt_hhmm(g_time: str) -> str | None:
+    """Google returns 'HHMM' (e.g. '0900', '2130'). Convert to 'HH:MM'."""
+    if not g_time or len(g_time) != 4 or not g_time.isdigit():
+        return None
+    return f"{g_time[:2]}:{g_time[2:]}"
+
+
+def _hours_for_weekday(periods: list[dict[str, Any]], weekday: int) -> PlaceHours:
+    """Given Google's `opening_hours.periods` array, extract today's hours.
+
+    A 24h place is signalled by a single period with day=0 time='0000' and no close.
+    """
+    if not periods:
+        return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+
+    # Detect 24h: single period, day 0, open time "0000", no close field.
+    if len(periods) == 1:
+        only = periods[0]
+        opn = only.get("open") or {}
+        if opn.get("day") == 0 and opn.get("time") == "0000" and "close" not in only:
+            return PlaceHours(opens_today=None, closes_today=None, open_24h_today=True)
+
+    for p in periods:
+        opn = p.get("open") or {}
+        if opn.get("day") == weekday:
+            opens = _fmt_hhmm(str(opn.get("time") or ""))
+            close = p.get("close") or {}
+            closes = _fmt_hhmm(str(close.get("time") or "")) if close else None
+            return PlaceHours(opens_today=opens, closes_today=closes, open_24h_today=False)
+
+    return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
 
 
 def _map_geocode_status(status: str, error_message: str | None) -> None:
@@ -148,6 +182,33 @@ class GooglePlacesProvider(PlacesProvider):
             if not next_token:
                 break
         return collected
+
+    async def place_hours(
+        self,
+        *,
+        provider_id: str,
+        weekday: int,
+    ) -> PlaceHours:
+        if not provider_id:
+            return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+        params = {
+            "place_id": provider_id,
+            "fields": "opening_hours",
+            "key": self._api_key,
+        }
+        try:
+            data = await self._request_json(_DETAILS_URL, params)
+        except PlacesProviderError as exc:
+            logger.warning("place_details_failed place_id=%s err=%s", provider_id, exc)
+            return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+        status = data.get("status", "")
+        if status not in ("OK", "ZERO_RESULTS"):
+            logger.warning("place_details_status status=%s place_id=%s", status, provider_id)
+            return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+        result = data.get("result") or {}
+        oh = result.get("opening_hours") or {}
+        periods = oh.get("periods") or []
+        return _hours_for_weekday(periods, weekday)
 
     @staticmethod
     def _raw_from_nearby_item(item: dict[str, Any]) -> RawPlace:

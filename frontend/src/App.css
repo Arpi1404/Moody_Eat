@@ -4338,28 +4338,33 @@ a.explore-edit-filters {
   padding: 0;
   display: grid;
   grid-template-columns: 1fr;
+  grid-auto-rows: 1fr;
+  align-items: stretch;
   gap: 16px;
 }
 
 @media (min-width: 720px) {
   .saved-list {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
   }
 }
 
 .saved-card-wrap {
-  position: relative;
+  display: flex;
+  height: 100%;
+  min-width: 0;
 }
 
 .saved-card {
   position: relative;
   width: 100%;
+  height: 100%;
   display: grid;
-  grid-template-columns: 124px 1fr;
+  grid-template-columns: 1fr;
+  grid-template-rows: 168px auto;
   gap: 0;
   padding: 0;
-  min-height: 156px;
   border-radius: 18px;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -4374,10 +4379,11 @@ a.explore-edit-filters {
     transform 0.22s ease;
 }
 
-@media (min-width: 480px) {
+@media (min-width: 560px) {
   .saved-card {
     grid-template-columns: 160px 1fr;
-    min-height: 172px;
+    grid-template-rows: 1fr;
+    min-height: 200px;
   }
 }
 
@@ -4395,6 +4401,8 @@ a.explore-edit-filters {
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 0;
+  align-self: stretch;
   background:
     repeating-linear-gradient(
       -45deg,
@@ -4408,6 +4416,8 @@ a.explore-edit-filters {
 }
 
 .saved-card-image img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -4434,8 +4444,15 @@ a.explore-edit-filters {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 56px 16px 18px;
+  padding: 16px 18px 18px;
   min-width: 0;
+  min-height: 0;
+}
+
+@media (min-width: 560px) {
+  .saved-card-body {
+    padding: 16px 56px 16px 18px;
+  }
 }
 
 .saved-card-eyebrow {
@@ -4457,15 +4474,21 @@ a.explore-edit-filters {
 .saved-card-title {
   margin: 0;
   font-family: var(--display);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.25;
   color: var(--text-h);
+  word-break: break-word;
+  hyphens: auto;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.saved-card-chips {
+  flex-direction: row;
 }
 
 .saved-card-chips {
@@ -4665,14 +4688,14 @@ a.explore-edit-filters {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface);
   color: inherit;
   padding: 22px 22px 24px;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
   box-shadow: var(--shadow-card);
   transition:
     box-shadow 0.22s ease,
@@ -4832,5 +4855,430 @@ a.explore-edit-filters {
   .journal-card-title {
     font-size: 18px;
   }
+}
+
+/* ── Quest created premium banner ───────────────────────────────────────── */
+
+.qp-create-banner {
+  position: relative;
+  margin: 18px 0 22px;
+  padding: 16px 44px 16px 60px;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(232, 176, 75, 0.18), rgba(199, 82, 42, 0.10)),
+    var(--surface);
+  border: 1px solid var(--accent-border);
+  box-shadow:
+    0 22px 48px -28px rgba(199, 82, 42, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  isolation: isolate;
+  animation: qp-banner-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes qp-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.qp-create-banner-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-gold, #e8b04b));
+  box-shadow: 0 6px 14px -4px rgba(199, 82, 42, 0.55);
+  animation: qp-banner-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes qp-banner-pulse {
+  0%, 100% { transform: translateY(-50%) scale(1); }
+  50% { transform: translateY(-50%) scale(1.08); }
+}
+
+.qp-create-banner-shimmer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  background-position: 200% 0;
+  animation: qp-banner-shimmer 2.6s ease-in-out 280ms 1 forwards;
+  opacity: 0.7;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+@keyframes qp-banner-shimmer {
+  to {
+    background-position: -120% 0;
+  }
+}
+
+.qp-create-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qp-create-banner-eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.qp-create-banner-title {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--text-h);
+}
+
+.qp-create-banner-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.65;
+}
+
+.qp-create-banner-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qp-create-banner,
+  .qp-create-banner-icon,
+  .qp-create-banner-shimmer {
+    animation: none;
+  }
+}
+
+/* ── Action toast (with optional CTA button) ────────────────────────────── */
+
+.saved-toast--action {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 8px 8px 18px;
+  border-radius: 999px;
+}
+
+.saved-toast-msg {
+  display: inline-block;
+}
+
+.saved-toast-action {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.saved-toast-action:hover {
+  background: #b94a25;
+  transform: translateY(-1px);
+}
+
+/* ── Journal photo edit (delete chip on previews) ───────────────────────── */
+
+.journal-photo-preview {
+  position: relative;
+  flex: 0 0 72px;
+}
+
+.journal-photo-preview img {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.journal-photo-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--text-h);
+  color: var(--bg);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(31, 26, 20, 0.25);
+}
+
+.journal-delete-btn {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 11px 14px;
+  min-height: 44px;
+  cursor: pointer;
+  border: 1px solid rgba(199, 82, 42, 0.35);
+  background: transparent;
+  color: var(--accent);
+}
+
+.journal-delete-btn:hover {
+  background: rgba(199, 82, 42, 0.08);
+}
+
+/* ── Journal page: consistent card sizing & edit toolbar ────────────────── */
+
+.journal-list {
+  align-items: stretch;
+  grid-auto-rows: 1fr;
+}
+
+@media (min-width: 1100px) {
+  .journal-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.journal-card {
+  position: relative;
+  height: 100%;
+  min-height: 340px;
+  padding: 16px 22px 22px;
+}
+
+.journal-card-body-btn {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.journal-card-toolbar {
+  display: inline-flex;
+  align-self: flex-end;
+  gap: 6px;
+  margin-bottom: 4px;
+  z-index: 2;
+}
+
+.journal-card-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-h);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.journal-card-tool-btn:hover {
+  border-color: var(--accent-border);
+  background: rgba(199, 82, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.journal-card-tool-btn--danger {
+  padding: 6px 8px;
+  color: var(--accent);
+}
+
+.journal-card-tool-btn--danger:hover {
+  background: rgba(199, 82, 42, 0.10);
+  color: var(--accent);
+}
+
+.journal-card-note-slot {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  min-height: 64px;
+}
+
+.journal-card-note-slot .journal-card-note {
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.journal-card-note--empty {
+  color: var(--text);
+  font-style: italic;
+  opacity: 0.78;
+  background: transparent;
+  border-left-color: var(--border);
+}
+
+.journal-thumb-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.journal-thumb-row img {
+  width: 100%;
+  height: auto;
+  flex: initial;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.journal-thumb-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 64px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+@media (max-width: 480px) {
+  .journal-card {
+    min-height: 300px;
+  }
+  .journal-card-tool-btn span:not([aria-hidden]) {
+    display: none;
+  }
+  .journal-card-tool-btn {
+    padding: 6px;
+  }
+}
+
+/* ── Journal delete confirmation ─────────────────────────────────────────── */
+
+.journal-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(31, 26, 20, 0.36);
+  backdrop-filter: blur(2px);
+}
+
+.journal-confirm {
+  position: relative;
+  width: min(360px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 30px 60px -20px rgba(31, 26, 20, 0.35);
+  text-align: left;
+}
+
+.journal-confirm-title {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.journal-confirm-text {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.journal-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.journal-confirm-btn {
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.journal-confirm-btn--cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-h);
+}
+
+.journal-confirm-btn--delete {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}
+
+.journal-confirm-btn--delete:hover {
+  background: #b94a25;
 }
 

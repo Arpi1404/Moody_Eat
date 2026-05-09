@@ -28,6 +28,15 @@ class RawPlace:
     business_status: str | None = None
 
 
+@dataclass(frozen=True)
+class PlaceHours:
+    """Opening hours for a single weekday. All times are local "HH:MM" 24-hour."""
+
+    opens_today: str | None
+    closes_today: str | None
+    open_24h_today: bool
+
+
 @runtime_checkable
 class PlacesProvider(Protocol):
     async def geocode(self, query: str) -> ResolvedLocation:
@@ -44,4 +53,17 @@ class PlacesProvider(Protocol):
         target_count: int | None = None,
     ) -> list[RawPlace]:
         """Places whose primary type matches `place_type` (provider-specific)."""
+        ...
+
+    async def place_hours(
+        self,
+        *,
+        provider_id: str,
+        weekday: int,
+    ) -> PlaceHours:
+        """Today's opening/closing time for the given place.
+
+        weekday: 0=Sunday, 1=Monday, ..., 6=Saturday (Google convention).
+        Returns all-None when hours are unknown.
+        """
         ...
