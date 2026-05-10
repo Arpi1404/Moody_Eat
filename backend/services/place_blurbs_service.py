@@ -104,13 +104,16 @@ Places:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             res = await client.post(OPENCODE_URL, headers=_opencode_headers(api_key), json=body)
+            print(f"OpenCode status: {res.status_code}", file=sys.stderr, flush=True)
             res.raise_for_status()
             data = res.json()
-    except (httpx.HTTPError, ValueError, KeyError):
+    except (httpx.HTTPError, ValueError, KeyError) as e:
+        print(f"FALLBACK: HTTP/parse error — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
     try:
         text = _extract_text(data)
+        print(f"OpenCode raw text: {text[:300]!r}", file=sys.stderr, flush=True)
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```\s*$", "", text)
         parsed = json.loads(text)
@@ -122,9 +125,11 @@ Places:
                 out[str(pid)] = line[:200]
         for p in places:
             if p.provider_id not in out:
+                print(f"FALLBACK: missing blurb for provider_id={p.provider_id!r}", file=sys.stderr, flush=True)
                 out[p.provider_id] = _fallback_blurb(p, mood, budget)
         return out
-    except (json.JSONDecodeError, TypeError, KeyError):
+    except (json.JSONDecodeError, TypeError, KeyError) as e:
+        print(f"FALLBACK: parse/JSON error — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
 
