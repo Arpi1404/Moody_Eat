@@ -64,6 +64,8 @@ async def generate_place_blurbs(
 
     api_key = os.environ.get("OPENCODE_API_KEY", "").strip()
     print(f"API key length: {len(api_key)}", file=sys.stderr, flush=True)
+    print(f"API key start: {api_key[:10]}", file=sys.stderr, flush=True)
+    print(f"API key end: {api_key[-10:]}", file=sys.stderr, flush=True)
     if not api_key:
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
