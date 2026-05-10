@@ -14,7 +14,7 @@ import httpx
 from models import PlaceBlurbIn
 
 
-OPENCODE_URL = "https://opencode.ai/zen/go/v1/chat/completionss"
+OPENCODE_URL = "https://opencode.ai/zen/go/v1/chat/completions"
 MODEL = "deepseek-v4-flash"
 
 
