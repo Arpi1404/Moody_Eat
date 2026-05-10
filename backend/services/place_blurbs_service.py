@@ -13,6 +13,8 @@ import httpx
 
 from models import PlaceBlurbIn
 
+logger = logging.getLogger(__name__)
+
 OPENCODE_URL = "https://opencode.ai/zen/v1/chat/completions"
 MODEL = "deepseek-v4-flash"
 
@@ -62,8 +64,7 @@ async def generate_place_blurbs(
         return {}
 
     api_key = os.environ.get("OPENCODE_API_KEY", "").strip()
-    print(f"API key length: {len(api_key)}")
-    logging.log(f"API key length: {len(api_key)}")
+    logger.info("OPENCODE_API_KEY length=%s", len(api_key))
     if not api_key:
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
