@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 from typing import Any
 
 import httpx
@@ -62,7 +63,7 @@ async def generate_place_blurbs(
         return {}
 
     api_key = os.environ.get("OPENCODE_API_KEY", "").strip()
-    print(f"API key length: {len(api_key)}")
+    print(f"API key length: {len(api_key)}", file=sys.stderr, flush=True)
     if not api_key:
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
