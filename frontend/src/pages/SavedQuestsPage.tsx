@@ -190,17 +190,15 @@ export function SavedQuestsPage() {
                 <button
                   type="button"
                   className="saved-card-delete"
-                  aria-label={`Delete ${quest.title}`}
+                  aria-label={`Remove ${quest.title}`}
                   onClick={() => setPendingDelete(quest.id)}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
                     <path
-                      d="M9 4h6m-9 3h12m-1 0-1 13a2 2 0 01-2 2H9a2 2 0 01-2-2L6 7m4 4v6m4-6v6"
+                      d="M2.5 2.5l7 7m0-7l-7 7"
                       stroke="currentColor"
-                      strokeWidth="1.7"
+                      strokeWidth="1.6"
                       strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
                     />
                   </svg>
                 </button>

@@ -4351,6 +4351,7 @@ a.explore-edit-filters {
 }
 
 .saved-card-wrap {
+  position: relative;
   display: flex;
   height: 100%;
   min-width: 0;
@@ -4526,32 +4527,35 @@ a.explore-edit-filters {
 
 .saved-card-delete {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   z-index: 2;
   opacity: 1;
-  transform: scale(1);
   transition:
     color 0.14s ease,
     background 0.14s ease,
-    border-color 0.14s ease;
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
 .saved-card-delete:hover {
   color: var(--accent);
   border-color: var(--accent);
-  background: var(--accent-bg);
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(199, 82, 42, 0.18);
 }
 
 .saved-confirm {
