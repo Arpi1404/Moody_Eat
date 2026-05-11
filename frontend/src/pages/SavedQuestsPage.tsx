@@ -64,8 +64,6 @@ function SavedCardImage({ quest }: { quest: SavedQuest }) {
   )
 }
 
-const LONG_PRESS_MS = 550
-
 function formatSavedDate(iso: string): string {
   try {
     const d = new Date(iso)
@@ -86,15 +84,12 @@ export function SavedQuestsPage() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
-  const longPressTimer = useRef<number | null>(null)
-  const longPressFired = useRef(false)
   const toastTimer = useRef<number | null>(null)
 
   useEffect(() => {
     const loadingTimer = window.setTimeout(() => setLoading(false), 200)
     return () => {
       window.clearTimeout(loadingTimer)
-      if (longPressTimer.current) window.clearTimeout(longPressTimer.current)
       if (toastTimer.current) window.clearTimeout(toastTimer.current)
     }
   }, [])
@@ -107,10 +102,6 @@ export function SavedQuestsPage() {
 
   const openQuest = useCallback(
     (quest: SavedQuest) => {
-      if (longPressFired.current) {
-        longPressFired.current = false
-        return
-      }
       localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
       navigate(`/quest/${quest.id}`, {
         state: { quest, from: '/saved', fromLabel: 'Saved' },
@@ -118,22 +109,6 @@ export function SavedQuestsPage() {
     },
     [navigate],
   )
-
-  const handlePressStart = useCallback((id: string) => {
-    longPressFired.current = false
-    if (longPressTimer.current) window.clearTimeout(longPressTimer.current)
-    longPressTimer.current = window.setTimeout(() => {
-      longPressFired.current = true
-      setPendingDelete(id)
-    }, LONG_PRESS_MS)
-  }, [])
-
-  const handlePressEnd = useCallback(() => {
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }, [])
 
   const confirmDelete = useCallback(
     (id: string, title: string) => {
@@ -180,12 +155,6 @@ export function SavedQuestsPage() {
                   type="button"
                   className={`saved-card${isPending ? ' saved-card--pending' : ''}`}
                   onClick={() => openQuest(quest)}
-                  onMouseDown={() => handlePressStart(quest.id)}
-                  onMouseUp={handlePressEnd}
-                  onMouseLeave={handlePressEnd}
-                  onTouchStart={() => handlePressStart(quest.id)}
-                  onTouchEnd={handlePressEnd}
-                  onTouchCancel={handlePressEnd}
                 >
                   <SavedCardImage quest={quest} />
                   <div className="saved-card-body">

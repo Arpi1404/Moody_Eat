@@ -4540,34 +4540,18 @@ a.explore-edit-filters {
   cursor: pointer;
   box-shadow: var(--shadow-card);
   z-index: 2;
-  opacity: 0;
-  transform: scale(0.92);
+  opacity: 1;
+  transform: scale(1);
   transition:
-    opacity 0.18s ease,
-    transform 0.18s ease,
     color 0.14s ease,
     background 0.14s ease,
     border-color 0.14s ease;
-}
-
-.saved-card-wrap:hover .saved-card-delete,
-.saved-card-wrap:focus-within .saved-card-delete {
-  opacity: 1;
-  transform: scale(1);
 }
 
 .saved-card-delete:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-bg);
-}
-
-@media (max-width: 720px) {
-  /* On mobile, show the delete button at lower opacity always */
-  .saved-card-delete {
-    opacity: 0.7;
-    transform: scale(1);
-  }
 }
 
 .saved-confirm {

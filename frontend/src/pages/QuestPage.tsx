@@ -135,6 +135,11 @@ function writeActiveQuest(quest: Quest, completedStopIndexes: number[]) {
   localStorage.removeItem(LEGACY_ACTIVE_QUEST_KEY)
 }
 
+function clearActiveQuest() {
+  localStorage.removeItem(ACTIVE_QUEST_KEY)
+  localStorage.removeItem(LEGACY_ACTIVE_QUEST_KEY)
+}
+
 // ── QuestPage ─────────────────────────────────────────────────────────────────
 
 export function QuestPage({ preview = false }: { preview?: boolean }) {
@@ -151,7 +156,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
   const backTo = state?.from ?? '/'
   const backLabel = state?.fromLabel ?? 'Home'
-  const { saveQuest, isQuestSaved } = useSavedQuests()
+  const { saveQuest, removeQuest, isQuestSaved } = useSavedQuests()
   const { addEntry } = useJournal()
   const [quest, setQuest] = useState<Quest | null>(null)
   const [title, setTitle] = useState('')
@@ -321,6 +326,12 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     : `${durationHours.toFixed(1)}h`
 
   const handleSave = () => {
+    if (savedToCollection) {
+      removeQuest(quest.id)
+      track('quest_unsaved', { quest_id: quest.id })
+      setJustSaved(false)
+      return
+    }
     const titledQuest = { ...quest, title }
     saveQuest(titledQuest)
     localStorage.setItem(`quest_${titledQuest.id}`, JSON.stringify(titledQuest))
@@ -404,6 +415,14 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   const handleStart = () => {
+    if (active) {
+      clearActiveQuest()
+      setActiveQuestId(null)
+      setCompletedStopIndexes([])
+      track('quest_stopped', { quest_id: quest.id })
+      showToast('Quest stopped.')
+      return
+    }
     const titledQuest = { ...quest, title: title.trim() || quest.title }
     localStorage.setItem(`quest_${titledQuest.id}`, JSON.stringify(titledQuest))
     writeActiveQuest(titledQuest, [])
@@ -561,7 +580,6 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
             type="button"
             className={`qp-action-btn qp-action-btn--start${active ? ' qp-action-btn--started' : ''}`}
             onClick={handleStart}
-            disabled={active}
           >
             {active ? '✓ In progress' : '▶ Start'}
           </button>

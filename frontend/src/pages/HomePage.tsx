@@ -629,6 +629,25 @@ export function HomePage() {
             </div>
 
             <form className="sheet-fields" onSubmit={handleSubmit}>
+              {/* Occasion */}
+              <div>
+                <span className="sheet-field-label">Occasion</span>
+                <div className="sheet-pill-row" role="group" aria-label="Occasion">
+                  {OCCASIONS.map((o) => (
+                    <button
+                      key={o.key}
+                      type="button"
+                      className={`sheet-pill${activeOccasion === o.key ? ' sheet-pill--active' : ''}`}
+                      aria-pressed={activeOccasion === o.key}
+                      onClick={() => setActiveOccasion(o.key)}
+                    >
+                      <span aria-hidden style={{ marginRight: 6 }}>{o.emoji}</span>
+                      {o.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Location */}
               <div>
                 <label className="sheet-field-label" htmlFor="sheet-location">
