@@ -203,32 +203,48 @@ export function SavedQuestsPage() {
                   </svg>
                 </button>
 
-                {isPending && (
-                  <div className="saved-confirm" role="alertdialog" aria-label="Confirm delete">
-                    <p className="saved-confirm-text">Remove this quest?</p>
-                    <div className="saved-confirm-actions">
-                      <button
-                        type="button"
-                        className="saved-confirm-btn saved-confirm-btn--cancel"
-                        onClick={() => setPendingDelete(null)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="saved-confirm-btn saved-confirm-btn--delete"
-                        onClick={() => confirmDelete(quest.id, quest.title)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
               </li>
             )
           })}
         </ul>
       )}
+
+      {pendingDelete && (() => {
+        const target = savedQuests.find((q) => q.id === pendingDelete)
+        if (!target) return null
+        return (
+          <div
+            className="saved-confirm-overlay"
+            role="presentation"
+            onClick={() => setPendingDelete(null)}
+          >
+            <div
+              role="alertdialog"
+              aria-label="Confirm delete"
+              className="saved-confirm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="saved-confirm-text">Remove this quest?</p>
+              <div className="saved-confirm-actions">
+                <button
+                  type="button"
+                  className="saved-confirm-btn saved-confirm-btn--cancel"
+                  onClick={() => setPendingDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="saved-confirm-btn saved-confirm-btn--delete"
+                  onClick={() => confirmDelete(target.id, target.title)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {toast && (
         <div className="saved-toast" role="status" aria-live="polite">
