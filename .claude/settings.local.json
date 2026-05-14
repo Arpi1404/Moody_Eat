@@ -8,7 +8,18 @@
       "WebFetch(domain:opencode.ai)",
       "WebFetch(domain:api-docs.deepseek.com)",
       "Bash(python -m py_compile quest_templates.py quest_generator.py models.py services/place_blurbs_service.py)",
-      "Bash(python -m py_compile quest_generator.py services/google_places.py services/places_provider.py services/nearby_places_service.py models.py)"
+      "Bash(python -m py_compile quest_generator.py services/google_places.py services/places_provider.py services/nearby_places_service.py models.py)",
+      "Bash(curl -sS -X POST http://127.0.0.1:8000/api/quest/generate -H 'Content-Type: application/json' -d '{\"location\":\"Govindpuram, Ghaziabad\",\"occasion\":\"date\",\"cost_estimate\":\"cheap\",\"people\":2,\"duration_hours\":3}')",
+      "Bash(python3 -m json.tool)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(python3 -m pytest tests/test_nearby_places.py -q)",
+      "Bash(../.venv/bin/pytest tests/test_nearby_places.py -q)",
+      "Bash(/Users/ramansharma/Desktop/TravelPlannerSWE/.venv/bin/pytest /Users/ramansharma/Desktop/TravelPlannerSWE/backend/tests/test_nearby_places.py -q)",
+      "Bash(./.venv/bin/pytest tests/test_nearby_places.py -q)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(' -',s['place']['name'],'|',s['place'].get\\('rating'\\),'|',s['place'].get\\('user_ratings_total'\\),'|',\\(s['place'].get\\('types'\\) or []\\)[:3]\\) for s in d['stops']]\")",
+      "Bash(kill 2922 2971 21616)",
+      "Bash(nohup ./.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000)",
+      "Bash(curl -s http://127.0.0.1:8000/)"
     ]
   }
 }

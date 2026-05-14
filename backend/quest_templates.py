@@ -66,7 +66,11 @@ TEMPLATES: dict[Occasion, list[TemplateStop]] = {
         ),
         TemplateStop(
             category=StopCategory.other,
-            places_types=("book_store", "library", "park", "art_gallery"),
+            # Order matters: try the high-signal Indian categories first
+            # (parks, galleries, libraries) and fall through to book_store
+            # last — Google's `book_store` type is noisy in India (stationery
+            # shops self-tag as bookstores).
+            places_types=("art_gallery", "park", "library", "book_store"),
         ),
         TemplateStop(
             category=StopCategory.attraction,

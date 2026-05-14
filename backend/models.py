@@ -72,6 +72,9 @@ class PlaceItem(BaseModel):
     distance_meters: float
     rating: Optional[float] = None
     user_ratings_total: Optional[int] = None
+    # Google legacy Places price_level: 0=free, 1=inexpensive, 2=moderate,
+    # 3=expensive, 4=very expensive. None means unknown/unavailable.
+    price_level: Optional[int] = Field(default=None, ge=0, le=4)
     business_status: Optional[str] = None
     types: Optional[list[str]] = None
     provider_id: str
@@ -176,4 +179,3 @@ class QuestGenerationRequest(BaseModel):
     cost_estimate: CostEstimate
     people: int = Field(default=2, ge=1, le=20)
     duration_hours: float = Field(default=3.0, ge=1.0, le=8.0)
-

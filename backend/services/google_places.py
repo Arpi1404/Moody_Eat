@@ -220,6 +220,8 @@ class GooglePlacesProvider(PlacesProvider):
         r_float: float | None = float(rating) if rating is not None else None
         user_ratings_total = item.get("user_ratings_total")
         ur_total: int | None = int(user_ratings_total) if user_ratings_total is not None else None
+        price_level = item.get("price_level")
+        p_level: int | None = int(price_level) if price_level is not None else None
         types = item.get("types")
         t_list: list[str] | None = list(types) if isinstance(types, list) else None
         business_status = item.get("business_status")
@@ -234,4 +236,5 @@ class GooglePlacesProvider(PlacesProvider):
             types=t_list,
             user_ratings_total=ur_total,
             business_status=b_status,
+            price_level=p_level,
         )

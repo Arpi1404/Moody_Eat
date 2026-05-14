@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+from dataclasses import dataclass
 from datetime import datetime, time
 from typing import NamedTuple
 
@@ -52,18 +53,58 @@ _START: dict[Occasion, tuple[int, int]] = {
     Occasion.family:  (12, 0),
 }
 
-# ── Scoring weights (rating_w, proximity_w) per budget tier ──────────────────
-# Remaining 0.15 is always log-popularity.
-# cheap  → minimise distance, any good-enough rating
-# mid    → balanced
-# splurge → maximise quality, distance secondary
+# ── Scoring weights per budget tier ──────────────────────────────────────────
+# Budget now means price fit, not "cheap places should merely be closer".
+# Unknown Google price data is allowed, but receives lower confidence so it does
+# not beat a clearly budget-matched place unless the rest of the signal is strong.
 
-_WEIGHTS: dict[CostEstimate, tuple[float, float]] = {
-    CostEstimate.cheap:   (0.35, 0.50),
-    CostEstimate.mid:     (0.45, 0.40),
-    CostEstimate.splurge: (0.60, 0.25),
+_SCORE_WEIGHTS: dict[CostEstimate, dict[str, float]] = {
+    CostEstimate.cheap: {
+        "quality": 0.30,
+        "price_fit": 0.40,
+        "route_fit": 0.22,
+        "confidence": 0.08,
+    },
+    CostEstimate.mid: {
+        "quality": 0.36,
+        "price_fit": 0.30,
+        "route_fit": 0.24,
+        "confidence": 0.10,
+    },
+    CostEstimate.splurge: {
+        "quality": 0.42,
+        "price_fit": 0.32,
+        "route_fit": 0.16,
+        "confidence": 0.10,
+    },
 }
-_POP_W = 0.15
+
+_UNKNOWN_PRICE_FIT = 0.58
+_UNKNOWN_PRICE_CONFIDENCE = 0.45
+
+_PRICE_FIT: dict[CostEstimate, dict[int, float]] = {
+    CostEstimate.cheap: {
+        0: 0.95,
+        1: 1.00,
+        2: 0.62,
+        3: 0.20,
+        4: 0.08,
+    },
+    CostEstimate.mid: {
+        0: 0.36,
+        1: 0.72,
+        2: 1.00,
+        3: 0.72,
+        4: 0.34,
+    },
+    CostEstimate.splurge: {
+        0: 0.12,
+        1: 0.28,
+        2: 0.68,
+        3: 1.00,
+        4: 0.96,
+    },
+}
 
 # ── Search expansion + quality bar ────────────────────────────────────────────
 # Tried in order. Stop expanding once we have enough "strong" candidates.
@@ -118,27 +159,93 @@ def _travel_time(dist_m: float) -> tuple[int, TravelMode]:
 
 # ── Place scoring and selection ───────────────────────────────────────────────
 
+@dataclass(frozen=True)
+class ScoreBreakdown:
+    total: float
+    quality: float
+    price_fit: float
+    route_fit: float
+    confidence: float
+    rating: float
+    popularity: float
+    price_level: int | None
+    price_source: str
+
+
+def _quality_score(place: PlaceItem) -> tuple[float, float, float, float]:
+    rating_s = (place.rating or 0.0) / 5.0
+    pop_raw = math.log1p(max(0, place.user_ratings_total or 0))
+    pop_s = min(1.0, pop_raw / math.log1p(10_000))
+
+    if place.rating is None:
+        rating_s = 0.35
+
+    quality = 0.76 * rating_s + 0.24 * pop_s
+    quality_confidence = min(1.0, pop_raw / math.log1p(500))
+    if place.rating is None:
+        quality_confidence *= 0.35
+    return quality, rating_s, pop_s, quality_confidence
+
+
+def _price_fit_score(place: PlaceItem, cost: CostEstimate) -> tuple[float, float, str]:
+    if place.price_level is None:
+        return _UNKNOWN_PRICE_FIT, _UNKNOWN_PRICE_CONFIDENCE, "unknown"
+
+    price_level = max(0, min(4, place.price_level))
+    return _PRICE_FIT[cost][price_level], 1.0, "google_price_level"
+
+
+def _route_fit_score(
+    place: PlaceItem,
+    prev_lat: float | None,
+    prev_lng: float | None,
+) -> float:
+    if prev_lat is None or prev_lng is None:
+        return 0.66
+
+    d = haversine_m(prev_lat, prev_lng, place.lat, place.lng)
+    # 1 km away -> 0.5; 0 m -> 1.0; 5 km -> 0.17
+    return 1.0 / (1.0 + d / 1_000.0)
+
+
+def _score_breakdown(
+    place: PlaceItem,
+    cost: CostEstimate,
+    prev_lat: float | None,
+    prev_lng: float | None,
+) -> ScoreBreakdown:
+    quality, rating_s, pop_s, quality_confidence = _quality_score(place)
+    price_fit, price_confidence, price_source = _price_fit_score(place, cost)
+    route_fit = _route_fit_score(place, prev_lat, prev_lng)
+    confidence = 0.60 * price_confidence + 0.40 * quality_confidence
+
+    weights = _SCORE_WEIGHTS[cost]
+    total = (
+        weights["quality"] * quality
+        + weights["price_fit"] * price_fit
+        + weights["route_fit"] * route_fit
+        + weights["confidence"] * confidence
+    )
+    return ScoreBreakdown(
+        total=total,
+        quality=quality,
+        price_fit=price_fit,
+        route_fit=route_fit,
+        confidence=confidence,
+        rating=rating_s,
+        popularity=pop_s,
+        price_level=place.price_level,
+        price_source=price_source,
+    )
+
+
 def _score(
     place: PlaceItem,
     cost: CostEstimate,
     prev_lat: float | None,
     prev_lng: float | None,
 ) -> float:
-    rating_w, prox_w = _WEIGHTS[cost]
-
-    rating_s = (place.rating or 0.0) / 5.0
-
-    pop_raw = math.log1p(max(0, place.user_ratings_total or 0))
-    pop_s = min(1.0, pop_raw / math.log1p(10_000))
-
-    if prev_lat is not None and prev_lng is not None:
-        d = haversine_m(prev_lat, prev_lng, place.lat, place.lng)
-        # 1 km away → 0.5; 0 m → 1.0; 5 km → 0.17
-        prox_s = 1.0 / (1.0 + d / 1_000.0)
-    else:
-        prox_s = 0.5  # neutral on first stop
-
-    return rating_w * rating_s + prox_w * prox_s + _POP_W * pop_s
+    return _score_breakdown(place, cost, prev_lat, prev_lng).total
 
 
 def _pick(
@@ -161,6 +268,12 @@ def _why(place: PlaceItem, cost: CostEstimate, dist_m: float | None) -> str:
     notes: list[str] = []
     if place.rating and place.rating >= 4.3:
         notes.append(f"rated {place.rating:.1f}★ by locals")
+    price_fit, _, price_source = _price_fit_score(place, cost)
+    if price_source != "unknown":
+        if price_fit >= 0.9:
+            notes.append("matches the budget well")
+        elif price_fit <= 0.35:
+            notes.append("stretches the budget")
     if dist_m is not None:
         if dist_m <= 600:
             notes.append("just a short walk away")
@@ -168,9 +281,9 @@ def _why(place: PlaceItem, cost: CostEstimate, dist_m: float | None) -> str:
             notes.append("an easy walk from the previous stop")
         else:
             notes.append("a quick ride from the previous stop")
-    if cost == CostEstimate.splurge:
+    if cost == CostEstimate.splurge and price_fit >= 0.68:
         notes.append("a quality pick for a splurge outing")
-    elif cost == CostEstimate.cheap:
+    elif cost == CostEstimate.cheap and price_fit >= 0.62:
         notes.append("keeps the budget comfortable")
     if not notes:
         notes.append("a solid local choice")
@@ -259,11 +372,13 @@ async def _search_with_expansion(
 ) -> list[PlaceItem]:
     """Try increasing radii until we have at least a few strong candidates.
 
-    Returns the first tier with >=_STRONG_TARGET_COUNT strong picks. If no tier
-    has enough strong picks, returns the broadest tier's full pool as fallback
-    (still better than abandoning the stop).
+    Returns the first tier with >=_STRONG_TARGET_COUNT strong picks. Falls
+    back to any strong picks at the broadest tier (still respecting the
+    strong-quality floor). If no tier yields a single strong candidate,
+    returns []: the template fallback chain will try the next place_type
+    rather than admitting weak picks.
     """
-    fallback: list[PlaceItem] = []
+    best_strong: list[PlaceItem] = []
     for radius in _RADIUS_TIERS_M:
         try:
             result = await service.search(NearbyPlacesRequest(
@@ -282,8 +397,6 @@ async def _search_with_expansion(
         if not result.places:
             continue
 
-        # Always remember the broadest non-empty tier as last-resort.
-        fallback = result.places
         strong = [p for p in result.places if _is_strong(p)]
         if len(strong) >= _STRONG_TARGET_COUNT:
             logger.info(
@@ -291,13 +404,15 @@ async def _search_with_expansion(
                 place_type, radius, len(strong),
             )
             return strong
+        if len(strong) > len(best_strong):
+            best_strong = strong
 
-    if fallback:
+    if best_strong:
         logger.info(
-            "Falling back to broad pool for type=%s — no tier had %d strong picks",
-            place_type, _STRONG_TARGET_COUNT,
+            "Partial strong-pool for type=%s strong=%d (below target=%d)",
+            place_type, len(best_strong), _STRONG_TARGET_COUNT,
         )
-    return fallback
+    return best_strong
 
 
 # ── Main orchestration ────────────────────────────────────────────────────────

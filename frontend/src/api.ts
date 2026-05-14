@@ -72,6 +72,8 @@ export type PlaceItem = {
   distance_meters: number
   rating?: number | null
   user_ratings_total?: number | null
+  /** Google Places price level: 0=free, 1=inexpensive, 2=moderate, 3=expensive, 4=very expensive. */
+  price_level?: number | null
   business_status?: string | null
   types?: string[] | null
   provider_id: string

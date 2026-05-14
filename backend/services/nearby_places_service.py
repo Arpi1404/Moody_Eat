@@ -7,8 +7,9 @@ import logging
 import math
 import re
 import time
-from dataclasses import dataclass
+from collections import Counter
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from config import Settings, get_settings
 from models import (
@@ -53,6 +54,59 @@ _CATEGORY_ALIASES = {
 }
 _MIN_RATING = 3.5
 _MIN_USER_RATINGS_TOTAL = 40
+_TYPE_DENYLIST = frozenset(
+    {
+        "travel_agency",
+        "real_estate_agency",
+        "lawyer",
+        "storage",
+        "school",
+        "finance",
+        "insurance_agency",
+        "moving_company",
+    }
+)
+_STORE_FOOD_CULTURE_TYPES = frozenset(
+    {
+        "restaurant",
+        "cafe",
+        "bakery",
+        "bar",
+        "book_store",
+        "art_gallery",
+        "museum",
+    }
+)
+_NAME_DENYLIST_RE = re.compile(
+    r"\b(?:stationery|xerox|wholesale|enterprises|traders|agency|consultancy|pvt\.?\s?ltd)\b|(?<!\w)&\s*sons\b",
+    re.IGNORECASE,
+)
+_BOOK_STORE_NAME_DENYLIST_RE = re.compile(
+    r"\b(?:book|books)\s+"
+    r"(?:gallery|seller|sellers|depot|depo|world|centre|center|stall|"
+    r"mart|point|palace|hub|corner|land|house|stationer|stationers|shop)\b"
+    r"|\bstationers?\b",
+    re.IGNORECASE,
+)
+# A `book_store` that also carries the generic `store` tag is, in India, almost
+# always a stationery / photocopy / generic shop that sells some notebooks.
+# Real bookstores (Crossword, Blossom, Higginbothams) do not co-tag `store`.
+# Require very high consensus to pass: 4.4★ AND 1,000+ reviews.
+_BOOK_STORE_STATIONERY_MIN_RATING = 4.4
+_BOOK_STORE_STATIONERY_MIN_RATINGS_TOTAL = 1000
+_NOISY_TYPE_THRESHOLDS = {
+    "book_store": (4.3, 300),
+    "tourist_attraction": (4.3, 300),
+}
+_FILTER_RULES = (
+    "business_status",
+    "type_denylist",
+    "store_without_food_culture",
+    "book_store_stationery_combo",
+    "name_denylist",
+    "noisy_type_higher_bar",
+    "strict_quality_bar",
+)
 
 
 @dataclass
@@ -146,11 +200,26 @@ class NearbyPlacesService:
                 )
 
         batches = await asyncio.gather(*(_fetch_category(cat) for cat in categories))
-        merged = [place for batch in batches for place in batch]
 
-        unique = dedupe_places(merged)
-        quality = self._quality_filter(unique)
-        scored = attach_distances(resolved.lat, resolved.lng, quality)
+        drop_counts: Counter[str] = Counter()
+        filtered: list[RawPlace] = []
+        for category, batch in zip(categories, batches):
+            filtered.extend(
+                self._quality_filter(
+                    batch,
+                    requested_place_type=category,
+                    drop_counts=drop_counts,
+                )
+            )
+
+        unique = dedupe_places(filtered)
+        self._log_filter_counts(
+            categories=categories,
+            before_count=sum(len(batch) for batch in batches),
+            after_count=len(unique),
+            drop_counts=drop_counts,
+        )
+        scored = attach_distances(resolved.lat, resolved.lng, unique)
         scored.sort(
             key=lambda pair: (
                 -self._intent_match_score(pair[0], inferred_categories),
@@ -172,6 +241,7 @@ class NearbyPlacesService:
                     distance_meters=round(dist_m, 1),
                     rating=raw.rating,
                     user_ratings_total=raw.user_ratings_total,
+                    price_level=raw.price_level,
                     business_status=raw.business_status,
                     types=raw.types,
                     provider_id=raw.provider_id,
@@ -251,19 +321,85 @@ class NearbyPlacesService:
         return rating * math.log1p(ratings_total)
 
     @staticmethod
-    def _quality_filter(places: Iterable[RawPlace]) -> list[RawPlace]:
+    def _log_filter_counts(
+        *,
+        categories: list[str],
+        before_count: int,
+        after_count: int,
+        drop_counts: Counter[str],
+    ) -> None:
+        counts = {rule: int(drop_counts.get(rule, 0)) for rule in _FILTER_RULES}
+        logger.info(
+            "places_filter categories=%s before=%s after=%s drops=%s",
+            ",".join(categories),
+            before_count,
+            after_count,
+            counts,
+        )
+
+    @staticmethod
+    def _quality_filter(
+        places: Iterable[RawPlace],
+        *,
+        requested_place_type: str,
+        drop_counts: Counter[str],
+    ) -> list[RawPlace]:
         strict: list[RawPlace] = []
-        relaxed: list[RawPlace] = []
         for place in places:
             if place.business_status and place.business_status != "OPERATIONAL":
+                drop_counts["business_status"] += 1
                 continue
-            relaxed.append(place)
+
+            place_types = {t.casefold() for t in (place.types or [])}
+            if place_types & _TYPE_DENYLIST:
+                drop_counts["type_denylist"] += 1
+                continue
+
+            if "store" in place_types and not (place_types & _STORE_FOOD_CULTURE_TYPES):
+                drop_counts["store_without_food_culture"] += 1
+                continue
+
             rating = place.rating if place.rating is not None else 0.0
             ratings_total = int(place.user_ratings_total or 0)
-            if rating >= _MIN_RATING and ratings_total >= _MIN_USER_RATINGS_TOTAL:
-                strict.append(place)
-        # If strict keeps enough candidates, prefer it; otherwise fall back.
-        return strict if len(strict) >= 5 else relaxed
+
+            # `book_store` + `store` co-tag is the Indian-stationery-shop tell.
+            # Real bookstores have `book_store` without `store`.
+            if (
+                "book_store" in place_types
+                and "store" in place_types
+                and (
+                    rating < _BOOK_STORE_STATIONERY_MIN_RATING
+                    or ratings_total < _BOOK_STORE_STATIONERY_MIN_RATINGS_TOTAL
+                )
+            ):
+                drop_counts["book_store_stationery_combo"] += 1
+                continue
+
+            if _NAME_DENYLIST_RE.search(place.name):
+                drop_counts["name_denylist"] += 1
+                continue
+
+            if (
+                "book_store" in place_types
+                and _BOOK_STORE_NAME_DENYLIST_RE.search(place.name)
+            ):
+                drop_counts["name_denylist"] += 1
+                continue
+
+            noisy_threshold = _NOISY_TYPE_THRESHOLDS.get(requested_place_type)
+            if noisy_threshold is not None and (
+                rating < noisy_threshold[0]
+                or ratings_total < noisy_threshold[1]
+            ):
+                drop_counts["noisy_type_higher_bar"] += 1
+                continue
+
+            if rating < _MIN_RATING or ratings_total < _MIN_USER_RATINGS_TOTAL:
+                drop_counts["strict_quality_bar"] += 1
+                continue
+
+            strict.append(place)
+        return strict
 
 
 def map_provider_error(exc: PlacesProviderError) -> tuple[int, str]:

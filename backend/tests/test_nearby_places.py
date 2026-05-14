@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -38,12 +40,12 @@ class FakeProvider(PlacesProvider):
         if self.empty_nearby:
             return []
         base = [
-            RawPlace("p_far", "Far Cafe", "Road 1", 0.01, 0.0, 4.0, ["cafe"]),
-            RawPlace("p_near", "Near Cafe", "Road 2", 0.001, 0.0, 4.5, ["cafe"]),
+            RawPlace("p_far", "Far Cafe", "Road 1", 0.01, 0.0, 4.0, ["cafe"], 100, "OPERATIONAL"),
+            RawPlace("p_near", "Near Cafe", "Road 2", 0.001, 0.0, 4.5, ["cafe"], 100, "OPERATIONAL"),
         ]
         if self.duplicate_across_types and place_type == "restaurant":
             return [
-                RawPlace("p_near", "Near Cafe", "Road 2", 0.001, 0.0, 4.5, ["restaurant"]),
+                RawPlace("p_near", "Near Cafe", "Road 2", 0.001, 0.0, 4.5, ["restaurant"], 100, "OPERATIONAL"),
             ]
         return base
 
@@ -83,6 +85,47 @@ def test_nearby_respects_limit(client: TestClient) -> None:
     )
     assert res.status_code == 200
     assert res.json()["count"] == 1
+
+
+def test_nearby_surfaces_price_level() -> None:
+    class PriceProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                RawPlace(
+                    "priced",
+                    "Priced Cafe",
+                    "Road",
+                    0.001,
+                    0.0,
+                    4.5,
+                    ["cafe"],
+                    100,
+                    "OPERATIONAL",
+                    price_level=1,
+                ),
+            ]
+
+    settings = get_settings()
+    provider = PriceProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post("/api/places/nearby", json={"query": "Somewhere", "categories": ["cafe"]})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    assert res.json()["places"][0]["price_level"] == 1
 
 
 def test_nearby_zero_results(client: TestClient) -> None:
@@ -170,8 +213,8 @@ def test_query_intent_prefers_matching_type_when_distances_equal() -> None:
         ) -> list[RawPlace]:
             self.nearby_types.append(place_type)
             return [
-                RawPlace("restaurant_1", "Dinner Point", "Road", 0.001, 0.0, 4.8, ["restaurant"]),
-                RawPlace("cafe_1", "Brewed Awakenings", "Road", 0.001, 0.0, 4.3, ["cafe"]),
+                RawPlace("restaurant_1", "Dinner Point", "Road", 0.001, 0.0, 4.8, ["restaurant"], 100),
+                RawPlace("cafe_1", "Brewed Awakenings", "Road", 0.001, 0.0, 4.3, ["cafe"], 100),
             ]
 
     settings = get_settings()
@@ -226,6 +269,254 @@ def test_quality_filter_drops_unrated_noise_when_strict_pool_exists() -> None:
     assert res.status_code == 200
     names = [p["name"] for p in res.json()["places"]]
     assert "Ravi" not in names
+
+
+def test_quality_filter_does_not_relax_when_strict_pool_is_small() -> None:
+    class SmallStrictProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                RawPlace("weak", "Thin Signal Cafe", "Road", 0.001, 0.0, 4.9, ["cafe"], 8),
+                RawPlace("good", "Known Cafe", "Road", 0.002, 0.0, 4.0, ["cafe"], 40),
+            ]
+
+    settings = get_settings()
+    provider = SmallStrictProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post("/api/places/nearby", json={"query": "cafe in Hyderabad", "categories": ["cafe"]})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    names = [p["name"] for p in res.json()["places"]]
+    assert names == ["Known Cafe"]
+
+
+def test_quality_filter_drops_type_denylist_matches() -> None:
+    class TypeDenylistProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                RawPlace("travel", "Heritage Tours", "Road", 0.001, 0.0, 4.8, ["tourist_attraction", "travel_agency"], 1000),
+                RawPlace("fort", "Real Fort", "Road", 0.002, 0.0, 4.6, ["tourist_attraction"], 1000),
+            ]
+
+    settings = get_settings()
+    provider = TypeDenylistProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post(
+                "/api/places/nearby",
+                json={"query": "attractions in Hyderabad", "categories": ["tourist_attraction"]},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    names = [p["name"] for p in res.json()["places"]]
+    assert names == ["Real Fort"]
+
+
+def test_quality_filter_drops_plain_store_without_food_or_culture_type() -> None:
+    class StoreProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                RawPlace("store", "Generic Store", "Road", 0.001, 0.0, 4.8, ["store"], 500),
+                RawPlace("cafe_store", "Cafe With Shelves", "Road", 0.002, 0.0, 4.4, ["cafe", "store"], 500),
+            ]
+
+    settings = get_settings()
+    provider = StoreProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post("/api/places/nearby", json={"query": "cafes in Hyderabad", "categories": ["cafe"]})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    names = [p["name"] for p in res.json()["places"]]
+    assert names == ["Cafe With Shelves"]
+
+
+def test_quality_filter_drops_name_denylist_matches() -> None:
+    class NameDenylistProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                RawPlace("noise", "Raj Consultancy Cafe", "Road", 0.001, 0.0, 4.8, ["cafe"], 500),
+                RawPlace("good", "Garden Cafe", "Road", 0.002, 0.0, 4.4, ["cafe"], 500),
+            ]
+
+    settings = get_settings()
+    provider = NameDenylistProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post("/api/places/nearby", json={"query": "cafes in Hyderabad", "categories": ["cafe"]})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    names = [p["name"] for p in res.json()["places"]]
+    assert names == ["Garden Cafe"]
+
+
+def test_quality_filter_uses_higher_bar_for_noisy_requested_types() -> None:
+    class NoisyTypeProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                # Below the new 4.3/300 floor — drop.
+                RawPlace("low_rating", "Chapter Two", "Road", 0.001, 0.0, 4.2, ["book_store"], 500),
+                RawPlace("low_reviews", "Page Turner", "Road", 0.002, 0.0, 4.5, ["book_store"], 299),
+                # Clean book_store (no `store` co-tag) clearing the floor — keep.
+                RawPlace("good", "Crossword", "Road", 0.003, 0.0, 4.4, ["book_store"], 500),
+            ]
+
+    settings = get_settings()
+    provider = NoisyTypeProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post("/api/places/nearby", json={"query": "bookstores in Hyderabad", "categories": ["book_store"]})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    names = [p["name"] for p in res.json()["places"]]
+    assert names == ["Crossword"]
+
+
+def test_quality_filter_drops_stationery_disguised_as_bookstore() -> None:
+    """`book_store` + `store` co-tag is the Indian stationery-shop tell.
+
+    Drops the entire family of "Books Gallery / Book World / Book Centre / Book Mart"
+    style places unless they have Crossword-tier consensus (≥4.4★ and ≥1000 reviews).
+    """
+
+    class StationeryDisguiseProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                # Name pattern (Vidya Books Gallery / Book World / Book Centre):
+                # dropped by the book_store name denylist regardless of stats.
+                RawPlace("vidya", "Vidya Books Gallery", "Road", 0.001, 0.0, 4.8, ["book_store", "store"], 5000),
+                RawPlace("book_world", "Book World", "Road", 0.002, 0.0, 4.3, ["book_store", "store"], 279),
+                RawPlace("book_centre", "Book Centre", "Road", 0.003, 0.0, 4.5, ["book_store", "store"], 600),
+                RawPlace("book_mart", "Book Mart", "Road", 0.004, 0.0, 4.6, ["book_store", "store"], 400),
+                # No name pattern but `store` co-tag + sub-Crossword stats: dropped
+                # by the book_store+store combo rule.
+                RawPlace("ok_stats", "Reader's Den", "Road", 0.005, 0.0, 4.4, ["book_store", "store"], 800),
+                # Crossword-tier: `store` co-tag but ≥4.4 AND ≥1000 reviews. Keep.
+                RawPlace("crossword", "Crossword Bookstores", "Road", 0.006, 0.0, 4.4, ["book_store", "store"], 1500),
+                # Clean type tagging, comfortably above the noisy floor. Keep.
+                RawPlace("clean", "Chapter One", "Road", 0.007, 0.0, 4.5, ["book_store"], 700),
+            ]
+
+    settings = get_settings()
+    provider = StationeryDisguiseProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post("/api/places/nearby", json={"query": "bookstores in Hyderabad", "categories": ["book_store"]})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    names = sorted(p["name"] for p in res.json()["places"])
+    assert names == ["Chapter One", "Crossword Bookstores"]
+
+
+def test_quality_filter_logs_rule_counts_without_place_names(caplog: pytest.LogCaptureFixture) -> None:
+    class LoggingProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                RawPlace("noise", "Secret Agency Noise", "Road", 0.001, 0.0, 4.8, ["cafe", "travel_agency"], 500),
+                RawPlace("good", "Quiet Cafe", "Road", 0.002, 0.0, 4.4, ["cafe"], 500),
+            ]
+
+    settings = get_settings()
+    provider = LoggingProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with caplog.at_level(logging.INFO, logger="services.nearby_places_service"):
+            with TestClient(app) as c:
+                res = c.post("/api/places/nearby", json={"query": "cafes in Hyderabad", "categories": ["cafe"]})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    assert "type_denylist': 1" in caplog.text
+    assert "Secret Agency Noise" not in caplog.text
 
 
 def test_curated_quests_return_v1_quest_objects() -> None:
@@ -375,7 +666,7 @@ def test_stop_alternatives_returns_top_three_and_filters_existing_places() -> No
 def test_stop_alternatives_rejects_unmapped_category() -> None:
     payload = _quest_payload()
     payload["stops"][1]["category"] = "attraction"
-    payload["stops"][1]["place"]["types"] = ["tourist_attraction"]
+    payload["stops"][1]["place"]["types"] = ["point_of_interest"]
 
     settings = get_settings()
     svc = NearbyPlacesService(FakeProvider(), settings)

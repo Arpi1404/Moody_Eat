@@ -26,6 +26,7 @@ class RawPlace:
     types: list[str] | None
     user_ratings_total: int | None = None
     business_status: str | None = None
+    price_level: int | None = None
 
 
 @dataclass(frozen=True)
