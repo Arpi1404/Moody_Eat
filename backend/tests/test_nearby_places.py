@@ -317,6 +317,9 @@ def test_quality_filter_drops_type_denylist_matches() -> None:
             self.nearby_types.append(place_type)
             return [
                 RawPlace("travel", "Heritage Tours", "Road", 0.001, 0.0, 4.8, ["tourist_attraction", "travel_agency"], 1000),
+                RawPlace("hotel", "Date Night Hotel", "Road", 0.0015, 0.0, 4.8, ["restaurant", "lodging"], 1000),
+                RawPlace("decor", "Pretty Decor Cafe", "Road", 0.0018, 0.0, 4.8, ["cafe", "home_goods_store"], 1000),
+                RawPlace("takeaway", "Parcel Counter", "Road", 0.0019, 0.0, 4.8, ["restaurant", "meal_takeaway"], 1000),
                 RawPlace("fort", "Real Fort", "Road", 0.002, 0.0, 4.6, ["tourist_attraction"], 1000),
             ]
 
@@ -384,6 +387,7 @@ def test_quality_filter_drops_name_denylist_matches() -> None:
             self.nearby_types.append(place_type)
             return [
                 RawPlace("noise", "Raj Consultancy Cafe", "Road", 0.001, 0.0, 4.8, ["cafe"], 500),
+                RawPlace("phone", "Pushpa Cake Bites (Mob No. 8830314525)", "Road", 0.0015, 0.0, 4.9, ["bakery", "cafe"], 500),
                 RawPlace("good", "Garden Cafe", "Road", 0.002, 0.0, 4.4, ["cafe"], 500),
             ]
 

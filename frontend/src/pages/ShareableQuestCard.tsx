@@ -1,12 +1,7 @@
 import { forwardRef, useEffect, useState } from 'react'
 import { getApiBase } from '../api'
+import { budgetLabel } from '../lib/budget'
 import type { Quest, Stop } from '../types/quest'
-
-const BUDGET_LABELS: Record<string, string> = {
-  cheap: '$ Budget',
-  mid: '$$ Mid',
-  splurge: '$$$ Splurge',
-}
 
 const OCCASION_LABELS: Record<string, string> = {
   date: 'Date night',
@@ -66,8 +61,7 @@ function ShareableStopThumbnail({ stop }: { stop: Stop }) {
 export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
   ({ quest }, ref) => {
     const durationLabel = formatDuration(quest.total_duration_minutes)
-    const costLabel =
-      BUDGET_LABELS[quest.total_cost_estimate] ?? quest.total_cost_estimate
+    const costLabel = budgetLabel(quest.total_cost_estimate)
     const occasionLabel = OCCASION_LABELS[quest.occasion] ?? quest.occasion
 
     return (
@@ -108,7 +102,7 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
             <span className="share-chip">{durationLabel}</span>
             <span className="share-chip">{costLabel}</span>
           </div>
-          <p className="share-footer-text">Plan yours at moodyeat.app</p>
+          <p className="share-footer-text">Plan yours at {window.location.host}</p>
         </footer>
       </div>
     )

@@ -57,12 +57,15 @@ _MIN_USER_RATINGS_TOTAL = 40
 _TYPE_DENYLIST = frozenset(
     {
         "travel_agency",
+        "lodging",
         "real_estate_agency",
         "lawyer",
         "storage",
         "school",
         "finance",
+        "home_goods_store",
         "insurance_agency",
+        "meal_takeaway",
         "moving_company",
     }
 )
@@ -78,7 +81,10 @@ _STORE_FOOD_CULTURE_TYPES = frozenset(
     }
 )
 _NAME_DENYLIST_RE = re.compile(
-    r"\b(?:stationery|xerox|wholesale|enterprises|traders|agency|consultancy|pvt\.?\s?ltd)\b|(?<!\w)&\s*sons\b",
+    r"\b(?:stationery|xerox|wholesale|enterprises|traders|agency|consultancy|pvt\.?\s?ltd)\b"
+    r"|(?<!\w)&\s*sons\b"
+    r"|\(\s*mob[\.\s]"
+    r"|\d{10}",
     re.IGNORECASE,
 )
 _BOOK_STORE_NAME_DENYLIST_RE = re.compile(

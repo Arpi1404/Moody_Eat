@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
-import sys
 from typing import Any
 
 import httpx
 
 from models import PlaceBlurbIn
+
+logger = logging.getLogger(__name__)
 
 
 OPENCODE_URL = "https://opencode.ai/zen/go/v1/chat/completions"
@@ -36,7 +38,7 @@ def _fallback_blurb(place: PlaceBlurbIn, mood: str, budget: str) -> str:
         "Great when you want",
     ][h % 4]
     tail = f"a {mood} outing" if not types_hint else f"a {mood} {types_hint} vibe"
-    return f"{vibe} {tail} — {place.name.split()[0]} matches your {budget} plan."
+    return f"{vibe} {tail} — and it fits your {budget} plan."
 
 
 def _opencode_headers(api_key: str) -> dict[str, str]:
@@ -63,9 +65,6 @@ async def generate_place_blurbs(
         return {}
 
     api_key = os.environ.get("OPENCODE_API_KEY", "").strip()
-    print(f"API key length: {len(api_key)}", file=sys.stderr, flush=True)
-    print(f"API key start: {api_key[:10]}", file=sys.stderr, flush=True)
-    print(f"API key end: {api_key[-10:]}", file=sys.stderr, flush=True)
     if not api_key:
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
@@ -104,16 +103,14 @@ Places:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             res = await client.post(OPENCODE_URL, headers=_opencode_headers(api_key), json=body)
-            print(f"OpenCode status: {res.status_code}", file=sys.stderr, flush=True)
             res.raise_for_status()
             data = res.json()
     except (httpx.HTTPError, ValueError, KeyError) as e:
-        print(f"FALLBACK: HTTP/parse error — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        logger.warning("blurbs_fallback reason=http err_type=%s", type(e).__name__)
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
     try:
         text = _extract_text(data)
-        print(f"OpenCode raw text: {text[:300]!r}", file=sys.stderr, flush=True)
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```\s*$", "", text)
         parsed = json.loads(text)
@@ -125,11 +122,11 @@ Places:
                 out[str(pid)] = line[:200]
         for p in places:
             if p.provider_id not in out:
-                print(f"FALLBACK: missing blurb for provider_id={p.provider_id!r}", file=sys.stderr, flush=True)
+                logger.info("blurbs_fallback reason=missing_blurb")
                 out[p.provider_id] = _fallback_blurb(p, mood, budget)
         return out
     except (json.JSONDecodeError, TypeError, KeyError) as e:
-        print(f"FALLBACK: parse/JSON error — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        logger.warning("blurbs_fallback reason=parse err_type=%s", type(e).__name__)
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
 

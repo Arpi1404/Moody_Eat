@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import math
+import re
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, time
 from typing import NamedTuple
@@ -42,6 +43,33 @@ _DWELL: dict[StopCategory, int] = {
     StopCategory.activity:   60,
     StopCategory.attraction: 30,
     StopCategory.other:      30,
+}
+
+# Longest a stop may be stretched (as a multiple of its default dwell) when the
+# user asks for a longer outing than the stops naturally fill.
+_DWELL_STRETCH_CAP: float = 2.0
+
+# Requests at or above this many hours get a fourth stop, since three stops
+# can't plausibly fill a "6+ hr" outing even at maximum stretch.
+_LONG_QUEST_HOURS: float = 5.5
+
+_LONG_QUEST_EXTRA_STOP: dict[Occasion, TemplateStop] = {
+    Occasion.date: TemplateStop(
+        category=StopCategory.cafe,
+        places_types=("cafe", "bakery"),
+    ),
+    Occasion.friends: TemplateStop(
+        category=StopCategory.activity,
+        places_types=("bowling_alley", "movie_theater", "shopping_mall", "tourist_attraction"),
+    ),
+    Occasion.solo: TemplateStop(
+        category=StopCategory.cafe,
+        places_types=("cafe", "bakery"),
+    ),
+    Occasion.family: TemplateStop(
+        category=StopCategory.activity,
+        places_types=("park", "museum", "tourist_attraction", "shopping_mall"),
+    ),
 }
 
 # ── Quest start time per occasion (hour, minute, 24-h) ───────────────────────
@@ -112,6 +140,31 @@ _RADIUS_TIERS_M: tuple[int, ...] = (3_000, 6_000, 10_000)
 _STRONG_RATING_FLOOR: float = 4.0
 _STRONG_RATINGS_TOTAL_FLOOR: int = 100
 _STRONG_TARGET_COUNT: int = 3
+_VIABILITY_CHECK_LIMIT: int = 8
+
+# ── Mood-specific hard rejects ────────────────────────────────────────────────
+
+_SOCIAL_EVENING_CUTOFF_MIN: int = 17 * 60
+_PLACE_OF_WORSHIP_TYPES = frozenset(
+    {
+        "place_of_worship",
+        "hindu_temple",
+        "mosque",
+        "church",
+        "synagogue",
+    }
+)
+_DATE_NAME_DENYLIST_RE = re.compile(
+    r"\b(?:escape\s+room|mystery\s+escape|lock\s+n\s+escape)\b",
+    re.IGNORECASE,
+)
+_VIABILITY_RULES = (
+    "already_used",
+    "mood_type",
+    "mood_name",
+    "hours_unknown",
+    "hours_closed",
+)
 
 # ── Quest title lookup ────────────────────────────────────────────────────────
 
@@ -137,6 +190,21 @@ _TITLES: dict[Occasion, dict[CostEstimate, str]] = {
         CostEstimate.splurge: "A Family Treat Day",
     },
 }
+
+_COORDS_RE = re.compile(r"^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$")
+
+
+def _quest_title(occasion: Occasion, cost: CostEstimate, location: str) -> str:
+    """Base title plus the area, so two quests in the Saved list stay distinct."""
+    base = _TITLES[occasion][cost]
+    if _COORDS_RE.match(location):
+        return base
+    area = location.split(",")[0].strip()
+    if not area or len(area) > 28:
+        return base
+    if area.islower():
+        area = area.title()
+    return f"{base} in {area}"
 
 
 # ── Haversine ─────────────────────────────────────────────────────────────────
@@ -262,6 +330,17 @@ def _pick(
     return max(pool, key=lambda p: _score(p, cost, prev_lat, prev_lng))
 
 
+def _rank_unused(
+    candidates: list[PlaceItem],
+    cost: CostEstimate,
+    prev_lat: float | None,
+    prev_lng: float | None,
+    used: set[str],
+) -> list[PlaceItem]:
+    pool = [p for p in candidates if p.provider_id not in used]
+    return sorted(pool, key=lambda p: _score(p, cost, prev_lat, prev_lng), reverse=True)
+
+
 # ── why_this_place heuristic ──────────────────────────────────────────────────
 
 def _why(place: PlaceItem, cost: CostEstimate, dist_m: float | None) -> str:
@@ -287,8 +366,8 @@ def _why(place: PlaceItem, cost: CostEstimate, dist_m: float | None) -> str:
         notes.append("keeps the budget comfortable")
     if not notes:
         notes.append("a solid local choice")
-    first_word = place.name.split()[0]
-    return f"{first_word} — {', '.join(notes)}."
+    line = ", ".join(notes)
+    return f"{line[:1].upper()}{line[1:]}."
 
 
 # ── Time scheduling ───────────────────────────────────────────────────────────
@@ -298,10 +377,172 @@ def _add_min(t: time, minutes: int) -> time:
     return time(hour=(total // 60) % 24, minute=total % 60)
 
 
+def _minutes(t: time) -> int:
+    return t.hour * 60 + t.minute
+
+
+def _parse_hhmm(value: str | None) -> int | None:
+    if value is None:
+        return None
+    parts = value.split(":", 1)
+    if len(parts) != 2:
+        return None
+    hour_raw, minute_raw = parts
+    if not (hour_raw.isdigit() and minute_raw.isdigit()):
+        return None
+    hour = int(hour_raw)
+    minute = int(minute_raw)
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        return None
+    return hour * 60 + minute
+
+
+def _slot_fits_hours(place: PlaceItem, start: time, end: time) -> bool:
+    if place.open_24h_today:
+        return True
+
+    opens_at = _parse_hhmm(place.opens_today)
+    closes_at = _parse_hhmm(place.closes_today)
+    if opens_at is None or closes_at is None:
+        return False
+
+    start_min = _minutes(start)
+    end_min = _minutes(end)
+    if end_min <= start_min:
+        end_min += 24 * 60
+
+    if closes_at <= opens_at:
+        closes_at += 24 * 60
+        if start_min < opens_at:
+            start_min += 24 * 60
+            if end_min <= start_min:
+                end_min += 24 * 60
+
+    return opens_at <= start_min and end_min <= closes_at
+
+
+def _mood_reject_rule(
+    place: PlaceItem,
+    occasion: Occasion,
+    start: time,
+) -> str | None:
+    place_types = {t.casefold() for t in (place.types or [])}
+    is_social_evening = (
+        occasion in (Occasion.date, Occasion.friends)
+        and _minutes(start) >= _SOCIAL_EVENING_CUTOFF_MIN
+    )
+    if is_social_evening and place_types & _PLACE_OF_WORSHIP_TYPES:
+        return "mood_type"
+    if occasion == Occasion.date and _DATE_NAME_DENYLIST_RE.search(place.name):
+        return "mood_name"
+    return None
+
+
+def _hours_reject_rule(place: PlaceItem, start: time, end: time) -> str | None:
+    if place.open_24h_today:
+        return None
+    if _parse_hhmm(place.opens_today) is None or _parse_hhmm(place.closes_today) is None:
+        return "hours_unknown"
+    if not _slot_fits_hours(place, start, end):
+        return "hours_closed"
+    return None
+
+
+async def _with_hours(
+    place: PlaceItem,
+    service: NearbyPlacesService,
+    weekday_g: int,
+) -> PlaceItem:
+    try:
+        hours = await service.get_place_hours(place.provider_id, weekday_g)
+    except Exception as exc:
+        logger.warning(
+            "place_hours_lookup_failed err_type=%s",
+            exc.__class__.__name__,
+        )
+        return place
+    return place.model_copy(update={
+        "opens_today": hours.opens_today,
+        "closes_today": hours.closes_today,
+        "open_24h_today": hours.open_24h_today,
+    })
+
+
+async def _pick_viable_candidate(
+    candidates: list[PlaceItem],
+    *,
+    tmpl: TemplateStop,
+    service: NearbyPlacesService,
+    weekday_g: int,
+    occasion: Occasion,
+    cost: CostEstimate,
+    cursor: time,
+    prev_lat: float | None,
+    prev_lng: float | None,
+    used: set[str],
+    requested_place_type: str,
+) -> _CandidatePick | None:
+    ranked = _rank_unused(candidates, cost, prev_lat, prev_lng, used)
+    drop_counts: Counter[str] = Counter()
+    if len(ranked) < len(candidates):
+        drop_counts["already_used"] = len(candidates) - len(ranked)
+
+    for place in ranked[:_VIABILITY_CHECK_LIMIT]:
+        dist_m = (
+            haversine_m(prev_lat, prev_lng, place.lat, place.lng)
+            if prev_lat is not None and prev_lng is not None
+            else None
+        )
+        travel_minutes = _travel_time(dist_m)[0] if dist_m is not None else 0
+        start = _add_min(cursor, travel_minutes)
+        end = _add_min(start, _DWELL.get(tmpl.category, 30))
+
+        mood_rule = _mood_reject_rule(place, occasion, start)
+        if mood_rule is not None:
+            drop_counts[mood_rule] += 1
+            continue
+
+        place_with_hours = await _with_hours(place, service, weekday_g)
+        hours_rule = _hours_reject_rule(place_with_hours, start, end)
+        if hours_rule is not None:
+            drop_counts[hours_rule] += 1
+            continue
+
+        logger.info(
+            "quest_candidate_viability type=%s category=%s checked=%d selected=true drops=%s",
+            requested_place_type,
+            tmpl.category.value,
+            min(len(ranked), _VIABILITY_CHECK_LIMIT),
+            {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
+        )
+        return _CandidatePick(
+            place=place_with_hours,
+            dist_from_prev_m=dist_m,
+            start=start,
+            end=end,
+        )
+
+    logger.info(
+        "quest_candidate_viability type=%s category=%s checked=%d selected=false drops=%s",
+        requested_place_type,
+        tmpl.category.value,
+        min(len(ranked), _VIABILITY_CHECK_LIMIT),
+        {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
+    )
+    return None
+
+
 class _Slot(NamedTuple):
     tmpl: TemplateStop
     place: PlaceItem
     dist_from_prev_m: float | None
+
+
+class _CandidatePick(NamedTuple):
+    place: PlaceItem
+    dist_from_prev_m: float | None
+    start: time
+    end: time
 
 
 def _schedule(
@@ -329,12 +570,19 @@ def _schedule(
     dwell = [_DWELL.get(s.tmpl.category, 30) for s in slots]
     travel_mins = [tp[0] if tp else 0 for tp in travel_pairs]
 
-    # Scale dwell times down proportionally if total busts the budget
+    # Scale dwell times proportionally toward the requested duration: down when
+    # the plan busts the budget, up when the user asked for a longer outing.
+    # Stretching is capped at 2x the default dwell so a stop stays plausible.
     total = sum(dwell) + sum(travel_mins)
     if total > budget_min:
         available = max(budget_min - sum(travel_mins), len(dwell) * 10)
         factor = available / max(sum(dwell), 1)
         dwell = [max(10, round(d * factor)) for d in dwell]
+    elif total < budget_min:
+        available = budget_min - sum(travel_mins)
+        factor = min(available / max(sum(dwell), 1), _DWELL_STRETCH_CAP)
+        if factor > 1.0:
+            dwell = [round(d * factor) for d in dwell]
 
     stops: list[Stop] = []
     for i, slot in enumerate(slots):
@@ -421,14 +669,20 @@ async def assemble_quest(
     req: QuestGenerationRequest,
     service: NearbyPlacesService,
 ) -> Quest:
-    template = TEMPLATES[req.occasion]
+    template = list(TEMPLATES[req.occasion])
+    if req.duration_hours >= _LONG_QUEST_HOURS:
+        template.insert(2, _LONG_QUEST_EXTRA_STOP[req.occasion])
     used_ids: set[str] = set()
     slots: list[_Slot] = []
     prev_lat: float | None = None
     prev_lng: float | None = None
+    sh, sm = _START[req.occasion]
+    cursor = time(hour=sh, minute=sm)
+    # Google's weekday convention: 0=Sunday, 1=Monday, ..., 6=Saturday.
+    weekday_g = (datetime.now().weekday() + 1) % 7
 
     for tmpl in template:
-        place: PlaceItem | None = None
+        picked: _CandidatePick | None = None
         for place_type in tmpl.places_types:
             candidates = await _search_with_expansion(
                 service, req.location, place_type
@@ -440,12 +694,23 @@ async def assemble_quest(
                 )
                 continue
 
-            picked = _pick(candidates, req.cost_estimate, prev_lat, prev_lng, used_ids)
+            picked = await _pick_viable_candidate(
+                candidates,
+                tmpl=tmpl,
+                service=service,
+                weekday_g=weekday_g,
+                occasion=req.occasion,
+                cost=req.cost_estimate,
+                cursor=cursor,
+                prev_lat=prev_lat,
+                prev_lng=prev_lng,
+                used=used_ids,
+                requested_place_type=place_type,
+            )
             if picked is not None:
-                place = picked
                 break
 
-        if place is None:
+        if picked is None:
             logger.info(
                 "All fallback types exhausted for stop category=%s in %r",
                 tmpl.category,
@@ -453,43 +718,21 @@ async def assemble_quest(
             )
             continue
 
-        dist_m = (
-            haversine_m(prev_lat, prev_lng, place.lat, place.lng)
-            if prev_lat is not None else None
-        )
-        slots.append(_Slot(tmpl=tmpl, place=place, dist_from_prev_m=dist_m))
+        place = picked.place
+        slots.append(_Slot(
+            tmpl=tmpl,
+            place=place,
+            dist_from_prev_m=picked.dist_from_prev_m,
+        ))
         used_ids.add(place.provider_id)
         prev_lat, prev_lng = place.lat, place.lng
+        cursor = picked.end
 
     if not slots:
         raise ValueError(
             f"No places could be found for any stop in {req.location!r}. "
             "Check that the location is recognisable and the Places API key is valid."
         )
-
-    # Enrich picked places with today's opening/closing hours (concurrent).
-    # Google's weekday convention: 0=Sunday, 1=Monday, ..., 6=Saturday.
-    weekday_g = (datetime.now().weekday() + 1) % 7
-    hours_results = await asyncio.gather(
-        *(service.get_place_hours(s.place.provider_id, weekday_g) for s in slots),
-        return_exceptions=True,
-    )
-    enriched_slots: list[_Slot] = []
-    for slot, hours in zip(slots, hours_results):
-        if isinstance(hours, BaseException):
-            enriched_slots.append(slot)
-            continue
-        place_with_hours = slot.place.model_copy(update={
-            "opens_today": hours.opens_today,
-            "closes_today": hours.closes_today,
-            "open_24h_today": hours.open_24h_today,
-        })
-        enriched_slots.append(_Slot(
-            tmpl=slot.tmpl,
-            place=place_with_hours,
-            dist_from_prev_m=slot.dist_from_prev_m,
-        ))
-    slots = enriched_slots
 
     stops = _schedule(slots, req.cost_estimate, req.occasion, req.duration_hours)
 
@@ -517,7 +760,7 @@ async def assemble_quest(
     total_duration_minutes = last_min - first_min
 
     return Quest(
-        title=_TITLES[req.occasion][req.cost_estimate],
+        title=_quest_title(req.occasion, req.cost_estimate, req.location),
         occasion=req.occasion,
         stops=stops,
         total_duration_minutes=total_duration_minutes,

@@ -8,28 +8,19 @@ import { useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
 import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
+import { budgetLabel } from '../lib/budget'
+import { makeQuestShareUrl, readQuestFromLocationHash } from '../lib/questShare'
 import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
 import { ShareableQuestCard } from './ShareableQuestCard'
 import '../App.css'
 
-const BUDGET_LABELS: Record<string, string> = {
-  cheap: '$ Budget',
-  mid: '$$ Mid',
-  splurge: '$$$ Splurge',
-}
-
-const SHARE_BASE_URL = 'https://moodyeat.app'
 const ACTIVE_QUEST_KEY = 'moodyeat:active_quest'
 const LEGACY_ACTIVE_QUEST_KEY = 'moodyeat:activeQuest'
 
 interface ActiveQuest extends Quest {
   started_at: string
   completedStopIndexes?: number[]
-}
-
-function makeQuestShareUrl(quest: Quest): string {
-  return `${SHARE_BASE_URL}/quest/${quest.id}`
 }
 
 function makePngFileName(title: string): string {
@@ -41,6 +32,23 @@ function makePngFileName(title: string): string {
     .slice(0, 48)
 
   return `moodyeat-${slug || 'quest'}.png`
+}
+
+const OCCASION_PHRASE: Record<string, string> = {
+  date: 'date',
+  friends: 'friends',
+  solo: 'solo',
+  family: 'family',
+}
+
+function rebuildNarrative(quest: Quest): string {
+  const names = quest.stops.map((stop) => stop.place.name)
+  const occasion = OCCASION_PHRASE[quest.occasion] ?? quest.occasion
+  const intro = `A ${quest.total_cost_estimate} ${occasion} outing`
+  if (names.length === 0) return `${intro}.`
+  if (names.length === 1) return `${intro}, anchored around ${names[0]}.`
+  const mid = names.slice(0, -1).join(', ')
+  return `${intro}: starting at ${mid}, then finishing the night at ${names[names.length - 1]}.`
 }
 
 function makeQuestTextSummary(quest: Quest, url: string): string {
@@ -205,6 +213,16 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
         }
 
         if (!nextQuest) {
+          // Share links embed the full quest in the URL fragment — this is
+          // how a recipient without any local copy can open it.
+          const sharedQuest = await readQuestFromLocationHash()
+          if (sharedQuest && (!id || sharedQuest.id === id)) {
+            nextQuest = sharedQuest
+            localStorage.setItem(`quest_${sharedQuest.id}`, JSON.stringify(sharedQuest))
+          }
+        }
+
+        if (!nextQuest) {
           throw new Error('Quest not found — it may have expired.')
         }
 
@@ -341,6 +359,14 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   const handleQuestChange = (nextQuest: Quest) => {
+    // The narrative names specific stops; after a swap it would keep
+    // describing the replaced place, so rebuild it from the new stop list.
+    const stopsChanged = nextQuest.stops.some(
+      (stop, i) => stop.place.provider_id !== quest.stops[i]?.place.provider_id,
+    )
+    if (stopsChanged && nextQuest.narrative) {
+      nextQuest = { ...nextQuest, narrative: rebuildNarrative(nextQuest) }
+    }
     const titledQuest = { ...nextQuest, title }
     setQuest(titledQuest)
     localStorage.setItem(`quest_${titledQuest.id}`, JSON.stringify(titledQuest))
@@ -356,7 +382,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
 
   const handleCopyShareLink = async () => {
     const titledQuest = { ...quest, title: title.trim() || quest.title }
-    await copyToClipboard(makeQuestShareUrl(titledQuest))
+    await copyToClipboard(await makeQuestShareUrl(titledQuest))
     track('quest_shared', {
       quest_id: titledQuest.id,
       share_method: 'clipboard_fallback',
@@ -369,7 +395,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     if (sharing) return
 
     const titledQuest = { ...quest, title: title.trim() || quest.title }
-    const shareUrl = makeQuestShareUrl(titledQuest)
+    const shareUrl = await makeQuestShareUrl(titledQuest)
     setSharing(true)
     setShowShareCard(true)
 
@@ -505,9 +531,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           />
           <div className="qp-header-chips">
             <span className="qp-chip">{durationLabel}</span>
-            <span className="qp-chip">
-              {BUDGET_LABELS[quest.total_cost_estimate] ?? quest.total_cost_estimate}
-            </span>
+            <span className="qp-chip">{budgetLabel(quest.total_cost_estimate)}</span>
             <span className="qp-chip qp-chip--occasion">{quest.occasion}</span>
           </div>
         </header>

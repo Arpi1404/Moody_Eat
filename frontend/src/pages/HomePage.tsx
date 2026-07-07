@@ -4,6 +4,7 @@ import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
 import type { Quest } from '../types/quest'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
+import { budgetLabel } from '../lib/budget'
 import '../App.css'
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -129,9 +130,7 @@ function formatQuestDuration(minutes: number): string {
 }
 
 function costLabel(cost: Quest['total_cost_estimate']): string {
-  if (cost === 'cheap') return 'Cheap'
-  if (cost === 'splurge') return 'Splurge'
-  return 'Mid'
+  return budgetLabel(cost)
 }
 
 function CuratedQuestImage({ quest }: { quest: Quest }) {
@@ -566,9 +565,6 @@ export function HomePage() {
                         </span>
                         <span className="chip chip--gold">
                           {costLabel(quest.total_cost_estimate)}
-                        </span>
-                        <span className="chip chip--sage">
-                          {quest.stops.length} stops
                         </span>
                       </div>
                       <StopTrail count={quest.stops.length} />

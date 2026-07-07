@@ -6,6 +6,7 @@ import { QuestPage } from './pages/QuestPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { SavedQuestsPage } from './pages/SavedQuestsPage'
 import { JournalPage } from './pages/JournalPage'
+import { PrivacyPage, TermsPage } from './pages/LegalPage'
 import { BottomNav } from './components/BottomNav'
 import { Footer } from './components/Footer'
 import { TopNav } from './components/TopNav'
@@ -50,6 +51,8 @@ function App() {
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/quest/preview/:id" element={<QuestPage preview />} />
         <Route path="/quest/:id" element={<QuestPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/explore" element={<Navigate to="/plan" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

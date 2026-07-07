@@ -4,6 +4,7 @@ import { getApiBase } from '../api'
 import { useSavedQuests, type SavedQuest } from '../hooks/useSavedQuests'
 import { EmptyState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
+import { budgetLabel } from '../lib/budget'
 import '../App.css'
 
 const OCCASION_ICONS: Record<string, string> = {
@@ -30,9 +31,9 @@ function formatTotalDuration(minutes: number | undefined): string | null {
 }
 
 function costLabel(cost: SavedQuest['total_cost_estimate']): string | null {
-  if (cost === 'cheap') return '₹ Light'
-  if (cost === 'splurge') return '₹₹₹ Splurge'
-  if (cost === 'mid') return '₹₹ Easy'
+  if (cost === 'cheap' || cost === 'mid' || cost === 'splurge') {
+    return budgetLabel(cost)
+  }
   return null
 }
 

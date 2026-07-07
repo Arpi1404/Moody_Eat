@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 export function Footer() {
   const year = new Date().getFullYear()
   return (
@@ -7,14 +9,10 @@ export function Footer() {
           © {year} MoodyEat — made with care in Hyderabad.
         </span>
         <nav className="site-footer-links" aria-label="Footer navigation">
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            Privacy
-          </a>
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            Terms
-          </a>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
           <a
-            href="https://www.instagram.com/"
+            href="https://www.instagram.com/moodyeat.app"
             target="_blank"
             rel="noreferrer noopener"
           >
