@@ -10,6 +10,13 @@ const OCCASION_LABELS: Record<string, string> = {
   family: 'Family',
 }
 
+const OCCASION_EMOJI: Record<string, string> = {
+  date: '🕯️',
+  friends: '🥂',
+  solo: '🍵',
+  family: '🧆',
+}
+
 function formatDuration(minutes: number): string {
   const hours = minutes / 60
   return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`
@@ -58,22 +65,38 @@ function ShareableStopThumbnail({ stop }: { stop: Stop }) {
   )
 }
 
+function travelLabel(stop: Stop): string | null {
+  if (stop.travel_to_next_minutes == null) return null
+  const emoji = stop.travel_mode === 'driving' ? '🚗' : '🚶'
+  return `${emoji} ${stop.travel_to_next_minutes} min to the next stop`
+}
+
 export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
   ({ quest }, ref) => {
     const durationLabel = formatDuration(quest.total_duration_minutes)
     const costLabel = budgetLabel(quest.total_cost_estimate)
     const occasionLabel = OCCASION_LABELS[quest.occasion] ?? quest.occasion
+    const occasionEmoji = OCCASION_EMOJI[quest.occasion] ?? '✦'
 
     return (
       <div ref={ref} className="share-card" aria-hidden>
-        <div className="share-card-glow share-card-glow--cyan" />
-        <div className="share-card-glow share-card-glow--violet" />
+        <div className="share-card-wash share-card-wash--top" />
+        <div className="share-card-wash share-card-wash--bottom" />
+        <div className="share-card-frame" />
 
         <header className="share-card-header">
           <p className="share-brand">
-            MoodyEat<span>.</span>
+            <span className="share-brand-mark">
+              <span />
+            </span>
+            <span>
+              Moody<span className="share-brand-accent">Eat</span>
+            </span>
           </p>
-          <span className="share-occasion-badge">{occasionLabel}</span>
+          <span className="share-occasion-badge">
+            <span aria-hidden>{occasionEmoji}</span>
+            {occasionLabel}
+          </span>
         </header>
 
         <section className="share-card-hero">
@@ -86,13 +109,27 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
 
         <ol className="share-stop-list">
           {quest.stops.map((stop, index) => (
-            <li key={`${stop.place.provider_id}-${index}`} className="share-stop">
-              <div className="share-stop-number">{index + 1}</div>
-              <ShareableStopThumbnail stop={stop} />
-              <div className="share-stop-copy">
-                <p className="share-stop-name">{stop.place.name}</p>
-                <p className="share-stop-vibe">{stop.why_this_place}</p>
+            <li key={`${stop.place.provider_id}-${index}`} className="share-stop-block">
+              <div className="share-stop">
+                <div className="share-stop-media">
+                  <ShareableStopThumbnail stop={stop} />
+                  <span className="share-stop-number">{index + 1}</span>
+                </div>
+                <div className="share-stop-copy">
+                  <p className="share-stop-name">{stop.place.name}</p>
+                  <p className="share-stop-vibe">{stop.why_this_place}</p>
+                </div>
               </div>
+              {index < quest.stops.length - 1 && (
+                <div className="share-stop-connector">
+                  <span className="share-stop-connector-line" />
+                  {travelLabel(stop) && (
+                    <span className="share-stop-connector-label">
+                      {travelLabel(stop)}
+                    </span>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ol>
@@ -101,8 +138,9 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
           <div className="share-chip-row">
             <span className="share-chip">{durationLabel}</span>
             <span className="share-chip">{costLabel}</span>
+            <span className="share-chip">{quest.stops.length} stops</span>
           </div>
-          <p className="share-footer-text">Plan yours at {window.location.host}</p>
+          <p className="share-footer-cta">Plan yours at {window.location.host}</p>
         </footer>
       </div>
     )

@@ -408,7 +408,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       await waitForShareCardAssets(node)
 
       const dataUrl = await toPng(node, {
-        backgroundColor: '#0b1120',
+        backgroundColor: '#faf6ef',
         cacheBust: true,
         fontEmbedCSS: '',
         pixelRatio: 1,
