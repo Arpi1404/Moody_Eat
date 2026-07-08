@@ -136,10 +136,10 @@ export function SavedQuestsPage() {
         <LoadingState message="Loading saved quests..." />
       ) : savedQuests.length === 0 ? (
         <EmptyState
-          icon="✨"
-          title="Save your first quest to see it here"
-          description="Generate or open a curated quest, then tap Save to keep it handy."
-          cta={<Link to="/">Plan a quest</Link>}
+          icon="🔖"
+          title="No saved quests yet"
+          description="Tell us the mood and we'll build your night — 2–3 stops, mapped and timed. Tap Save on any quest and it'll wait for you here."
+          cta={<Link to="/">Plan a quest →</Link>}
         />
       ) : (
         <ul className="saved-list">

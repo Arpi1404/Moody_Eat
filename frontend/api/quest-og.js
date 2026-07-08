@@ -1,0 +1,77 @@
+// Serves /quest/* to link-preview crawlers (see vercel.json rewrite) with
+// per-quest og tags. The full quest lives in the URL #fragment, which never
+// reaches the server, so share links carry short ?st= (title) and ?sd=
+// (description) params that this function injects into the static index.html.
+// Humans keep hitting the static SPA directly; only bot user agents land here.
+
+const TITLE_LIMIT = 120
+const DESC_LIMIT = 200
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function setMeta(html, attr, name, value) {
+  // Vite may format meta tags across multiple lines, so allow any whitespace
+  // between attributes.
+  const pattern = new RegExp(`(<meta\\s+${attr}="${name}"\\s+content=")[^"]*(")`)
+  return html.replace(pattern, (_, before, after) => before + value + after)
+}
+
+export function injectQuestTags(html, { title, description, url }) {
+  const safeTitle = escapeHtml(`${title} — MoodyEat`)
+  html = html.replace(/<title>[^<]*<\/title>/, `<title>${safeTitle}</title>`)
+  html = setMeta(html, 'property', 'og:title', safeTitle)
+  html = setMeta(html, 'name', 'twitter:title', safeTitle)
+  if (description) {
+    const safeDesc = escapeHtml(`${description} — tap to see the full plan.`)
+    html = setMeta(html, 'name', 'description', safeDesc)
+    html = setMeta(html, 'property', 'og:description', safeDesc)
+    html = setMeta(html, 'name', 'twitter:description', safeDesc)
+  }
+  if (url) {
+    html = setMeta(html, 'property', 'og:url', escapeHtml(url))
+  }
+  return html
+}
+
+export default async function handler(req, res) {
+  const proto = req.headers['x-forwarded-proto'] ?? 'https'
+  const host = req.headers['x-forwarded-host'] ?? req.headers.host
+  const origin = `${proto}://${host}`
+
+  let html
+  try {
+    const upstream = await fetch(`${origin}/index.html`)
+    if (!upstream.ok) throw new Error(`index.html fetch failed: ${upstream.status}`)
+    html = await upstream.text()
+  } catch {
+    // Never let preview rendering take down the page for a crawler.
+    res.statusCode = 302
+    res.setHeader('Location', '/')
+    res.end()
+    return
+  }
+
+  const url = new URL(req.url, origin)
+  const title = (url.searchParams.get('st') ?? '').trim().slice(0, TITLE_LIMIT)
+  const description = (url.searchParams.get('sd') ?? '').trim().slice(0, DESC_LIMIT)
+
+  if (title) {
+    html = injectQuestTags(html, {
+      title,
+      description,
+      url: origin + url.pathname + url.search,
+    })
+  }
+
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'text/html; charset=utf-8')
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400')
+  res.end(html)
+}

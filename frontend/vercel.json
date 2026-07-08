@@ -4,6 +4,17 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
+    {
+      "source": "/quest/:path*",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(bot|crawler|spider|preview|whatsapp|facebookexternalhit|twitterbot|telegram|slack|discord|linkedin|skype|embed).*"
+        }
+      ],
+      "destination": "/api/quest-og"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

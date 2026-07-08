@@ -71,8 +71,30 @@ export async function readQuestFromLocationHash(): Promise<Quest | null> {
   return decodeQuestFromUrl(hash.slice(FRAGMENT_PREFIX.length))
 }
 
-/** Build a share URL for the quest on the current origin. */
+const OCCASION_SHARE_LABELS: Record<string, string> = {
+  date: 'Date night',
+  friends: 'Friends hangout',
+  solo: 'Solo time',
+  family: 'Family outing',
+}
+
+function shareDescription(quest: Quest): string {
+  const hours = quest.total_duration_minutes / 60
+  const duration = Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`
+  const occasion = OCCASION_SHARE_LABELS[quest.occasion] ?? 'Quest'
+  return `${occasion} · ${quest.stops.length} stops · ${duration}`
+}
+
+/** Build a share URL for the quest on the current origin.
+ *
+ * The full quest travels in the #q= fragment (client-only). The short st/sd
+ * query params exist for link-preview crawlers: fragments never reach the
+ * server, so api/quest-og.js reads these to render per-quest og tags. */
 export async function makeQuestShareUrl(quest: Quest): Promise<string> {
   const payload = await encodeQuestForUrl(quest)
-  return `${window.location.origin}/quest/${quest.id}${FRAGMENT_PREFIX}${payload}`
+  const meta = new URLSearchParams({
+    st: quest.title.slice(0, 90),
+    sd: shareDescription(quest),
+  })
+  return `${window.location.origin}/quest/${quest.id}?${meta}${FRAGMENT_PREFIX}${payload}`
 }

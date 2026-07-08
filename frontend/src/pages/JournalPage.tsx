@@ -246,10 +246,10 @@ export function JournalPage() {
         <LoadingState message="Loading memories..." />
       ) : sortedEntries.length === 0 ? (
         <EmptyState
-          icon="✍️"
-          title="Start a quest to begin building your memories"
-          description="Complete a quest and save a rating to add your first journal entry."
-          cta={<Link to="/">Find a quest</Link>}
+          icon="📔"
+          title="Your nights, remembered"
+          description="Finish a quest and capture how it felt — a mood, a note, photos if you took them. Every completed quest becomes a memory card here."
+          cta={<Link to="/">Start your first quest →</Link>}
         />
       ) : (
         <div className="journal-list">

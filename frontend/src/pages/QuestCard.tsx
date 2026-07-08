@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { fetchStopAlternatives, getApiBase } from '../api'
-import type { Quest, Stop, StopAlternative } from '../types/quest'
+import type { Quest, Stop, StopAlternative, TravelMode } from '../types/quest'
 import { EmptyState } from '../components/states'
 import { track } from '../lib/analytics'
 import { SwapSheet } from './SwapSheet'
@@ -23,6 +23,17 @@ function formatTime(hhmm: string): string {
   return m === 0
     ? `${hour}${ampm}`
     : `${hour}:${String(m).padStart(2, '0')}${ampm}`
+}
+
+function openingHoursText(stop: Stop): string | null {
+  if (stop.place.open_24h_today) return 'Open 24 hrs'
+  const opens = stop.place.opens_today
+  const closes = stop.place.closes_today
+  if (opens && closes)
+    return `Opens ${formatTime(opens)} • Closes ${formatTime(closes)}`
+  if (opens) return `Opens ${formatTime(opens)}`
+  if (closes) return `Closes ${formatTime(closes)}`
+  return null
 }
 
 function toMinutes(hhmm: string): number {
@@ -53,6 +64,36 @@ function questDuration(stops: Stop[]): number {
   )
 }
 
+// Travel model mirrors the backend (quest_generator.py) so recomputed legs
+// after a swap match what the generator would have produced.
+const WALK_M_PER_MIN = 80
+const DRIVE_M_PER_MIN = 350
+const WALK_THRESHOLD_M = 1400
+
+function haversineM(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6_371_000
+  const rad = (d: number) => (d * Math.PI) / 180
+  const dLat = rad(lat2 - lat1)
+  const dLng = rad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(Math.min(1, a)))
+}
+
+function travelLeg(from: Stop, to: Stop): { minutes: number; mode: TravelMode } {
+  const dist = haversineM(from.place.lat, from.place.lng, to.place.lat, to.place.lng)
+  if (dist <= WALK_THRESHOLD_M) {
+    return { minutes: Math.max(1, Math.round(dist / WALK_M_PER_MIN)), mode: 'walking' }
+  }
+  return { minutes: Math.max(1, Math.round(dist / DRIVE_M_PER_MIN)), mode: 'driving' }
+}
+
 function rescheduleWithAlternative(
   quest: Quest,
   stopIndex: number,
@@ -71,32 +112,31 @@ function rescheduleWithAlternative(
     index === stopIndex ? replacement : { ...stop },
   )
 
-  if (stopIndex > 0) {
-    const previous = stops[stopIndex - 1]
-    stops[stopIndex - 1] = {
-      ...previous,
-      travel_to_next_minutes: durationMinutes(
-        previous.time_block_end,
-        replacement.time_block_start,
-      ),
-    }
-  }
-
-  for (let i = stopIndex + 1; i < stops.length; i += 1) {
-    const previous = stops[i - 1]
-    const current = stops[i]
+  // Recompute every leg from geometry: swapping one stop changes the travel
+  // time AND mode of the legs around it, and stale minutes would silently
+  // shift the whole downstream schedule.
+  for (let i = 0; i < stops.length; i += 1) {
     const dwell = durationMinutes(
-      current.time_block_start,
-      current.time_block_end,
+      stops[i].time_block_start,
+      stops[i].time_block_end,
     )
-    const travel = previous.travel_to_next_minutes ?? 0
-    const nextStart = addMinutes(previous.time_block_end, travel)
-    stops[i] = {
-      ...current,
-      time_block_start: nextStart,
-      time_block_end: addMinutes(nextStart, dwell),
+    if (i > 0) {
+      const leg = travelLeg(stops[i - 1], stops[i])
+      stops[i - 1] = {
+        ...stops[i - 1],
+        travel_to_next_minutes: leg.minutes,
+        travel_mode: leg.mode,
+      }
+      const nextStart = addMinutes(stops[i - 1].time_block_end, leg.minutes)
+      stops[i] = {
+        ...stops[i],
+        time_block_start: nextStart,
+        time_block_end: addMinutes(nextStart, dwell),
+      }
     }
   }
+  const last = stops.length - 1
+  stops[last] = { ...stops[last], travel_to_next_minutes: null, travel_mode: null }
 
   return {
     ...quest,
@@ -241,17 +281,14 @@ function StopCard({
             </p>
           )}
           <p className="qp-stop-why">{stop.why_this_place}</p>
-          <span className="qp-stop-time-chip">
-            {stop.place.open_24h_today
-              ? 'Open 24 hrs'
-              : stop.place.opens_today && stop.place.closes_today
-                ? `Opens ${formatTime(stop.place.opens_today)} • Closes ${formatTime(stop.place.closes_today)}`
-                : stop.place.opens_today
-                  ? `Opens ${formatTime(stop.place.opens_today)}`
-                  : stop.place.closes_today
-                    ? `Closes ${formatTime(stop.place.closes_today)}`
-                    : `${formatTime(stop.time_block_start)} - ${formatTime(stop.time_block_end)}`}
-          </span>
+          <div className="qp-stop-meta">
+            <span className="qp-stop-time-chip">
+              {formatTime(stop.time_block_start)} – {formatTime(stop.time_block_end)}
+            </span>
+            {openingHoursText(stop) && (
+              <span className="qp-stop-hours">{openingHoursText(stop)}</span>
+            )}
+          </div>
         </div>
       </div>
       {stop.travel_to_next_minutes != null && (

@@ -2629,9 +2629,20 @@ a.explore-edit-filters {
 }
 
 .qp-stop-check input {
+  /* Cover the full 44px control so the input itself is clickable/focusable
+     (assistive tech and automation target the input, not the label). */
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
-  pointer-events: none;
+  cursor: pointer;
+}
+
+.qp-stop-check:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .qp-stop-check span {
@@ -5362,4 +5373,19 @@ a.explore-edit-filters {
 
 .legal-inner ul {
   padding-left: 20px;
+}
+
+/* ── Stop meta row: planned slot chip + opening hours ───────────────────── */
+
+.qp-stop-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.qp-stop-hours {
+  font-size: 0.78rem;
+  color: var(--text);
+  opacity: 0.75;
 }
