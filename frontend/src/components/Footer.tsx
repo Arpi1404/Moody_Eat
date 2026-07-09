@@ -12,7 +12,7 @@ export function Footer() {
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
           <a
-            href="https://www.instagram.com/moodyeat.app"
+            href="https://www.instagram.com/moody_eat/"
             target="_blank"
             rel="noreferrer noopener"
           >
