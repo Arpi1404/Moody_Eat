@@ -618,7 +618,7 @@ def _quest_payload() -> dict:
     }
 
 
-def test_stop_alternatives_returns_top_three_and_filters_existing_places() -> None:
+def test_stop_alternatives_returns_top_six_and_filters_existing_places() -> None:
     class SwapProvider(FakeProvider):
         async def nearby_by_type(
             self,
@@ -654,7 +654,7 @@ def test_stop_alternatives_returns_top_three_and_filters_existing_places() -> No
 
     assert res.status_code == 200
     body = res.json()
-    assert len(body) == 3
+    assert len(body) == 4
     provider_ids = {stop["place"]["provider_id"] for stop in body}
     assert "orig" not in provider_ids
     assert "next" not in provider_ids

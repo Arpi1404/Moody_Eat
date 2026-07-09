@@ -2895,7 +2895,9 @@ a.explore-edit-filters {
   z-index: 70;
   width: min(600px, 100%);
   max-height: min(calc(100dvh - 12px), 720px);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   overscroll-behavior: contain;
   transform: translateX(-50%);
   box-sizing: border-box;
@@ -2976,6 +2978,13 @@ a.explore-edit-filters {
   flex-direction: column;
   gap: 10px;
   margin-top: 12px;
+  /* Scroll the options with 6 alternatives; the confirm button stays pinned. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px;
+  margin-left: -2px;
+  margin-right: -2px;
 }
 
 .swap-alt-card {
@@ -3098,6 +3107,7 @@ a.explore-edit-filters {
 
 .swap-confirm-btn {
   width: 100%;
+  flex: 0 0 auto;
   margin-top: 20px;
   border-radius: 999px;
   border: 0;
@@ -5455,4 +5465,28 @@ a.explore-edit-filters {
   font-size: 0.78rem;
   color: var(--text);
   opacity: 0.75;
+}
+
+.qp-stop-directions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    border-color 0.14s ease,
+    background 0.14s ease;
+}
+
+.qp-stop-directions:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }

@@ -36,6 +36,14 @@ function openingHoursText(stop: Stop): string | null {
   return null
 }
 
+function directionsUrl(place: Stop['place']): string {
+  const base = 'https://www.google.com/maps/dir/?api=1'
+  if (place.provider_id) {
+    return `${base}&destination=${encodeURIComponent(place.name)}&destination_place_id=${place.provider_id}`
+  }
+  return `${base}&destination=${place.lat},${place.lng}`
+}
+
 function toMinutes(hhmm: string): number {
   const [hStr, mStr] = hhmm.split(':')
   return parseInt(hStr, 10) * 60 + parseInt(mStr, 10)
@@ -288,6 +296,20 @@ function StopCard({
             {openingHoursText(stop) && (
               <span className="qp-stop-hours">{openingHoursText(stop)}</span>
             )}
+            <a
+              className="qp-stop-directions"
+              href={directionsUrl(stop.place)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Directions to ${stop.place.name}`}
+              onClick={() =>
+                track('directions_opened', {
+                  place_id: stop.place.provider_id,
+                })
+              }
+            >
+              <span aria-hidden>🧭</span> Directions
+            </a>
           </div>
         </div>
       </div>

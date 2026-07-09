@@ -165,7 +165,7 @@ async def stop_alternatives(
     )
 
     alternatives: list[StopAlternative] = []
-    for place in candidates[:3]:
+    for place in candidates[:6]:
         candidate_incoming_dist = (
             haversine_m(previous_stop.place.lat, previous_stop.place.lng, place.lat, place.lng)
             if previous_stop is not None
