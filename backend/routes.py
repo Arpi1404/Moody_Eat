@@ -17,6 +17,7 @@ from models import (
     StopAlternative,
     StopSwapDelta,
 )
+from price_inference import CostBand, estimate_cost_band
 from quest_generator import (
     _DWELL,
     _add_min,
@@ -44,6 +45,12 @@ def _stop_category_for_places(stop: Stop) -> str | None:
         if place_type in ALLOWED_NEARBY_TYPES:
             return place_type
     return None
+
+
+def _band_midpoint(band: CostBand | None) -> int | None:
+    if band is None:
+        return None
+    return round((band.min_inr + band.max_inr) / 2)
 
 
 def _minutes_between(start: time, end: time) -> int:
@@ -164,6 +171,8 @@ async def stop_alternatives(
         _travel_time(original_outgoing_dist)[0] if next_stop is not None else 0
     )
 
+    original_cost_mid = _band_midpoint(estimate_cost_band(original.place))
+
     alternatives: list[StopAlternative] = []
     for place in candidates[:6]:
         candidate_incoming_dist = (
@@ -187,6 +196,14 @@ async def stop_alternatives(
         outgoing_pair = _travel_time(candidate_outgoing_dist) if next_stop is not None else None
         candidate_outgoing_minutes = outgoing_pair[0] if outgoing_pair is not None else 0
 
+        candidate_band = estimate_cost_band(place)
+        candidate_cost_mid = _band_midpoint(candidate_band)
+        cost_change = (
+            candidate_cost_mid - original_cost_mid
+            if candidate_cost_mid is not None and original_cost_mid is not None
+            else 0
+        )
+
         alternatives.append(
             StopAlternative(
                 place=place,
@@ -200,8 +217,11 @@ async def stop_alternatives(
                     payload.total_cost_estimate,
                     candidate_incoming_dist if previous_stop is not None else place.distance_meters,
                 ),
+                est_cost_per_person_min_inr=candidate_band.min_inr if candidate_band else None,
+                est_cost_per_person_max_inr=candidate_band.max_inr if candidate_band else None,
+                price_source=candidate_band.source if candidate_band else None,
                 delta=StopSwapDelta(
-                    cost_change=0,
+                    cost_change=cost_change,
                     time_change_minutes=round(
                         (candidate_incoming_minutes + candidate_outgoing_minutes)
                         - (original_incoming_minutes + original_outgoing_minutes)

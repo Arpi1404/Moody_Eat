@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
-import type { Quest } from '../types/quest'
+import type { Quest, QuestGenerationRequest } from '../types/quest'
 import type { JournalEntry } from '../types/journal'
+import { generateQuest } from '../api'
 import { useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
 import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
-import { budgetLabel } from '../lib/budget'
+import { budgetLabel, formatInrEstimate } from '../lib/budget'
 import { makeQuestShareUrl, readQuestFromLocationHash } from '../lib/questShare'
 import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
@@ -160,6 +161,8 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       justCreated?: boolean
       from?: string
       fromLabel?: string
+      /** Present only right after generation — enables "Shuffle". */
+      request?: QuestGenerationRequest
     } | null
   }
   const backTo = state?.from ?? '/'
@@ -184,6 +187,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     onAction?: () => void
   } | null>(null)
   const [createdBanner, setCreatedBanner] = useState(false)
+  const [shuffling, setShuffling] = useState(false)
   const shareCardRef = useRef<HTMLDivElement | null>(null)
   const toastTimer = useRef<number | null>(null)
   const createdBannerTimer = useRef<number | null>(null)
@@ -342,6 +346,10 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const durationLabel = Number.isInteger(durationHours)
     ? `${durationHours}h`
     : `${durationHours.toFixed(1)}h`
+  const totalEstimateLabel = formatInrEstimate(
+    quest.est_total_per_person_min_inr,
+    quest.est_total_per_person_max_inr,
+  )
 
   const handleSave = () => {
     if (savedToCollection) {
@@ -372,6 +380,32 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     localStorage.setItem(`quest_${titledQuest.id}`, JSON.stringify(titledQuest))
     if (isQuestSaved(titledQuest.id)) {
       saveQuest(titledQuest)
+    }
+  }
+
+  const generationRequest = state?.request ?? null
+
+  const handleShuffle = async () => {
+    if (!generationRequest || shuffling) return
+    setShuffling(true)
+    try {
+      const nextQuest = await generateQuest({
+        ...generationRequest,
+        variety_seed: Math.floor(Math.random() * 2 ** 31),
+      })
+      track('quest_reshuffled', {
+        occasion: generationRequest.occasion,
+        budget: generationRequest.cost_estimate,
+      })
+      localStorage.setItem(`quest_${nextQuest.id}`, JSON.stringify(nextQuest))
+      navigate(`/quest/${nextQuest.id}`, {
+        state: { quest: nextQuest, request: generationRequest },
+        replace: true,
+      })
+    } catch {
+      showToast("Couldn't shuffle the plan — try again.")
+    } finally {
+      setShuffling(false)
     }
   }
 
@@ -532,7 +566,23 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           <div className="qp-header-chips">
             <span className="qp-chip">{durationLabel}</span>
             <span className="qp-chip">{budgetLabel(quest.total_cost_estimate)}</span>
+            {totalEstimateLabel && (
+              <span className="qp-chip" title="Estimated spend per person">
+                {totalEstimateLabel}/person
+              </span>
+            )}
             <span className="qp-chip qp-chip--occasion">{quest.occasion}</span>
+            {generationRequest && !preview && (
+              <button
+                type="button"
+                className="qp-chip qp-chip--shuffle"
+                onClick={handleShuffle}
+                disabled={shuffling}
+                title="Get a different mix of stops for the same plan"
+              >
+                {shuffling ? 'Shuffling…' : '🎲 Shuffle stops'}
+              </button>
+            )}
           </div>
         </header>
 

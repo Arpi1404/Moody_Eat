@@ -5,6 +5,7 @@ import { fetchStopAlternatives, getApiBase } from '../api'
 import type { Quest, Stop, StopAlternative, TravelMode } from '../types/quest'
 import { EmptyState } from '../components/states'
 import { track } from '../lib/analytics'
+import { formatInrEstimate } from '../lib/budget'
 import { SwapSheet } from './SwapSheet'
 
 const TRAVEL_EMOJI: Record<string, string> = {
@@ -245,6 +246,10 @@ function StopCard({
   onCheck?: () => void
   readOnly?: boolean
 }) {
+  const priceEstimate = formatInrEstimate(
+    stop.est_cost_per_person_min_inr,
+    stop.est_cost_per_person_max_inr,
+  )
   return (
     <li
       className={`qp-stop-card${previewing ? ' qp-stop-card--preview' : ''}`}
@@ -293,6 +298,14 @@ function StopCard({
             <span className="qp-stop-time-chip">
               {formatTime(stop.time_block_start)} – {formatTime(stop.time_block_end)}
             </span>
+            {priceEstimate && (
+              <span
+                className="qp-stop-price-chip"
+                title="Estimated spend per person"
+              >
+                {priceEstimate}
+              </span>
+            )}
             {openingHoursText(stop) && (
               <span className="qp-stop-hours">{openingHoursText(stop)}</span>
             )}

@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import logging
 import math
+import random
 import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, time
 from typing import NamedTuple
 
+from price_inference import (
+    PRICE_SOURCE_GOOGLE_LEVEL,
+    PRICE_SOURCE_GOOGLE_RANGE,
+    PRICE_SOURCE_HEURISTIC,
+    PRICE_SOURCE_UNKNOWN,
+    estimate_cost_band,
+    price_signal,
+)
 from models import (
     CostEstimate,
     NearbyPlacesRequest,
@@ -109,6 +118,19 @@ _SCORE_WEIGHTS: dict[CostEstimate, dict[str, float]] = {
 
 _UNKNOWN_PRICE_FIT = 0.58
 _UNKNOWN_PRICE_CONFIDENCE = 0.45
+
+# How sure we are the price level is right, by where it came from. Heuristic
+# levels (type/name based) should lose to real Google data on close calls.
+_PRICE_SOURCE_CONFIDENCE: dict[str, float] = {
+    PRICE_SOURCE_GOOGLE_LEVEL: 1.0,
+    PRICE_SOURCE_GOOGLE_RANGE: 0.95,
+    PRICE_SOURCE_HEURISTIC: 0.65,
+}
+
+# Candidates scoring within this margin of the slot's best pick count as
+# near-ties: a variety seed shuffles only within that group, so "regenerate"
+# never trades away real quality.
+_VARIETY_SCORE_EPSILON = 0.045
 
 _PRICE_FIT: dict[CostEstimate, dict[int, float]] = {
     CostEstimate.cheap: {
@@ -256,11 +278,10 @@ def _quality_score(place: PlaceItem) -> tuple[float, float, float, float]:
 
 
 def _price_fit_score(place: PlaceItem, cost: CostEstimate) -> tuple[float, float, str]:
-    if place.price_level is None:
-        return _UNKNOWN_PRICE_FIT, _UNKNOWN_PRICE_CONFIDENCE, "unknown"
-
-    price_level = max(0, min(4, place.price_level))
-    return _PRICE_FIT[cost][price_level], 1.0, "google_price_level"
+    level, source = price_signal(place)
+    if level is None:
+        return _UNKNOWN_PRICE_FIT, _UNKNOWN_PRICE_CONFIDENCE, PRICE_SOURCE_UNKNOWN
+    return _PRICE_FIT[cost][level], _PRICE_SOURCE_CONFIDENCE[source], source
 
 
 def _route_fit_score(
@@ -339,6 +360,28 @@ def _rank_unused(
 ) -> list[PlaceItem]:
     pool = [p for p in candidates if p.provider_id not in used]
     return sorted(pool, key=lambda p: _score(p, cost, prev_lat, prev_lng), reverse=True)
+
+
+def _variety_shuffle(
+    ranked: list[PlaceItem],
+    cost: CostEstimate,
+    prev_lat: float | None,
+    prev_lng: float | None,
+    rng: random.Random,
+) -> list[PlaceItem]:
+    """Shuffle only the leading near-tied group of an already-ranked list."""
+    if len(ranked) < 2:
+        return ranked
+    scores = [_score(p, cost, prev_lat, prev_lng) for p in ranked]
+    cutoff = scores[0] - _VARIETY_SCORE_EPSILON
+    group_end = 1
+    while group_end < len(ranked) and scores[group_end] >= cutoff:
+        group_end += 1
+    if group_end <= 1:
+        return ranked
+    head = ranked[:group_end]
+    rng.shuffle(head)
+    return head + ranked[group_end:]
 
 
 # ── why_this_place heuristic ──────────────────────────────────────────────────
@@ -481,11 +524,15 @@ async def _pick_viable_candidate(
     prev_lng: float | None,
     used: set[str],
     requested_place_type: str,
+    rng: random.Random | None = None,
 ) -> _CandidatePick | None:
     ranked = _rank_unused(candidates, cost, prev_lat, prev_lng, used)
+    if rng is not None:
+        ranked = _variety_shuffle(ranked, cost, prev_lat, prev_lng, rng)
     drop_counts: Counter[str] = Counter()
     if len(ranked) < len(candidates):
         drop_counts["already_used"] = len(candidates) - len(ranked)
+    price_known = sum(1 for p in ranked if price_signal(p).source != PRICE_SOURCE_UNKNOWN)
 
     for place in ranked[:_VIABILITY_CHECK_LIMIT]:
         dist_m = (
@@ -509,10 +556,13 @@ async def _pick_viable_candidate(
             continue
 
         logger.info(
-            "quest_candidate_viability type=%s category=%s checked=%d selected=true drops=%s",
+            "quest_candidate_viability type=%s category=%s checked=%d selected=true "
+            "price_known=%d/%d drops=%s",
             requested_place_type,
             tmpl.category.value,
             min(len(ranked), _VIABILITY_CHECK_LIMIT),
+            price_known,
+            len(ranked),
             {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
         )
         return _CandidatePick(
@@ -523,10 +573,13 @@ async def _pick_viable_candidate(
         )
 
     logger.info(
-        "quest_candidate_viability type=%s category=%s checked=%d selected=false drops=%s",
+        "quest_candidate_viability type=%s category=%s checked=%d selected=false "
+        "price_known=%d/%d drops=%s",
         requested_place_type,
         tmpl.category.value,
         min(len(ranked), _VIABILITY_CHECK_LIMIT),
+        price_known,
+        len(ranked),
         {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
     )
     return None
@@ -591,6 +644,7 @@ def _schedule(
         tp = travel_pairs[i]
         cursor = _add_min(t_end, travel_mins[i])
 
+        band = estimate_cost_band(slot.place)
         stops.append(Stop(
             place=slot.place,
             category=slot.tmpl.category,
@@ -599,6 +653,9 @@ def _schedule(
             travel_to_next_minutes=tp[0] if tp else None,
             travel_mode=tp[1] if tp else None,
             why_this_place=_why(slot.place, cost, slot.dist_from_prev_m),
+            est_cost_per_person_min_inr=band.min_inr if band else None,
+            est_cost_per_person_max_inr=band.max_inr if band else None,
+            price_source=band.source if band else None,
         ))
     return stops
 
@@ -680,6 +737,7 @@ async def assemble_quest(
     cursor = time(hour=sh, minute=sm)
     # Google's weekday convention: 0=Sunday, 1=Monday, ..., 6=Saturday.
     weekday_g = (datetime.now().weekday() + 1) % 7
+    rng = random.Random(req.variety_seed) if req.variety_seed is not None else None
 
     for tmpl in template:
         picked: _CandidatePick | None = None
@@ -706,6 +764,7 @@ async def assemble_quest(
                 prev_lng=prev_lng,
                 used=used_ids,
                 requested_place_type=place_type,
+                rng=rng,
             )
             if picked is not None:
                 break
@@ -736,6 +795,21 @@ async def assemble_quest(
 
     stops = _schedule(slots, req.cost_estimate, req.occasion, req.duration_hours)
 
+    priced = [s for s in stops if s.est_cost_per_person_min_inr is not None]
+    est_total_min = sum(s.est_cost_per_person_min_inr or 0 for s in priced) if priced else None
+    est_total_max = sum(s.est_cost_per_person_max_inr or 0 for s in priced) if priced else None
+
+    source_counts = Counter((s.price_source or PRICE_SOURCE_UNKNOWN) for s in stops)
+    logger.info(
+        "quest_price_profile cost=%s stops=%d sources=%s est_total_pp=%s-%s variety_seed=%s",
+        req.cost_estimate.value,
+        len(stops),
+        dict(source_counts),
+        est_total_min,
+        est_total_max,
+        req.variety_seed,
+    )
+
     stop_summaries = [
         {
             "name": s.place.name,
@@ -765,5 +839,7 @@ async def assemble_quest(
         stops=stops,
         total_duration_minutes=total_duration_minutes,
         total_cost_estimate=req.cost_estimate,
+        est_total_per_person_min_inr=est_total_min,
+        est_total_per_person_max_inr=est_total_max,
         narrative=narrative,
     )

@@ -27,6 +27,10 @@ class RawPlace:
     user_ratings_total: int | None = None
     business_status: str | None = None
     price_level: int | None = None
+    # Per-person price range in INR from Places API (New) `priceRange`.
+    # None when the provider has no range data (or the currency is not INR).
+    price_range_start_inr: int | None = None
+    price_range_end_inr: int | None = None
 
 
 @dataclass(frozen=True)

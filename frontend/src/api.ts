@@ -12,6 +12,8 @@ export async function generateQuest(payload: {
   cost_estimate: string
   people: number
   duration_hours: number
+  /** Shuffles near-tied picks; omit for the deterministic best plan. */
+  variety_seed?: number
 }): Promise<Quest> {
   const res = await fetch(`${getApiBase()}/api/quest/generate`, {
     method: 'POST',
@@ -74,6 +76,9 @@ export type PlaceItem = {
   user_ratings_total?: number | null
   /** Google Places price level: 0=free, 1=inexpensive, 2=moderate, 3=expensive, 4=very expensive. */
   price_level?: number | null
+  /** Per-person price range in INR from Places API (New). null when unknown. */
+  price_range_start_inr?: number | null
+  price_range_end_inr?: number | null
   business_status?: string | null
   types?: string[] | null
   provider_id: string

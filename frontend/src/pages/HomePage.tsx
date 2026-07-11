@@ -372,17 +372,16 @@ export function HomePage() {
       setSubmitSlow(true)
     }, 3000)
 
+    const request = {
+      location: location.trim(),
+      occasion: activeOccasion,
+      cost_estimate: budget,
+      people: PEOPLE_BY_OCCASION[activeOccasion],
+      duration_hours: duration,
+    }
+
     try {
-      const [quest] = await Promise.all([
-        generateQuest({
-          location: location.trim(),
-          occasion: activeOccasion,
-          cost_estimate: budget,
-          people: PEOPLE_BY_OCCASION[activeOccasion],
-          duration_hours: duration,
-        }),
-        wait(200),
-      ])
+      const [quest] = await Promise.all([generateQuest(request), wait(200)])
       track('quest_generated', {
         occasion: activeOccasion,
         budget,
@@ -395,7 +394,7 @@ export function HomePage() {
           : undefined
       localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
       navigate(`/quest/${quest.id}`, {
-        state: { quest, softMessage, justCreated: true },
+        state: { quest, softMessage, justCreated: true, request },
       })
     } catch (err) {
       setSubmitError(

@@ -13,6 +13,12 @@ class Settings(BaseSettings):
 
     google_places_api_key: str = Field(default="", validation_alias="GOOGLE_PLACES_API_KEY")
 
+    # Places API (New) carries priceLevel + priceRange (INR) which the legacy
+    # Nearby Search almost never returns for Indian places. Set to false to
+    # fall back to the legacy endpoint without a deploy (e.g. if the key does
+    # not have "Places API (New)" enabled in the Google Cloud console).
+    use_new_places_api: bool = Field(default=True, validation_alias="PLACES_USE_NEW_API")
+
     default_radius_meters: int = Field(default=3000, ge=100, validation_alias="DEFAULT_RADIUS_METERS")
     max_radius_meters: int = Field(default=10000, ge=100, validation_alias="MAX_RADIUS_METERS")
     max_limit: int = Field(default=20, ge=1, le=20, validation_alias="MAX_LIMIT")

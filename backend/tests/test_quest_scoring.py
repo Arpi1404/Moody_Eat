@@ -1,4 +1,5 @@
 import asyncio
+import random
 from datetime import time
 
 from models import CostEstimate, Occasion, PlaceItem, QuestGenerationRequest
@@ -7,6 +8,7 @@ from quest_generator import (
     _mood_reject_rule,
     _pick,
     _score_breakdown,
+    _variety_shuffle,
     _why,
     assemble_quest,
 )
@@ -21,6 +23,8 @@ def _place(
     rating: float = 4.5,
     reviews: int = 400,
     price_level: int | None = None,
+    range_start: int | None = None,
+    range_end: int | None = None,
     lat: float = 0.0,
     lng: float = 0.0,
     types: list[str] | None = None,
@@ -34,6 +38,8 @@ def _place(
         rating=rating,
         user_ratings_total=reviews,
         price_level=price_level,
+        price_range_start_inr=range_start,
+        price_range_end_inr=range_end,
         types=types or ["restaurant"],
         provider_id=provider_id,
     )
@@ -105,6 +111,61 @@ def test_price_mismatch_can_outweigh_nearby_high_rating_for_cheap_budget() -> No
     )
 
     assert picked == farther_cheap
+
+
+def test_budget_changes_pick_with_only_inr_price_ranges() -> None:
+    """Places API (New) often has priceRange but no priceLevel — budget must still bite."""
+    cheap_eats = _place("cheap_eats", "Everyday Tiffin Room", rating=4.4, reviews=500,
+                        range_start=150, range_end=300)
+    pricey_room = _place("pricey_room", "Tasting Menu Room", rating=4.8, reviews=900,
+                         range_start=1500, range_end=2500)
+    candidates = [cheap_eats, pricey_room]
+
+    assert _pick(candidates, CostEstimate.cheap, None, None, set()) == cheap_eats
+    assert _pick(candidates, CostEstimate.splurge, None, None, set()) == pricey_room
+
+
+def test_budget_changes_pick_with_only_name_heuristics() -> None:
+    """With zero Google price data, the dhaba/lounge name signal still separates tiers."""
+    dhaba = _place("dhaba", "National Highway Dhaba", rating=4.4, reviews=500)
+    lounge = _place("lounge", "Altitude Lounge", rating=4.6, reviews=700)
+    candidates = [dhaba, lounge]
+
+    assert _pick(candidates, CostEstimate.cheap, None, None, set()) == dhaba
+    assert _pick(candidates, CostEstimate.splurge, None, None, set()) == lounge
+
+
+def test_heuristic_price_has_lower_confidence_than_google_data() -> None:
+    google_priced = _place("google", "Known Mid", price_level=2)
+    heuristic = _place("heuristic", "Midtown Pub", types=["pub", "bar"])
+
+    google_score = _score_breakdown(google_priced, CostEstimate.mid, None, None)
+    heuristic_score = _score_breakdown(heuristic, CostEstimate.mid, None, None)
+
+    assert google_score.price_source == "google_price_level"
+    assert heuristic_score.price_source == "heuristic"
+    assert google_score.confidence > heuristic_score.confidence
+
+
+def test_variety_shuffle_is_seeded_and_respects_quality_gaps() -> None:
+    near_ties = [
+        _place(f"tie_{i}", f"Tied Cafe {i}", rating=4.5, reviews=400)
+        for i in range(4)
+    ]
+    clearly_worse = _place("worse", "Weak Cafe", rating=3.6, reviews=45)
+    ranked = near_ties + [clearly_worse]
+
+    shuffled_a = _variety_shuffle(list(ranked), CostEstimate.mid, None, None, random.Random(7))
+    shuffled_b = _variety_shuffle(list(ranked), CostEstimate.mid, None, None, random.Random(7))
+    shuffled_c = _variety_shuffle(list(ranked), CostEstimate.mid, None, None, random.Random(8))
+
+    # Deterministic for a given seed; a different seed may reorder the ties.
+    assert shuffled_a == shuffled_b
+    # The clearly-worse candidate can never be promoted into the tie group.
+    assert shuffled_a[-1] == clearly_worse
+    assert shuffled_c[-1] == clearly_worse
+    # Only the near-tied head is permuted.
+    assert set(p.provider_id for p in shuffled_a[:4]) == {f"tie_{i}" for i in range(4)}
 
 
 def test_why_does_not_prefix_first_word_of_place_name() -> None:
@@ -182,11 +243,20 @@ class QuestViabilityProvider:
     ) -> list[RawPlace]:
         by_type = {
             "restaurant": [
-                RawPlace("closed_rest", "Closed Fancy Room", "Road", 0.001, 0.0, 5.0, ["restaurant"], 1200),
-                RawPlace("open_rest", "Open Date Bistro", "Road", 0.002, 0.0, 4.5, ["restaurant"], 600),
+                RawPlace(
+                    "closed_rest", "Closed Fancy Room", "Road", 0.001, 0.0, 5.0, ["restaurant"], 1200,
+                    price_range_start_inr=400, price_range_end_inr=800,
+                ),
+                RawPlace(
+                    "open_rest", "Open Date Bistro", "Road", 0.002, 0.0, 4.5, ["restaurant"], 600,
+                    price_range_start_inr=400, price_range_end_inr=800,
+                ),
             ],
             "bakery": [
-                RawPlace("bakery", "Late Bakery", "Road", 0.003, 0.0, 4.4, ["bakery"], 600),
+                RawPlace(
+                    "bakery", "Late Bakery", "Road", 0.003, 0.0, 4.4, ["bakery"], 600,
+                    price_range_start_inr=100, price_range_end_inr=200,
+                ),
             ],
             "tourist_attraction": [
                 RawPlace("worship", "ISKCON Temple", "Road", 0.004, 0.0, 4.9, ["tourist_attraction", "place_of_worship"], 2000),
@@ -238,3 +308,33 @@ def test_assemble_quest_skips_closed_and_mood_wrong_candidates(monkeypatch) -> N
     assert "closed_rest" in provider.hours_requested
     assert "worship" not in provider.hours_requested
     assert "escape" not in provider.hours_requested
+
+
+def test_assemble_quest_surfaces_inr_estimates_and_totals(monkeypatch) -> None:
+    async def fake_narrative(**kwargs) -> str:
+        return "A test date quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+    provider = QuestViabilityProvider()
+    service = NearbyPlacesService(provider)
+    req = QuestGenerationRequest(
+        location="Govindpuram",
+        occasion=Occasion.date,
+        cost_estimate=CostEstimate.mid,
+        people=2,
+        duration_hours=3.0,
+    )
+
+    quest = asyncio.run(assemble_quest(req, service))
+
+    bistro, bakery, park = quest.stops
+    assert bistro.est_cost_per_person_min_inr == 400
+    assert bistro.est_cost_per_person_max_inr == 800
+    assert bistro.price_source == "google_price_range"
+    assert bakery.est_cost_per_person_min_inr == 100
+    # The park has no price signal and must not fabricate one.
+    assert park.est_cost_per_person_min_inr is None
+    assert park.price_source is None
+    # Quest totals sum only the priced stops.
+    assert quest.est_total_per_person_min_inr == 500
+    assert quest.est_total_per_person_max_inr == 1000

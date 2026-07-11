@@ -71,6 +71,7 @@ Create `backend/.env` (never commit it — it's in `.gitignore`).
 
 | Variable | Default | Description |
 |---|---|---|
+| `PLACES_USE_NEW_API` | `true` | Use Places API (New) `searchNearby` (returns `priceLevel`/`priceRange` INR data). Set `false` to fall back to legacy Nearby Search, e.g. if the key doesn't have Places API (New) enabled. |
 | `ANTHROPIC_API_KEY` | — | Enables AI-generated place blurbs via Claude. Blurbs are skipped when unset. |
 | `ANTHROPIC_MODEL` | `claude-haiku-4-5-20251001` | Claude model used for blurb generation |
 | `DEFAULT_RADIUS_METERS` | `3000` | Default search radius |
@@ -78,7 +79,7 @@ Create `backend/.env` (never commit it — it's in `.gitignore`).
 | `MAX_LIMIT` | `20` | Max places returned per request |
 | `PLACES_REQUEST_TIMEOUT_SECONDS` | `6.0` | Timeout for Places API calls |
 | `PLACES_PROVIDER_MAX_RETRIES` | `1` | Retry attempts on transient errors |
-| `PLACES_MAX_NEARBY_PAGES` | `1` | Pages of results fetched per category |
+| `PLACES_MAX_NEARBY_PAGES` | `1` | Pages of results fetched per category (legacy API only; the new API returns one page of up to 20) |
 | `PLACES_CATEGORY_CONCURRENCY` | `3` | Parallel category fetches |
 | `PLACES_CACHE_TTL_SECONDS` | `600` | In-memory cache lifetime |
 | `PLACES_RATE_LIMIT_PER_MINUTE` | `60` | Requests/min cap (0 = disabled) |

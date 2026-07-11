@@ -72,9 +72,12 @@ class PlaceItem(BaseModel):
     distance_meters: float
     rating: Optional[float] = None
     user_ratings_total: Optional[int] = None
-    # Google legacy Places price_level: 0=free, 1=inexpensive, 2=moderate,
+    # Google Places price_level: 0=free, 1=inexpensive, 2=moderate,
     # 3=expensive, 4=very expensive. None means unknown/unavailable.
     price_level: Optional[int] = Field(default=None, ge=0, le=4)
+    # Per-person price range in INR from Places API (New). None when unknown.
+    price_range_start_inr: Optional[int] = Field(default=None, ge=0)
+    price_range_end_inr: Optional[int] = Field(default=None, ge=0)
     business_status: Optional[str] = None
     types: Optional[list[str]] = None
     provider_id: str
@@ -150,6 +153,12 @@ class Stop(BaseModel):
     travel_to_next_minutes: Optional[int] = None
     travel_mode: Optional[TravelMode] = None
     why_this_place: str
+    # Estimated per-person spend at this stop in INR. None when no price signal
+    # exists (e.g. parks, attractions). Where the estimate comes from is in
+    # price_source: google_price_range | google_price_level | heuristic.
+    est_cost_per_person_min_inr: Optional[int] = None
+    est_cost_per_person_max_inr: Optional[int] = None
+    price_source: Optional[str] = None
 
 
 class StopSwapDelta(BaseModel):
@@ -169,6 +178,10 @@ class Quest(BaseModel):
     stops: list[Stop]
     total_duration_minutes: int
     total_cost_estimate: CostEstimate
+    # Sum of per-stop estimates (stops without a price signal contribute 0).
+    # None when no stop had any price signal.
+    est_total_per_person_min_inr: Optional[int] = None
+    est_total_per_person_max_inr: Optional[int] = None
     narrative: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -179,3 +192,6 @@ class QuestGenerationRequest(BaseModel):
     cost_estimate: CostEstimate
     people: int = Field(default=2, ge=1, le=20)
     duration_hours: float = Field(default=3.0, ge=1.0, le=8.0)
+    # When set, near-tied top candidates per stop are shuffled with this seed
+    # ("regenerate" support). None keeps selection fully deterministic.
+    variety_seed: Optional[int] = Field(default=None, ge=0, le=2**31 - 1)

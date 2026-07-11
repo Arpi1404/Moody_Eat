@@ -248,6 +248,8 @@ class NearbyPlacesService:
                     rating=raw.rating,
                     user_ratings_total=raw.user_ratings_total,
                     price_level=raw.price_level,
+                    price_range_start_inr=raw.price_range_start_inr,
+                    price_range_end_inr=raw.price_range_end_inr,
                     business_status=raw.business_status,
                     types=raw.types,
                     provider_id=raw.provider_id,

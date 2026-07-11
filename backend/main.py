@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import FastAPI
@@ -5,6 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from rate_limit import NearbyPlacesRateLimitMiddleware
 from routes import router as quest_router
+
+# Uvicorn only configures its own loggers; without this, the app's telemetry
+# (places_filter, quest_candidate_viability, quest_price_profile) is dropped.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 
 app = FastAPI(title="Travel Planner API")
 

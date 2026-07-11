@@ -2539,6 +2539,25 @@ a.explore-edit-filters {
   background: rgba(199, 82, 42, 0.18);
 }
 
+.qp-chip--shuffle {
+  cursor: pointer;
+  font-weight: 600;
+  font-family: inherit;
+  border-color: rgba(199, 82, 42, 0.4);
+  color: var(--accent);
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.qp-chip--shuffle:hover:not(:disabled) {
+  background: rgba(199, 82, 42, 0.1);
+}
+
+.qp-chip--shuffle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* Narrative */
 
 .qp-narrative {
@@ -2841,6 +2860,19 @@ a.explore-edit-filters {
   background: rgba(199, 82, 42, 0.1);
   border: 1px solid rgba(199, 82, 42, 0.3);
   color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.qp-stop-price-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.08);
+  border: 1px solid rgba(46, 125, 50, 0.28);
+  color: #2e7d32;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
