@@ -67,21 +67,10 @@ const BUDGET_OPTIONS = [
 
 type Budget = (typeof BUDGET_OPTIONS)[number]['value']
 
-const DURATION_OPTIONS = [
-  { value: 2, label: 'Less than 2 hr' },
-  { value: 4, label: 'Around 4 hr' },
-  { value: 7, label: '6+ hr' },
-] as const
-
-type DurationHours = (typeof DURATION_OPTIONS)[number]['value']
-
-const STOP_COUNT_OPTIONS = [
-  { value: 2, label: '2 stops' },
-  { value: 3, label: '3 stops' },
-  { value: 4, label: '4 stops' },
-] as const
-
-type StopCount = (typeof STOP_COUNT_OPTIONS)[number]['value']
+// Stops are the honest size question ("how big an evening?"); duration is an
+// output of the plan, not an input. 1 = "just pick me one good place".
+const MIN_STOPS = 1
+const MAX_STOPS = 4
 
 const DAY_PART_OPTIONS = [
   { value: 'morning', label: 'Morning', hint: '~10am' },
@@ -229,8 +218,7 @@ export function HomePage() {
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [budget, setBudget] = useState<Budget>('mid')
-  const [duration, setDuration] = useState<DurationHours>(4)
-  const [stopCount, setStopCount] = useState<StopCount>(3)
+  const [stopCount, setStopCount] = useState(3)
   // null = follow the occasion's default start time
   const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -407,7 +395,6 @@ export function HomePage() {
       occasion: activeOccasion,
       cost_estimate: budget,
       people: PEOPLE_BY_OCCASION[activeOccasion],
-      duration_hours: duration,
       stop_count: stopCount,
       day_part: dayPart,
     }
@@ -417,14 +404,15 @@ export function HomePage() {
       track('quest_generated', {
         occasion: activeOccasion,
         budget,
-        duration,
         day_part: dayPart,
         stops_requested: stopCount,
         stop_count: quest.stops.length,
       })
+      // Only flag a shortfall against what the user actually asked for — a
+      // 1- or 2-stop quest is a deliberate choice now, not a failure.
       const softMessage =
-        quest.stops.length > 0 && quest.stops.length < 3
-          ? `Found ${quest.stops.length} great stop${quest.stops.length === 1 ? '' : 's'} — couldn't find a good third in this area.`
+        quest.stops.length > 0 && quest.stops.length < stopCount
+          ? `Found ${quest.stops.length} great stop${quest.stops.length === 1 ? '' : 's'} — couldn't fill all ${stopCount} in this area.`
           : undefined
       localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
       navigate(`/quest/${quest.id}`, {
@@ -755,44 +743,31 @@ export function HomePage() {
                 </div>
               </div>
 
-              {/* Duration */}
-              <div>
-                <span className="sheet-field-label">How long?</span>
-                <div className="sheet-pill-row" role="group" aria-label="Duration">
-                  {DURATION_OPTIONS.map((d) => (
-                    <button
-                      key={d.value}
-                      type="button"
-                      className={`sheet-pill${duration === d.value ? ' sheet-pill--active' : ''}`}
-                      aria-pressed={duration === d.value}
-                      onClick={() => {
-                        setDuration(d.value)
-                        // A 6+ hr outing can't plausibly fill with 3 stops;
-                        // nudge to 4 (still user-overridable below).
-                        if (d.value >= 6) setStopCount(4)
-                      }}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Stop count */}
               <div>
                 <span className="sheet-field-label">How many stops?</span>
-                <div className="sheet-pill-row" role="group" aria-label="Number of stops">
-                  {STOP_COUNT_OPTIONS.map((s) => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      className={`sheet-pill${stopCount === s.value ? ' sheet-pill--active' : ''}`}
-                      aria-pressed={stopCount === s.value}
-                      onClick={() => setStopCount(s.value)}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+                <div className="sheet-stepper" role="group" aria-label="Number of stops">
+                  <button
+                    type="button"
+                    className="sheet-stepper-btn"
+                    aria-label="Fewer stops"
+                    disabled={stopCount <= MIN_STOPS}
+                    onClick={() => setStopCount((c) => Math.max(MIN_STOPS, c - 1))}
+                  >
+                    −
+                  </button>
+                  <span className="sheet-stepper-value" aria-live="polite">
+                    {stopCount} {stopCount === 1 ? 'stop' : 'stops'}
+                  </span>
+                  <button
+                    type="button"
+                    className="sheet-stepper-btn"
+                    aria-label="More stops"
+                    disabled={stopCount >= MAX_STOPS}
+                    onClick={() => setStopCount((c) => Math.min(MAX_STOPS, c + 1))}
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 

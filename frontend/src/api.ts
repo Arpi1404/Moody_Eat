@@ -11,10 +11,11 @@ export async function generateQuest(payload: {
   occasion: string
   cost_estimate: string
   people: number
-  duration_hours: number
+  /** Legacy dwell-scaling knob; omit so stops keep their natural pace. */
+  duration_hours?: number
   /** Shuffles near-tied picks; omit for the deterministic best plan. */
   variety_seed?: number
-  /** 2–4 stops; omit for the occasion default. */
+  /** 1–4 stops; omit for the occasion default. */
   stop_count?: number
   /** When the outing starts; omit for the occasion's default start time. */
   day_part?: string

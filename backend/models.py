@@ -198,13 +198,16 @@ class QuestGenerationRequest(BaseModel):
     occasion: Occasion
     cost_estimate: CostEstimate
     people: int = Field(default=2, ge=1, le=20)
-    duration_hours: float = Field(default=3.0, ge=1.0, le=8.0)
+    # Legacy knob: when set, stop dwell times are scaled toward this many
+    # hours. None (the default) keeps each stop's natural dwell — the plan is
+    # as long as it honestly needs to be.
+    duration_hours: Optional[float] = Field(default=None, ge=1.0, le=8.0)
     # When set, near-tied top candidates per stop are shuffled with this seed
     # ("regenerate" support). None keeps selection fully deterministic.
     variety_seed: Optional[int] = Field(default=None, ge=0, le=2**31 - 1)
-    # Requested number of stops. None keeps the occasion default (3, with a
-    # 4th auto-added for long outings).
-    stop_count: Optional[int] = Field(default=None, ge=2, le=4)
+    # Requested number of stops (1 = "just pick me one good place"). None
+    # keeps the occasion default of 3.
+    stop_count: Optional[int] = Field(default=None, ge=1, le=4)
     # When the outing starts. None keeps the occasion's default start time.
     # Opening-hours viability is checked against this, so a night quest will
     # never include a park that closes at sunset.

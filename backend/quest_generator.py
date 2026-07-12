@@ -635,9 +635,8 @@ def _schedule(
     slots: list[_Slot],
     cost: CostEstimate,
     start: tuple[int, int],
-    duration_hours: float,
+    duration_hours: float | None,
 ) -> list[Stop]:
-    budget_min = int(duration_hours * 60)
     sh, sm = start
     cursor = time(hour=sh, minute=sm)
 
@@ -656,19 +655,22 @@ def _schedule(
     dwell = [_DWELL.get(s.tmpl.category, 30) for s in slots]
     travel_mins = [tp[0] if tp else 0 for tp in travel_pairs]
 
-    # Scale dwell times proportionally toward the requested duration: down when
-    # the plan busts the budget, up when the user asked for a longer outing.
-    # Stretching is capped at 2x the default dwell so a stop stays plausible.
-    total = sum(dwell) + sum(travel_mins)
-    if total > budget_min:
-        available = max(budget_min - sum(travel_mins), len(dwell) * 10)
-        factor = available / max(sum(dwell), 1)
-        dwell = [max(10, round(d * factor)) for d in dwell]
-    elif total < budget_min:
-        available = budget_min - sum(travel_mins)
-        factor = min(available / max(sum(dwell), 1), _DWELL_STRETCH_CAP)
-        if factor > 1.0:
-            dwell = [round(d * factor) for d in dwell]
+    # Legacy path: when an explicit duration was requested, scale dwell times
+    # proportionally toward it (stretching capped at 2x so a stop stays
+    # plausible). Without one, each stop keeps its natural dwell and the total
+    # duration is an output of the plan, not a promise.
+    if duration_hours is not None:
+        budget_min = int(duration_hours * 60)
+        total = sum(dwell) + sum(travel_mins)
+        if total > budget_min:
+            available = max(budget_min - sum(travel_mins), len(dwell) * 10)
+            factor = available / max(sum(dwell), 1)
+            dwell = [max(10, round(d * factor)) for d in dwell]
+        elif total < budget_min:
+            available = budget_min - sum(travel_mins)
+            factor = min(available / max(sum(dwell), 1), _DWELL_STRETCH_CAP)
+            if factor > 1.0:
+                dwell = [round(d * factor) for d in dwell]
 
     stops: list[Stop] = []
     for i, slot in enumerate(slots):
@@ -761,13 +763,13 @@ async def assemble_quest(
 ) -> Quest:
     template = list(TEMPLATES[req.occasion])
     if req.stop_count is not None:
-        # Explicit choice wins. 2 keeps the occasion's core pair; 4 adds the
-        # same extra stop long quests get.
-        if req.stop_count == 2:
-            template = template[:2]
+        # Explicit choice wins. 1-2 keeps the occasion's anchor stop(s);
+        # 4 adds the same extra stop long quests get.
+        if req.stop_count <= 2:
+            template = template[:req.stop_count]
         elif req.stop_count == 4:
             template.insert(2, _LONG_QUEST_EXTRA_STOP[req.occasion])
-    elif req.duration_hours >= _LONG_QUEST_HOURS:
+    elif req.duration_hours is not None and req.duration_hours >= _LONG_QUEST_HOURS:
         template.insert(2, _LONG_QUEST_EXTRA_STOP[req.occasion])
     used_ids: set[str] = set()
     slots: list[_Slot] = []

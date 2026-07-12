@@ -206,7 +206,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       try {
         await wait(200)
         let nextQuest: Quest | null = null
-        let softMessage = state?.softMessage ?? null
+        const softMessage = state?.softMessage ?? null
 
         if (state?.quest) {
           nextQuest = state.quest
@@ -231,9 +231,9 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           throw new Error('Quest not found — it may have expired.')
         }
 
-        if (!softMessage && nextQuest.stops.length > 0 && nextQuest.stops.length < 3) {
-          softMessage = `Found ${nextQuest.stops.length} great stop${nextQuest.stops.length === 1 ? '' : 's'} — couldn't find a good third in this area.`
-        }
+        // No derived shortfall guess here: with the stops stepper, a 1- or
+        // 2-stop quest is a deliberate choice. Only the generator flow (which
+        // knows what was requested) passes a softMessage.
 
         if (!cancelled) {
           setQuest(nextQuest)

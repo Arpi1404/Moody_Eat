@@ -484,17 +484,43 @@ def test_stop_count_selector_trims_and_extends_template(monkeypatch) -> None:
                 occasion=Occasion.date,
                 cost_estimate=CostEstimate.mid,
                 people=2,
-                duration_hours=3.0,
                 stop_count=stop_count,
             ),
             service,
         ))
 
+    assert len(_quest(1).stops) == 1
     assert len(_quest(2).stops) == 2
     assert len(_quest(None).stops) == 3
     assert len(_quest(4).stops) == 4
-    # 2 stops keeps the occasion's core pair (dinner + dessert for a date).
+    # 1 stop is the occasion's anchor; 2 keeps the core pair (dinner + dessert).
+    assert [s.place.name for s in _quest(1).stops] == ["Dinner Spot"]
     assert [s.place.name for s in _quest(2).stops] == ["Dinner Spot", "Dessert Spot"]
+
+
+def test_natural_dwell_when_no_duration_requested(monkeypatch) -> None:
+    """Without duration_hours, stops keep category dwell (no stretching)."""
+    async def fake_narrative(**kwargs) -> str:
+        return "A test quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+    service = NearbyPlacesService(StopCountProvider())
+    quest = asyncio.run(assemble_quest(
+        QuestGenerationRequest(
+            location="Govindpuram",
+            occasion=Occasion.date,
+            cost_estimate=CostEstimate.mid,
+            people=2,
+            stop_count=2,
+        ),
+        service,
+    ))
+
+    first = quest.stops[0]
+    start_min = first.time_block_start.hour * 60 + first.time_block_start.minute
+    end_min = first.time_block_end.hour * 60 + first.time_block_end.minute
+    # Restaurant dwell default is 60 minutes — untouched by any scaling.
+    assert end_min - start_min == 60
 
 
 def test_assemble_quest_surfaces_inr_estimates_and_totals(monkeypatch) -> None:

@@ -2263,6 +2263,48 @@ a.explore-edit-filters {
   gap: 8px;
 }
 
+/* Stops stepper (− n +) */
+
+.sheet-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sheet-stepper-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    background 0.14s ease;
+}
+
+.sheet-stepper-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(199, 82, 42, 0.08);
+}
+
+.sheet-stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.sheet-stepper-value {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .sheet-pill {
   flex: 1;
   border-radius: 12px;
