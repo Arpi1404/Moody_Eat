@@ -113,6 +113,8 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
     const occasionClass = OCCASION_LABELS[quest.occasion]
       ? ` share-card--${quest.occasion}`
       : ''
+    // Long quests get a 4th stop; tighten the layout so it still fits.
+    const denseClass = quest.stops.length >= 4 ? ' share-card--dense' : ''
     const budget =
       formatInrEstimate(
         quest.est_total_per_person_min_inr,
@@ -120,7 +122,7 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
       ) ?? budgetLabel(quest.total_cost_estimate)
 
     return (
-      <div ref={ref} className={`share-card${occasionClass}`} aria-hidden>
+      <div ref={ref} className={`share-card${occasionClass}${denseClass}`} aria-hidden>
         <div className="share-glow share-glow--ember" />
         <div className="share-glow share-glow--amber" />
         <div className="share-grain" />

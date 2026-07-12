@@ -88,7 +88,21 @@ export function ShareCardDevPreview() {
   const cardRef = useRef<HTMLDivElement | null>(null)
   const [pngUrl, setPngUrl] = useState<string | null>(null)
   const [occasion, setOccasion] = useState<Occasion>('date')
-  const quest = { ...SAMPLE_QUEST, occasion }
+  const [fourStops, setFourStops] = useState(false)
+  const stops = fourStops
+    ? [
+        ...SAMPLE_QUEST.stops.slice(0, -1),
+        {
+          ...SAMPLE_QUEST.stops[0],
+          place: { ...SAMPLE_QUEST.stops[0].place, name: 'Conçu Dessert Bar' },
+          category: 'cafe' as const,
+          time_block_start: '20:00',
+          why_this_place: 'A sweet detour before the nightcap.',
+        },
+        SAMPLE_QUEST.stops[SAMPLE_QUEST.stops.length - 1],
+      ]
+    : SAMPLE_QUEST.stops
+  const quest = { ...SAMPLE_QUEST, occasion, stops }
 
   const capture = async () => {
     const node = cardRef.current
@@ -146,6 +160,12 @@ export function ShareCardDevPreview() {
             {o}
           </button>
         ))}
+        <button
+          onClick={() => setFourStops((v) => !v)}
+          style={{ padding: '8px 14px', fontSize: 14 }}
+        >
+          {fourStops ? '4 stops' : '3 stops'}
+        </button>
         <button onClick={capture} style={{ padding: '10px 16px', fontSize: 14 }}>
           Capture PNG
         </button>

@@ -3745,6 +3745,42 @@ a.explore-edit-filters {
   --share-glow-b: 217, 93, 46;
 }
 
+/* Dense layout for 4+ stop quests (long-duration plans get a 4th stop). */
+.share-card--dense {
+  gap: 32px;
+}
+
+.share-card--dense .share-title {
+  font-size: 76px;
+}
+
+.share-card--dense .share-narrative {
+  -webkit-line-clamp: 2;
+}
+
+.share-card--dense .share-stop-name {
+  font-size: 40px;
+}
+
+.share-card--dense .share-stop-vibe {
+  -webkit-line-clamp: 1;
+}
+
+.share-card--dense .share-stop-thumb {
+  flex-basis: 140px;
+  width: 140px;
+  height: 140px;
+}
+
+.share-card--dense .share-leg-body {
+  padding-bottom: 22px;
+  gap: 12px;
+}
+
+.share-card--dense .share-stats {
+  padding: 22px 52px;
+}
+
 .share-glow {
   position: absolute;
   border-radius: 999px;
