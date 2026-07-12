@@ -11,6 +11,7 @@ import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
 import { makeQuestShareUrl, readQuestFromLocationHash } from '../lib/questShare'
+import { shareCardFontEmbedCss } from '../lib/shareFonts'
 import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
 import { ShareableQuestCard } from './ShareableQuestCard'
@@ -460,10 +461,12 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
 
       await waitForShareCardAssets(node)
 
+      // Fall back to '' (system serif) rather than failing the whole export.
+      const fontEmbedCSS = await shareCardFontEmbedCss().catch(() => '')
       const dataUrl = await toPng(node, {
-        backgroundColor: '#faf6ef',
+        backgroundColor: '#1c1310',
         cacheBust: true,
-        fontEmbedCSS: '',
+        fontEmbedCSS,
         pixelRatio: 1,
         skipFonts: true,
         width: 1080,

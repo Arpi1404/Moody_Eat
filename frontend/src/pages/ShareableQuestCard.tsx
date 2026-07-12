@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useState } from 'react'
 import { getApiBase } from '../api'
-import { budgetLabel } from '../lib/budget'
-import type { Quest, Stop } from '../types/quest'
+import { budgetLabel, formatInrEstimate } from '../lib/budget'
+import type { Quest, Stop, StopCategory } from '../types/quest'
 
 const OCCASION_LABELS: Record<string, string> = {
   date: 'Date night',
@@ -17,17 +17,43 @@ const OCCASION_EMOJI: Record<string, string> = {
   family: '🧆',
 }
 
-function formatDuration(minutes: number): string {
-  const hours = minutes / 60
-  return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`
+const CATEGORY_LABELS: Record<StopCategory, string> = {
+  cafe: 'Café',
+  restaurant: 'Restaurant',
+  bar: 'Bar',
+  activity: 'Activity',
+  attraction: 'Attraction',
+  other: 'Spot',
 }
 
-function getInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  return words
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('')
+const CATEGORY_EMOJI: Record<StopCategory, string> = {
+  cafe: '☕',
+  restaurant: '🍽️',
+  bar: '🍸',
+  activity: '🎯',
+  attraction: '🌆',
+  other: '📍',
+}
+
+function formatDuration(minutes: number): string {
+  const hours = minutes / 60
+  return Number.isInteger(hours) ? `${hours} hrs` : `${hours.toFixed(1)} hrs`
+}
+
+/** "17:30" → "5:30 PM"; returns null when the value isn't HH:MM. */
+function formatClock(hhmm: string): string | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm)
+  if (!match) return null
+  const hours = Number(match[1])
+  const minutes = match[2]
+  const suffix = hours >= 12 ? 'PM' : 'AM'
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12
+  return `${hour12}:${minutes} ${suffix}`
+}
+
+/** Public host for the CTA, without a leading www. */
+function displayHost(): string {
+  return window.location.host.replace(/^www\./, '')
 }
 
 function ShareableStopThumbnail({ stop }: { stop: Stop }) {
@@ -47,7 +73,7 @@ function ShareableStopThumbnail({ stop }: { stop: Stop }) {
   if (!photoUrl || status === 'error') {
     return (
       <div className="share-stop-thumb share-stop-thumb--placeholder">
-        <span>{getInitials(stop.place.name) || 'ME'}</span>
+        <span aria-hidden>{CATEGORY_EMOJI[stop.category] ?? '📍'}</span>
       </div>
     )
   }
@@ -65,26 +91,44 @@ function ShareableStopThumbnail({ stop }: { stop: Stop }) {
   )
 }
 
+function stopMeta(stop: Stop): string {
+  const parts: string[] = [CATEGORY_LABELS[stop.category] ?? 'Spot']
+  if (stop.place.rating != null) parts.push(`★ ${stop.place.rating.toFixed(1)}`)
+  return parts.join('  ·  ')
+}
+
 function travelLabel(stop: Stop): string | null {
   if (stop.travel_to_next_minutes == null) return null
   const emoji = stop.travel_mode === 'driving' ? '🚗' : '🚶'
-  return `${emoji} ${stop.travel_to_next_minutes} min to the next stop`
+  const verb = stop.travel_mode === 'driving' ? 'drive' : 'walk'
+  return `${emoji} ${stop.travel_to_next_minutes} min ${verb}`
 }
 
 export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
   ({ quest }, ref) => {
-    const durationLabel = formatDuration(quest.total_duration_minutes)
-    const costLabel = budgetLabel(quest.total_cost_estimate)
     const occasionLabel = OCCASION_LABELS[quest.occasion] ?? quest.occasion
     const occasionEmoji = OCCASION_EMOJI[quest.occasion] ?? '✦'
+    // Known occasions tint the card's accents; unknown ones keep the
+    // terracotta defaults declared on .share-card.
+    const occasionClass = OCCASION_LABELS[quest.occasion]
+      ? ` share-card--${quest.occasion}`
+      : ''
+    // Long quests get a 4th stop; tighten the layout so it still fits.
+    const denseClass = quest.stops.length >= 4 ? ' share-card--dense' : ''
+    const budget =
+      formatInrEstimate(
+        quest.est_total_per_person_min_inr,
+        quest.est_total_per_person_max_inr,
+      ) ?? budgetLabel(quest.total_cost_estimate)
 
     return (
-      <div ref={ref} className="share-card" aria-hidden>
-        <div className="share-card-wash share-card-wash--top" />
-        <div className="share-card-wash share-card-wash--bottom" />
-        <div className="share-card-frame" />
+      <div ref={ref} className={`share-card${occasionClass}${denseClass}`} aria-hidden>
+        <div className="share-glow share-glow--ember" />
+        <div className="share-glow share-glow--amber" />
+        <div className="share-grain" />
+        <div className="share-frame" />
 
-        <header className="share-card-header">
+        <header className="share-header">
           <p className="share-brand">
             <span className="share-brand-mark">
               <span />
@@ -99,48 +143,69 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
           </span>
         </header>
 
-        <section className="share-card-hero">
-          <p className="share-eyebrow">Your next food quest</p>
+        <section className="share-hero">
+          <p className="share-eyebrow">Tonight's food quest</p>
           <h1 className="share-title">{quest.title}</h1>
           {quest.narrative && (
             <p className="share-narrative">{quest.narrative}</p>
           )}
         </section>
 
-        <ol className="share-stop-list">
-          {quest.stops.map((stop, index) => (
-            <li key={`${stop.place.provider_id}-${index}`} className="share-stop-block">
-              <div className="share-stop">
-                <div className="share-stop-media">
-                  <ShareableStopThumbnail stop={stop} />
-                  <span className="share-stop-number">{index + 1}</span>
+        <ol className="share-route">
+          {quest.stops.map((stop, index) => {
+            const last = index === quest.stops.length - 1
+            const clock = formatClock(stop.time_block_start)
+            const travel = travelLabel(stop)
+            return (
+              <li
+                key={`${stop.place.provider_id ?? stop.place.name}-${index}`}
+                className="share-leg"
+              >
+                <div className="share-leg-rail">
+                  <span className="share-node">{index + 1}</span>
+                  {!last && <span className="share-rail-line" />}
                 </div>
-                <div className="share-stop-copy">
-                  <p className="share-stop-name">{stop.place.name}</p>
-                  <p className="share-stop-vibe">{stop.why_this_place}</p>
-                </div>
-              </div>
-              {index < quest.stops.length - 1 && (
-                <div className="share-stop-connector">
-                  <span className="share-stop-connector-line" />
-                  {travelLabel(stop) && (
-                    <span className="share-stop-connector-label">
-                      {travelLabel(stop)}
-                    </span>
+                <div className={`share-leg-body${last ? ' share-leg-body--last' : ''}`}>
+                  <div className="share-stop-row">
+                    <div className="share-stop-copy">
+                      {clock && <p className="share-stop-time">{clock}</p>}
+                      <p className="share-stop-name">{stop.place.name}</p>
+                      <p className="share-stop-meta">{stopMeta(stop)}</p>
+                      <p className="share-stop-vibe">{stop.why_this_place}</p>
+                    </div>
+                    <ShareableStopThumbnail stop={stop} />
+                  </div>
+                  {!last && travel && (
+                    <span className="share-travel">{travel}</span>
                   )}
                 </div>
-              )}
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ol>
 
-        <footer className="share-card-footer">
-          <div className="share-chip-row">
-            <span className="share-chip">{durationLabel}</span>
-            <span className="share-chip">{costLabel}</span>
-            <span className="share-chip">{quest.stops.length} stops</span>
+        <footer className="share-footer">
+          <div className="share-stats">
+            <div className="share-stat">
+              <span className="share-stat-label">Duration</span>
+              <span className="share-stat-value">
+                {formatDuration(quest.total_duration_minutes)}
+              </span>
+            </div>
+            <span className="share-stat-divider" />
+            <div className="share-stat">
+              <span className="share-stat-label">Budget</span>
+              <span className="share-stat-value">{budget}</span>
+            </div>
+            <span className="share-stat-divider" />
+            <div className="share-stat">
+              <span className="share-stat-label">Stops</span>
+              <span className="share-stat-value">{quest.stops.length}</span>
+            </div>
           </div>
-          <p className="share-footer-cta">Plan yours at {window.location.host}</p>
+          <p className="share-cta">
+            Plan yours&nbsp;→&nbsp;<strong>{displayHost()}</strong>
+          </p>
         </footer>
       </div>
     )
