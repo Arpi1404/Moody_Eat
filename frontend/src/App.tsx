@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Landing from './pages/Landing'
 import { HomePage } from './pages/HomePage'
@@ -7,14 +8,23 @@ import { ResultsPage } from './pages/ResultsPage'
 import { SavedQuestsPage } from './pages/SavedQuestsPage'
 import { JournalPage } from './pages/JournalPage'
 import { PrivacyPage, TermsPage } from './pages/LegalPage'
+
+// Dev-only share-card design harness; dead-code-eliminated from prod builds.
+const ShareCardDevPreview = import.meta.env.DEV
+  ? lazy(() =>
+      import('./pages/ShareCardDevPreview').then((m) => ({
+        default: m.ShareCardDevPreview,
+      })),
+    )
+  : null
 import { BottomNav } from './components/BottomNav'
 import { Footer } from './components/Footer'
 import { TopNav } from './components/TopNav'
 import './App.css'
 
-const HIDE_TOPNAV_PREFIXES = ['/landing']
-const HIDE_BOTTOMNAV_PREFIXES = ['/quest/', '/landing']
-const HIDE_FOOTER_PREFIXES = ['/landing', '/quest/']
+const HIDE_TOPNAV_PREFIXES = ['/landing', '/dev/']
+const HIDE_BOTTOMNAV_PREFIXES = ['/quest/', '/landing', '/dev/']
+const HIDE_FOOTER_PREFIXES = ['/landing', '/quest/', '/dev/']
 
 function TopNavGate() {
   const { pathname } = useLocation()
@@ -54,6 +64,16 @@ function App() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/explore" element={<Navigate to="/plan" replace />} />
+        {ShareCardDevPreview && (
+          <Route
+            path="/dev/share-card"
+            element={
+              <Suspense fallback={null}>
+                <ShareCardDevPreview />
+              </Suspense>
+            }
+          />
+        )}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <FooterGate />
