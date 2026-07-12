@@ -42,7 +42,7 @@ export function track(event: string, props?: EventProps): void {
   if (doNotTrackEnabled()) return
 
   if (isDev) {
-    // eslint-disable-next-line no-console
+     
     console.log('[analytics]', event, props ?? {})
     return
   }

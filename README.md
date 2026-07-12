@@ -83,6 +83,8 @@ Create `backend/.env` (never commit it — it's in `.gitignore`).
 | `PLACES_CATEGORY_CONCURRENCY` | `3` | Parallel category fetches |
 | `PLACES_CACHE_TTL_SECONDS` | `600` | In-memory cache lifetime |
 | `PLACES_RATE_LIMIT_PER_MINUTE` | `60` | Requests/min cap (0 = disabled) |
+| `SENTRY_DSN` | — | Enables Sentry error monitoring when set; inert otherwise |
+| `SENTRY_ENVIRONMENT` | `production` | Environment tag on Sentry events |
 
 ---
 

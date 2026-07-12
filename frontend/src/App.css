@@ -2558,6 +2558,45 @@ a.explore-edit-filters {
   cursor: default;
 }
 
+/* Plan feedback (👍/👎) */
+
+.qp-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0 calc(96px + env(safe-area-inset-bottom));
+  min-height: 40px;
+}
+
+.qp-feedback-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.qp-feedback-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.qp-feedback-btn:hover {
+  background: rgba(199, 82, 42, 0.08);
+  transform: scale(1.06);
+}
+
+.qp-feedback-thanks {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.85;
+}
+
 /* Narrative */
 
 .qp-narrative {
@@ -2787,6 +2826,52 @@ a.explore-edit-filters {
   opacity: 0.55;
   cursor: help;
   transform: none;
+}
+
+/* Reorder (move up/down) buttons — stacked under the swap button */
+
+.qp-stop-move {
+  position: absolute;
+  top: 60px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qp-stop-move-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 26, 20, 0.08);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(31, 26, 20, 0.08),
+    0 4px 14px rgba(31, 26, 20, 0.18);
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.14s ease;
+}
+
+.qp-stop-move-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.qp-stop-move-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 /* Stop body */

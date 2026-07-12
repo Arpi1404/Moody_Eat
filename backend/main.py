@@ -14,6 +14,18 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 
+# Error monitoring is opt-in: set SENTRY_DSN in the deploy environment.
+_sentry_dsn = os.environ.get("SENTRY_DSN", "").strip()
+if _sentry_dsn:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+        traces_sample_rate=0.0,
+        send_default_pii=False,
+    )
+
 app = FastAPI(title="Travel Planner API")
 
 _DEV_ORIGINS = [

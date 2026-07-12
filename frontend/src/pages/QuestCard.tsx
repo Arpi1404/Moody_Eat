@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { fetchStopAlternatives, getApiBase } from '../api'
@@ -103,27 +103,11 @@ function travelLeg(from: Stop, to: Stop): { minutes: number; mode: TravelMode } 
   return { minutes: Math.max(1, Math.round(dist / DRIVE_M_PER_MIN)), mode: 'driving' }
 }
 
-function rescheduleWithAlternative(
-  quest: Quest,
-  stopIndex: number,
-  alternative: StopAlternative,
-): Quest {
-  const replacement: Stop = {
-    place: alternative.place,
-    category: alternative.category,
-    time_block_start: alternative.time_block_start,
-    time_block_end: alternative.time_block_end,
-    travel_to_next_minutes: alternative.travel_to_next_minutes,
-    travel_mode: alternative.travel_mode,
-    why_this_place: alternative.why_this_place,
-  }
-  const stops = quest.stops.map((stop, index) =>
-    index === stopIndex ? replacement : { ...stop },
-  )
-
-  // Recompute every leg from geometry: swapping one stop changes the travel
-  // time AND mode of the legs around it, and stale minutes would silently
-  // shift the whole downstream schedule.
+// Recompute every leg from geometry: changing any stop (swap or reorder)
+// changes the travel time AND mode of the legs around it, and stale minutes
+// would silently shift the whole downstream schedule. Each stop keeps its
+// dwell; the first stop's start time anchors the chain.
+function rescheduleStops(stops: Stop[]): Stop[] {
   for (let i = 0; i < stops.length; i += 1) {
     const dwell = durationMinutes(
       stops[i].time_block_start,
@@ -146,11 +130,62 @@ function rescheduleWithAlternative(
   }
   const last = stops.length - 1
   stops[last] = { ...stops[last], travel_to_next_minutes: null, travel_mode: null }
+  return stops
+}
+
+function rescheduleWithAlternative(
+  quest: Quest,
+  stopIndex: number,
+  alternative: StopAlternative,
+): Quest {
+  const replacement: Stop = {
+    place: alternative.place,
+    category: alternative.category,
+    time_block_start: alternative.time_block_start,
+    time_block_end: alternative.time_block_end,
+    travel_to_next_minutes: alternative.travel_to_next_minutes,
+    travel_mode: alternative.travel_mode,
+    why_this_place: alternative.why_this_place,
+    est_cost_per_person_min_inr: alternative.est_cost_per_person_min_inr,
+    est_cost_per_person_max_inr: alternative.est_cost_per_person_max_inr,
+    price_source: alternative.price_source,
+  }
+  const stops = rescheduleStops(
+    quest.stops.map((stop, index) =>
+      index === stopIndex ? replacement : { ...stop },
+    ),
+  )
 
   return {
     ...quest,
     stops,
     total_duration_minutes: questDuration(stops),
+  }
+}
+
+function reorderStops(quest: Quest, from: number, to: number): Quest {
+  if (from === to || to < 0 || to >= quest.stops.length) return quest
+  const anchorStart = quest.stops[0].time_block_start
+  const stops = quest.stops.map((stop) => ({ ...stop }))
+  const [moved] = stops.splice(from, 1)
+  stops.splice(to, 0, moved)
+
+  // Whatever lands first inherits the quest's original start time.
+  const firstDwell = durationMinutes(
+    stops[0].time_block_start,
+    stops[0].time_block_end,
+  )
+  stops[0] = {
+    ...stops[0],
+    time_block_start: anchorStart,
+    time_block_end: addMinutes(anchorStart, firstDwell),
+  }
+  const rescheduled = rescheduleStops(stops)
+
+  return {
+    ...quest,
+    stops: rescheduled,
+    total_duration_minutes: questDuration(rescheduled),
   }
 }
 
@@ -232,6 +267,8 @@ function StopCard({
   index,
   previewing,
   onSwap,
+  onMoveUp,
+  onMoveDown,
   active = false,
   checked = false,
   onCheck,
@@ -241,6 +278,8 @@ function StopCard({
   index: number
   previewing: boolean
   onSwap: () => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
   active?: boolean
   checked?: boolean
   onCheck?: () => void
@@ -276,6 +315,28 @@ function StopCard({
       >
         <SwapIcon />
       </button>
+      {!readOnly && (onMoveUp || onMoveDown) && (
+        <div className="qp-stop-move" aria-hidden={false}>
+          <button
+            type="button"
+            className="qp-stop-move-btn"
+            aria-label={`Move stop ${index + 1} earlier`}
+            disabled={!onMoveUp}
+            onClick={onMoveUp}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className="qp-stop-move-btn"
+            aria-label={`Move stop ${index + 1} later`}
+            disabled={!onMoveDown}
+            onClick={onMoveDown}
+          >
+            ↓
+          </button>
+        </div>
+      )}
       <div className="qp-stop-body">
         <span className="qp-stop-index" aria-hidden>
           {index + 1}
@@ -376,7 +437,12 @@ export function QuestCard({
     s.place.lng,
   ])
 
+  // Monotonic id so a late alternatives response for a closed or superseded
+  // sheet is ignored (the fetch itself is not abortable here).
+  const swapRequestId = useRef(0)
+
   const closeSheet = useCallback(() => {
+    swapRequestId.current++
     setActiveStopIndex(null)
     setAlternatives([])
     setSelectedAlternative(null)
@@ -384,33 +450,33 @@ export function QuestCard({
     setSwapError(null)
   }, [])
 
-  useEffect(() => {
-    if (activeStopIndex == null) return
-    let cancelled = false
-    setLoadingAlternatives(true)
-    setSwapError(null)
-    setAlternatives([])
-    setSelectedAlternative(null)
+  const openSwapSheet = useCallback(
+    (index: number) => {
+      const requestId = ++swapRequestId.current
+      setActiveStopIndex(index)
+      setAlternatives([])
+      setSelectedAlternative(null)
+      setSwapError(null)
+      setLoadingAlternatives(true)
 
-    fetchStopAlternatives(quest, activeStopIndex)
-      .then((items) => {
-        if (cancelled) return
-        setAlternatives(items)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setSwapError(
-          err instanceof Error ? err.message : 'Could not load alternatives.',
-        )
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingAlternatives(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [activeStopIndex, quest])
+      fetchStopAlternatives(quest, index)
+        .then((items) => {
+          if (swapRequestId.current !== requestId) return
+          setAlternatives(items)
+        })
+        .catch((err) => {
+          if (swapRequestId.current !== requestId) return
+          setSwapError(
+            err instanceof Error ? err.message : 'Could not load alternatives.',
+          )
+        })
+        .finally(() => {
+          if (swapRequestId.current !== requestId) return
+          setLoadingAlternatives(false)
+        })
+    },
+    [quest],
+  )
 
   const confirmSwap = useCallback(() => {
     if (!previewQuest || activeStopIndex == null) return
@@ -418,6 +484,16 @@ export function QuestCard({
     onQuestChange(previewQuest)
     closeSheet()
   }, [activeStopIndex, closeSheet, onQuestChange, previewQuest])
+
+  const moveStop = useCallback(
+    (from: number, to: number) => {
+      const next = reorderStops(quest, from, to)
+      if (next === quest) return
+      track('stops_reordered', { from_index: from, to_index: to })
+      onQuestChange(next)
+    },
+    [onQuestChange, quest],
+  )
 
   return (
     <>
@@ -473,7 +549,13 @@ export function QuestCard({
               stop={stop}
               index={i}
               previewing={activeStopIndex === i && selectedAlternative != null}
-              onSwap={() => setActiveStopIndex(i)}
+              onSwap={() => openSwapSheet(i)}
+              onMoveUp={i > 0 ? () => moveStop(i, i - 1) : undefined}
+              onMoveDown={
+                i < displayQuest.stops.length - 1
+                  ? () => moveStop(i, i + 1)
+                  : undefined
+              }
               active={active}
               checked={completedStops.has(i)}
               onCheck={() => onToggleStopComplete?.(i)}

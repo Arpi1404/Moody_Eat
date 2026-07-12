@@ -188,6 +188,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   } | null>(null)
   const [createdBanner, setCreatedBanner] = useState(false)
   const [shuffling, setShuffling] = useState(false)
+  const [feedbackVote, setFeedbackVote] = useState<'up' | 'down' | null>(null)
   const shareCardRef = useRef<HTMLDivElement | null>(null)
   const toastTimer = useRef<number | null>(null)
   const createdBannerTimer = useRef<number | null>(null)
@@ -384,6 +385,24 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   const generationRequest = state?.request ?? null
+
+  // One vote per quest, remembered across visits.
+  const storedFeedbackVote = localStorage.getItem(
+    `moodyeat:feedback_${quest.id}`,
+  ) as 'up' | 'down' | null
+  const effectiveFeedbackVote = feedbackVote ?? storedFeedbackVote
+
+  const handleFeedback = (vote: 'up' | 'down') => {
+    if (effectiveFeedbackVote) return
+    localStorage.setItem(`moodyeat:feedback_${quest.id}`, vote)
+    setFeedbackVote(vote)
+    track('quest_feedback', {
+      quest_id: quest.id,
+      vote,
+      occasion: quest.occasion,
+      budget: quest.total_cost_estimate,
+    })
+  }
 
   const handleShuffle = async () => {
     if (!generationRequest || shuffling) return
@@ -621,6 +640,34 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           onMarkDone={() => setJournalOpen(true)}
           readOnly={preview && !savedToCollection}
         />
+
+        <div className="qp-feedback" role="group" aria-label="Plan feedback">
+          {effectiveFeedbackVote ? (
+            <p className="qp-feedback-thanks">
+              Thanks — your feedback makes the plans better.
+            </p>
+          ) : (
+            <>
+              <span className="qp-feedback-label">Was this plan good?</span>
+              <button
+                type="button"
+                className="qp-feedback-btn"
+                aria-label="Good plan"
+                onClick={() => handleFeedback('up')}
+              >
+                👍
+              </button>
+              <button
+                type="button"
+                className="qp-feedback-btn"
+                aria-label="Bad plan"
+                onClick={() => handleFeedback('down')}
+              >
+                👎
+              </button>
+            </>
+          )}
+        </div>
 
         <div className="qp-bottom-bar">
           <button

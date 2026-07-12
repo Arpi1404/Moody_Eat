@@ -534,6 +534,11 @@ async def _pick_viable_candidate(
         drop_counts["already_used"] = len(candidates) - len(ranked)
     price_known = sum(1 for p in ranked if price_signal(p).source != PRICE_SOURCE_UNKNOWN)
 
+    # A candidate whose hours Google doesn't know is a weaker pick than one we
+    # can verify is open, but a better pick than an empty stop. Keep the best
+    # one aside and use it only if every verifiable candidate falls through.
+    unknown_hours_fallback: _CandidatePick | None = None
+
     for place in ranked[:_VIABILITY_CHECK_LIMIT]:
         dist_m = (
             haversine_m(prev_lat, prev_lng, place.lat, place.lng)
@@ -551,6 +556,16 @@ async def _pick_viable_candidate(
 
         place_with_hours = await _with_hours(place, service, weekday_g)
         hours_rule = _hours_reject_rule(place_with_hours, start, end)
+        if hours_rule == "hours_unknown":
+            drop_counts[hours_rule] += 1
+            if unknown_hours_fallback is None:
+                unknown_hours_fallback = _CandidatePick(
+                    place=place_with_hours,
+                    dist_from_prev_m=dist_m,
+                    start=start,
+                    end=end,
+                )
+            continue
         if hours_rule is not None:
             drop_counts[hours_rule] += 1
             continue
@@ -573,16 +588,17 @@ async def _pick_viable_candidate(
         )
 
     logger.info(
-        "quest_candidate_viability type=%s category=%s checked=%d selected=false "
+        "quest_candidate_viability type=%s category=%s checked=%d selected=%s "
         "price_known=%d/%d drops=%s",
         requested_place_type,
         tmpl.category.value,
         min(len(ranked), _VIABILITY_CHECK_LIMIT),
+        "hours_unknown_fallback" if unknown_hours_fallback is not None else "false",
         price_known,
         len(ranked),
         {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
     )
-    return None
+    return unknown_hours_fallback
 
 
 class _Slot(NamedTuple):
@@ -727,7 +743,14 @@ async def assemble_quest(
     service: NearbyPlacesService,
 ) -> Quest:
     template = list(TEMPLATES[req.occasion])
-    if req.duration_hours >= _LONG_QUEST_HOURS:
+    if req.stop_count is not None:
+        # Explicit choice wins. 2 keeps the occasion's core pair; 4 adds the
+        # same extra stop long quests get.
+        if req.stop_count == 2:
+            template = template[:2]
+        elif req.stop_count == 4:
+            template.insert(2, _LONG_QUEST_EXTRA_STOP[req.occasion])
+    elif req.duration_hours >= _LONG_QUEST_HOURS:
         template.insert(2, _LONG_QUEST_EXTRA_STOP[req.occasion])
     used_ids: set[str] = set()
     slots: list[_Slot] = []

@@ -40,10 +40,9 @@ export function TopNav() {
   // Hide our nav CTA while the hero "Start a quest" CTA is on screen.
   // Uses a scroll/resize listener (more reliable across browsers than IO).
   useEffect(() => {
-    if (pathname !== '/') {
-      setHeroCtaInView(false)
-      return
-    }
+    // Off the homepage the stale value is masked at render (ctaHidden below),
+    // so no state reset is needed here.
+    if (pathname !== '/') return
 
     let frame = 0
     const check = () => {
@@ -88,9 +87,11 @@ export function TopNav() {
     navigate('/?plan=date')
   }
 
+  const ctaHidden = pathname === '/' && heroCtaInView
+
   return (
     <nav
-      className={`topnav${scrolled ? ' topnav--scrolled' : ''}${heroCtaInView ? ' topnav--cta-hidden' : ''}`}
+      className={`topnav${scrolled ? ' topnav--scrolled' : ''}${ctaHidden ? ' topnav--cta-hidden' : ''}`}
       aria-label="Primary"
     >
       <NavLink to="/" end className="topnav-logo" aria-label="MoodyEat home">
@@ -116,8 +117,8 @@ export function TopNav() {
           type="button"
           className="topnav-cta"
           onClick={openPlanner}
-          aria-hidden={heroCtaInView}
-          tabIndex={heroCtaInView ? -1 : 0}
+          aria-hidden={ctaHidden}
+          tabIndex={ctaHidden ? -1 : 0}
         >
           Plan a quest <span aria-hidden>✦</span>
         </button>

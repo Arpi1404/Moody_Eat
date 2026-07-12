@@ -75,6 +75,14 @@ const DURATION_OPTIONS = [
 
 type DurationHours = (typeof DURATION_OPTIONS)[number]['value']
 
+const STOP_COUNT_OPTIONS = [
+  { value: 2, label: '2 stops' },
+  { value: 3, label: '3 stops' },
+  { value: 4, label: '4 stops' },
+] as const
+
+type StopCount = (typeof STOP_COUNT_OPTIONS)[number]['value']
+
 // Solo trips always count as 1 person; family trips as 4
 const PEOPLE_BY_OCCASION: Record<OccasionKey, number> = {
   date: 2,
@@ -204,6 +212,7 @@ export function HomePage() {
   const [geoError, setGeoError] = useState<string | null>(null)
   const [budget, setBudget] = useState<Budget>('mid')
   const [duration, setDuration] = useState<DurationHours>(4)
+  const [stopCount, setStopCount] = useState<StopCount>(3)
   const [submitting, setSubmitting] = useState(false)
   const [submitSlow, setSubmitSlow] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -378,6 +387,7 @@ export function HomePage() {
       cost_estimate: budget,
       people: PEOPLE_BY_OCCASION[activeOccasion],
       duration_hours: duration,
+      stop_count: stopCount,
     }
 
     try {
@@ -386,6 +396,7 @@ export function HomePage() {
         occasion: activeOccasion,
         budget,
         duration,
+        stops_requested: stopCount,
         stop_count: quest.stops.length,
       })
       const softMessage =
@@ -705,9 +716,32 @@ export function HomePage() {
                       type="button"
                       className={`sheet-pill${duration === d.value ? ' sheet-pill--active' : ''}`}
                       aria-pressed={duration === d.value}
-                      onClick={() => setDuration(d.value)}
+                      onClick={() => {
+                        setDuration(d.value)
+                        // A 6+ hr outing can't plausibly fill with 3 stops;
+                        // nudge to 4 (still user-overridable below).
+                        if (d.value >= 6) setStopCount(4)
+                      }}
                     >
                       {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stop count */}
+              <div>
+                <span className="sheet-field-label">How many stops?</span>
+                <div className="sheet-pill-row" role="group" aria-label="Number of stops">
+                  {STOP_COUNT_OPTIONS.map((s) => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      className={`sheet-pill${stopCount === s.value ? ' sheet-pill--active' : ''}`}
+                      aria-pressed={stopCount === s.value}
+                      onClick={() => setStopCount(s.value)}
+                    >
+                      {s.label}
                     </button>
                   ))}
                 </div>

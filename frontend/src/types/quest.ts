@@ -68,4 +68,6 @@ export interface QuestGenerationRequest {
   duration_hours: number
   /** Shuffles near-tied picks; omit for the deterministic best plan. */
   variety_seed?: number
+  /** 2–4 stops; omit for the occasion default. */
+  stop_count?: number
 }

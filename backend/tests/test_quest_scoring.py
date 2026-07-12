@@ -310,6 +310,122 @@ def test_assemble_quest_skips_closed_and_mood_wrong_candidates(monkeypatch) -> N
     assert "escape" not in provider.hours_requested
 
 
+class UnknownHoursProvider:
+    """Restaurant: top-ranked has unknown hours, weaker one is verifiably open.
+    Bakery: the only candidate has unknown hours. Park: verifiably open."""
+
+    async def geocode(self, query: str) -> ResolvedLocation:
+        return ResolvedLocation(name=query, lat=0.0, lng=0.0)
+
+    async def nearby_by_type(
+        self,
+        *,
+        lat: float,
+        lng: float,
+        radius_meters: int,
+        place_type: str,
+        target_count: int | None = None,
+    ) -> list[RawPlace]:
+        by_type = {
+            "restaurant": [
+                RawPlace("no_hours_rest", "Mystery Hours Bistro", "Road", 0.001, 0.0, 4.9, ["restaurant"], 2000),
+                RawPlace("open_rest", "Verified Open Bistro", "Road", 0.002, 0.0, 4.4, ["restaurant"], 300),
+            ],
+            "bakery": [
+                RawPlace("no_hours_bakery", "Mystery Hours Bakery", "Road", 0.003, 0.0, 4.5, ["bakery"], 400),
+            ],
+            "park": [
+                RawPlace("park", "Open Garden", "Road", 0.004, 0.0, 4.4, ["park"], 700),
+            ],
+        }
+        return by_type.get(place_type, [])
+
+    async def place_hours(self, *, provider_id: str, weekday: int) -> PlaceHours:
+        hours = {
+            "open_rest": PlaceHours("18:00", "23:00", False),
+            "park": PlaceHours("06:00", "23:30", False),
+        }
+        return hours.get(provider_id, PlaceHours(None, None, False))
+
+
+def test_unknown_hours_place_is_last_resort_not_hard_reject(monkeypatch) -> None:
+    async def fake_narrative(**kwargs) -> str:
+        return "A test quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+    service = NearbyPlacesService(UnknownHoursProvider())
+    req = QuestGenerationRequest(
+        location="Govindpuram",
+        occasion=Occasion.date,
+        cost_estimate=CostEstimate.mid,
+        people=2,
+        duration_hours=3.0,
+    )
+
+    quest = asyncio.run(assemble_quest(req, service))
+
+    names = [stop.place.name for stop in quest.stops]
+    # A verifiably-open place beats a higher-ranked unknown-hours one...
+    assert "Verified Open Bistro" in names
+    assert "Mystery Hours Bistro" not in names
+    # ...but when unknown hours is all there is, the stop is kept, not dropped.
+    assert "Mystery Hours Bakery" in names
+
+
+class StopCountProvider:
+    """One good, always-open place per category the date template can ask for."""
+
+    async def geocode(self, query: str) -> ResolvedLocation:
+        return ResolvedLocation(name=query, lat=0.0, lng=0.0)
+
+    async def nearby_by_type(
+        self,
+        *,
+        lat: float,
+        lng: float,
+        radius_meters: int,
+        place_type: str,
+        target_count: int | None = None,
+    ) -> list[RawPlace]:
+        by_type = {
+            "restaurant": [RawPlace("rest", "Dinner Spot", "Road", 0.001, 0.0, 4.5, ["restaurant"], 600)],
+            "bakery": [RawPlace("bakery", "Dessert Spot", "Road", 0.002, 0.0, 4.4, ["bakery"], 400)],
+            "cafe": [RawPlace("cafe", "Coffee Spot", "Road", 0.003, 0.0, 4.6, ["cafe"], 500)],
+            "tourist_attraction": [RawPlace("sight", "City Sight", "Road", 0.004, 0.0, 4.5, ["tourist_attraction"], 900)],
+        }
+        return by_type.get(place_type, [])
+
+    async def place_hours(self, *, provider_id: str, weekday: int) -> PlaceHours:
+        return PlaceHours(None, None, True)
+
+
+def test_stop_count_selector_trims_and_extends_template(monkeypatch) -> None:
+    async def fake_narrative(**kwargs) -> str:
+        return "A test quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+
+    def _quest(stop_count: int | None):
+        service = NearbyPlacesService(StopCountProvider())
+        return asyncio.run(assemble_quest(
+            QuestGenerationRequest(
+                location="Govindpuram",
+                occasion=Occasion.date,
+                cost_estimate=CostEstimate.mid,
+                people=2,
+                duration_hours=3.0,
+                stop_count=stop_count,
+            ),
+            service,
+        ))
+
+    assert len(_quest(2).stops) == 2
+    assert len(_quest(None).stops) == 3
+    assert len(_quest(4).stops) == 4
+    # 2 stops keeps the occasion's core pair (dinner + dessert for a date).
+    assert [s.place.name for s in _quest(2).stops] == ["Dinner Spot", "Dessert Spot"]
+
+
 def test_assemble_quest_surfaces_inr_estimates_and_totals(monkeypatch) -> None:
     async def fake_narrative(**kwargs) -> str:
         return "A test date quest."
