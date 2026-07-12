@@ -83,6 +83,24 @@ const STOP_COUNT_OPTIONS = [
 
 type StopCount = (typeof STOP_COUNT_OPTIONS)[number]['value']
 
+const DAY_PART_OPTIONS = [
+  { value: 'morning', label: 'Morning', hint: '~10am' },
+  { value: 'afternoon', label: 'Afternoon', hint: '~1pm' },
+  { value: 'evening', label: 'Evening', hint: '~5:30pm' },
+  { value: 'night', label: 'Night', hint: '~8pm' },
+] as const
+
+type DayPart = (typeof DAY_PART_OPTIONS)[number]['value']
+
+// Mirrors the backend's per-occasion default start times, so the preselected
+// pill matches what the engine would do anyway.
+const DAY_PART_DEFAULT_BY_OCCASION: Record<OccasionKey, DayPart> = {
+  date: 'evening',
+  friends: 'night',
+  solo: 'morning',
+  family: 'afternoon',
+}
+
 // Solo trips always count as 1 person; family trips as 4
 const PEOPLE_BY_OCCASION: Record<OccasionKey, number> = {
   date: 2,
@@ -213,6 +231,8 @@ export function HomePage() {
   const [budget, setBudget] = useState<Budget>('mid')
   const [duration, setDuration] = useState<DurationHours>(4)
   const [stopCount, setStopCount] = useState<StopCount>(3)
+  // null = follow the occasion's default start time
+  const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitSlow, setSubmitSlow] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -381,6 +401,7 @@ export function HomePage() {
       setSubmitSlow(true)
     }, 3000)
 
+    const dayPart = dayPartChoice ?? DAY_PART_DEFAULT_BY_OCCASION[activeOccasion]
     const request = {
       location: location.trim(),
       occasion: activeOccasion,
@@ -388,6 +409,7 @@ export function HomePage() {
       people: PEOPLE_BY_OCCASION[activeOccasion],
       duration_hours: duration,
       stop_count: stopCount,
+      day_part: dayPart,
     }
 
     try {
@@ -396,6 +418,7 @@ export function HomePage() {
         occasion: activeOccasion,
         budget,
         duration,
+        day_part: dayPart,
         stops_requested: stopCount,
         stop_count: quest.stops.length,
       })
@@ -686,6 +709,32 @@ export function HomePage() {
                     {geoError}
                   </p>
                 )}
+              </div>
+
+              {/* Day part */}
+              <div>
+                <span className="sheet-field-label">When?</span>
+                <div className="sheet-pill-row" role="group" aria-label="Time of day">
+                  {DAY_PART_OPTIONS.map((d) => {
+                    const selected =
+                      (dayPartChoice ??
+                        (activeOccasion
+                          ? DAY_PART_DEFAULT_BY_OCCASION[activeOccasion]
+                          : null)) === d.value
+                    return (
+                      <button
+                        key={d.value}
+                        type="button"
+                        className={`sheet-pill${selected ? ' sheet-pill--active' : ''}`}
+                        aria-pressed={selected}
+                        title={`Starts ${d.hint}`}
+                        onClick={() => setDayPartChoice(d.value)}
+                      >
+                        {d.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Budget */}

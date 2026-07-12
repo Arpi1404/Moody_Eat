@@ -2,7 +2,7 @@ import asyncio
 import random
 from datetime import time
 
-from models import CostEstimate, Occasion, PlaceItem, QuestGenerationRequest
+from models import CostEstimate, DayPart, Occasion, PlaceItem, QuestGenerationRequest
 from quest_generator import (
     _hours_reject_rule,
     _mood_reject_rule,
@@ -370,6 +370,77 @@ def test_unknown_hours_place_is_last_resort_not_hard_reject(monkeypatch) -> None
     assert "Mystery Hours Bistro" not in names
     # ...but when unknown hours is all there is, the stop is kept, not dropped.
     assert "Mystery Hours Bakery" in names
+
+
+class DayPartProvider:
+    """Family-occasion pools where the park closes at sunset but a funfair
+    stays open late. The activity slot must respect the chosen day part."""
+
+    async def geocode(self, query: str) -> ResolvedLocation:
+        return ResolvedLocation(name=query, lat=0.0, lng=0.0)
+
+    async def nearby_by_type(
+        self,
+        *,
+        lat: float,
+        lng: float,
+        radius_meters: int,
+        place_type: str,
+        target_count: int | None = None,
+    ) -> list[RawPlace]:
+        by_type = {
+            "restaurant": [RawPlace("rest", "Family Diner", "Road", 0.001, 0.0, 4.5, ["restaurant"], 600)],
+            "park": [RawPlace("park", "Sunset Park", "Road", 0.002, 0.0, 4.6, ["park"], 900)],
+            "amusement_park": [RawPlace("funfair", "Night Funfair", "Road", 0.003, 0.0, 4.4, ["amusement_park"], 500)],
+            "bakery": [RawPlace("bakery", "Allday Bakery", "Road", 0.004, 0.0, 4.4, ["bakery"], 400)],
+        }
+        return by_type.get(place_type, [])
+
+    async def place_hours(self, *, provider_id: str, weekday: int) -> PlaceHours:
+        hours = {
+            "rest": PlaceHours("08:00", "23:59", False),
+            "park": PlaceHours("06:00", "19:00", False),
+            "funfair": PlaceHours("10:00", "23:00", False),
+            "bakery": PlaceHours("08:00", "23:59", False),
+        }
+        return hours[provider_id]
+
+
+def test_day_part_changes_start_time_and_filters_closed_places(monkeypatch) -> None:
+    async def fake_narrative(**kwargs) -> str:
+        return "A test quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+
+    def _quest(day_part: DayPart | None):
+        service = NearbyPlacesService(DayPartProvider())
+        return asyncio.run(assemble_quest(
+            QuestGenerationRequest(
+                location="Govindpuram",
+                occasion=Occasion.family,
+                cost_estimate=CostEstimate.mid,
+                people=4,
+                duration_hours=3.0,
+                day_part=day_part,
+            ),
+            service,
+        ))
+
+    afternoon = _quest(DayPart.afternoon)
+    night = _quest(DayPart.night)
+
+    afternoon_names = [s.place.name for s in afternoon.stops]
+    night_names = [s.place.name for s in night.stops]
+
+    # Afternoon: the park is open, so it wins the activity slot.
+    assert "Sunset Park" in afternoon_names
+    assert afternoon.stops[0].time_block_start == time(13, 0)
+
+    # Night: the park closed at 19:00 — the engine must fall through to the
+    # late-open funfair instead of planning a visit to a closed park.
+    assert "Sunset Park" not in night_names
+    assert "Night Funfair" in night_names
+    assert night.stops[0].time_block_start == time(20, 0)
 
 
 class StopCountProvider:

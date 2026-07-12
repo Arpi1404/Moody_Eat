@@ -21,6 +21,7 @@ from price_inference import (
 )
 from models import (
     CostEstimate,
+    DayPart,
     NearbyPlacesRequest,
     Occasion,
     PlaceItem,
@@ -89,6 +90,22 @@ _START: dict[Occasion, tuple[int, int]] = {
     Occasion.solo:    (10, 0),
     Occasion.family:  (12, 0),
 }
+
+# User-chosen start times (hour, minute). Overrides the occasion default, and
+# hours viability is checked against these — a park that closes at sunset
+# can't land in a night quest.
+_DAY_PART_START: dict[DayPart, tuple[int, int]] = {
+    DayPart.morning:   (10, 0),
+    DayPart.afternoon: (13, 0),
+    DayPart.evening:   (17, 30),
+    DayPart.night:     (20, 0),
+}
+
+
+def _quest_start(req: QuestGenerationRequest) -> tuple[int, int]:
+    if req.day_part is not None:
+        return _DAY_PART_START[req.day_part]
+    return _START[req.occasion]
 
 # ── Scoring weights per budget tier ──────────────────────────────────────────
 # Budget now means price fit, not "cheap places should merely be closer".
@@ -617,11 +634,11 @@ class _CandidatePick(NamedTuple):
 def _schedule(
     slots: list[_Slot],
     cost: CostEstimate,
-    occasion: Occasion,
+    start: tuple[int, int],
     duration_hours: float,
 ) -> list[Stop]:
     budget_min = int(duration_hours * 60)
-    sh, sm = _START[occasion]
+    sh, sm = start
     cursor = time(hour=sh, minute=sm)
 
     # Compute travel between each consecutive pair of stops
@@ -756,7 +773,7 @@ async def assemble_quest(
     slots: list[_Slot] = []
     prev_lat: float | None = None
     prev_lng: float | None = None
-    sh, sm = _START[req.occasion]
+    sh, sm = _quest_start(req)
     cursor = time(hour=sh, minute=sm)
     # Google's weekday convention: 0=Sunday, 1=Monday, ..., 6=Saturday.
     weekday_g = (datetime.now().weekday() + 1) % 7
@@ -816,7 +833,7 @@ async def assemble_quest(
             "Check that the location is recognisable and the Places API key is valid."
         )
 
-    stops = _schedule(slots, req.cost_estimate, req.occasion, req.duration_hours)
+    stops = _schedule(slots, req.cost_estimate, _quest_start(req), req.duration_hours)
 
     priced = [s for s in stops if s.est_cost_per_person_min_inr is not None]
     est_total_min = sum(s.est_cost_per_person_min_inr or 0 for s in priced) if priced else None

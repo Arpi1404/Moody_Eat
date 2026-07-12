@@ -126,6 +126,13 @@ class CostEstimate(str, Enum):
     splurge = "splurge"
 
 
+class DayPart(str, Enum):
+    morning = "morning"
+    afternoon = "afternoon"
+    evening = "evening"
+    night = "night"
+
+
 class TravelMode(str, Enum):
     walking = "walking"
     cycling = "cycling"
@@ -198,3 +205,7 @@ class QuestGenerationRequest(BaseModel):
     # Requested number of stops. None keeps the occasion default (3, with a
     # 4th auto-added for long outings).
     stop_count: Optional[int] = Field(default=None, ge=2, le=4)
+    # When the outing starts. None keeps the occasion's default start time.
+    # Opening-hours viability is checked against this, so a night quest will
+    # never include a park that closes at sunset.
+    day_part: Optional[DayPart] = None

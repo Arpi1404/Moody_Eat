@@ -16,6 +16,8 @@ export async function generateQuest(payload: {
   variety_seed?: number
   /** 2–4 stops; omit for the occasion default. */
   stop_count?: number
+  /** When the outing starts; omit for the occasion's default start time. */
+  day_part?: string
 }): Promise<Quest> {
   const res = await fetch(`${getApiBase()}/api/quest/generate`, {
     method: 'POST',
