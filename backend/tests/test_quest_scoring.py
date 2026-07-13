@@ -445,6 +445,61 @@ def test_day_part_changes_start_time_and_filters_closed_places(monkeypatch) -> N
     assert night.stops[0].time_block_start == time(20, 0)
 
 
+class TwoCafesProvider:
+    """Two viable cafes so exclusion tests can check both soft-skip and the
+    never-empty-a-stop fallback."""
+
+    async def geocode(self, query: str) -> ResolvedLocation:
+        return ResolvedLocation(name=query, lat=0.0, lng=0.0)
+
+    async def nearby_by_type(
+        self,
+        *,
+        lat: float,
+        lng: float,
+        radius_meters: int,
+        place_type: str,
+        target_count: int | None = None,
+    ) -> list[RawPlace]:
+        if place_type != "cafe":
+            return []
+        return [
+            RawPlace("regular", "Usual Anchor Cafe", "Road", 0.001, 0.0, 4.7, ["cafe"], 4000),
+            RawPlace("fresh", "Fresh Find Cafe", "Road", 0.002, 0.0, 4.3, ["cafe"], 300),
+        ]
+
+    async def place_hours(self, *, provider_id: str, weekday: int) -> PlaceHours:
+        return PlaceHours("08:00", "23:59", False)
+
+
+def test_recently_seen_places_are_avoided_but_never_cost_a_stop(monkeypatch) -> None:
+    async def fake_narrative(**kwargs) -> str:
+        return "A test quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+
+    def _quest(exclude: list[str]):
+        service = NearbyPlacesService(TwoCafesProvider())
+        return asyncio.run(assemble_quest(
+            QuestGenerationRequest(
+                location="Govindpuram",
+                occasion=Occasion.solo,
+                cost_estimate=CostEstimate.mid,
+                people=1,
+                stop_count=1,
+                exclude_place_ids=exclude,
+            ),
+            service,
+        ))
+
+    # Baseline: the strong anchor wins.
+    assert _quest([]).stops[0].place.name == "Usual Anchor Cafe"
+    # Seen recently: the fresh alternative wins instead.
+    assert _quest(["regular"]).stops[0].place.name == "Fresh Find Cafe"
+    # Everything seen: variety yields — the stop is still filled.
+    assert _quest(["regular", "fresh"]).stops[0].place.name == "Usual Anchor Cafe"
+
+
 def test_rain_gating_swaps_outdoor_stop_for_indoor(monkeypatch) -> None:
     """Rainy forecast: the family activity slot must skip the park type and
     fall through to the (indoor-ish) funfair. Unknown weather changes nothing."""

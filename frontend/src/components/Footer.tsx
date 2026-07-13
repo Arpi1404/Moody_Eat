@@ -9,6 +9,8 @@ export function Footer() {
           © {year} MoodyEat — made with care in Hyderabad.
         </span>
         <nav className="site-footer-links" aria-label="Footer navigation">
+          {/* Plain <a>: /guides/ is prerendered static HTML outside the SPA */}
+          <a href="/guides/">City guides</a>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
           <a

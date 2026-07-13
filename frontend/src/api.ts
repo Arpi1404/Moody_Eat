@@ -19,6 +19,8 @@ export async function generateQuest(payload: {
   stop_count?: number
   /** When the outing starts; omit for the occasion's default start time. */
   day_part?: string
+  /** Recently seen places to avoid (soft — never at the cost of a stop). */
+  exclude_place_ids?: string[]
 }): Promise<Quest> {
   const res = await fetch(`${getApiBase()}/api/quest/generate`, {
     method: 'POST',

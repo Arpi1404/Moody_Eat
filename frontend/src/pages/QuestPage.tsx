@@ -10,6 +10,7 @@ import { useJournal } from '../hooks/useJournal'
 import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
+import { recordQuestPlaces } from '../lib/questHistory'
 import { makeQuestShareUrl, readQuestFromLocationHash } from '../lib/questShare'
 import { shareCardFontEmbedCss } from '../lib/shareFonts'
 import { JournalSheet } from './JournalSheet'
@@ -417,6 +418,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
         occasion: generationRequest.occasion,
         budget: generationRequest.cost_estimate,
       })
+      recordQuestPlaces(nextQuest)
       localStorage.setItem(`quest_${nextQuest.id}`, JSON.stringify(nextQuest))
       navigate(`/quest/${nextQuest.id}`, {
         state: { quest: nextQuest, request: generationRequest },

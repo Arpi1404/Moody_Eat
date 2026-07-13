@@ -214,3 +214,7 @@ class QuestGenerationRequest(BaseModel):
     # Opening-hours viability is checked against this, so a night quest will
     # never include a park that closes at sunset.
     day_part: Optional[DayPart] = None
+    # Places from the user's recent quests: avoided when alternatives exist
+    # (soft exclusion — never at the cost of an empty stop), so regulars see
+    # variety instead of the same anchor spots every time.
+    exclude_place_ids: list[str] = Field(default_factory=list, max_length=30)

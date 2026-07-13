@@ -75,6 +75,8 @@ export interface QuestGenerationRequest {
   stop_count?: number
   /** When the outing starts; omit for the occasion's default start time. */
   day_part?: DayPart
+  /** Recently seen places to avoid (soft — never at the cost of a stop). */
+  exclude_place_ids?: string[]
 }
 
 export type DayPart = 'morning' | 'afternoon' | 'evening' | 'night'

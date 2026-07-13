@@ -1,0 +1,1322 @@
+[
+  {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "title": "Charminar to Chai: Old City Wander",
+    "occasion": "date",
+    "stops": [
+      {
+        "place": {
+          "name": "Charminar",
+          "address": "Char Kaman, Ghansi Bazaar, Hyderabad 500002",
+          "lat": 17.3616,
+          "lng": 78.4747,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 120000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "tourist_attraction",
+            "point_of_interest"
+          ],
+          "provider_id": "ChIJm5MaboqXyzsR-xPxquRpWss",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "16:30:00",
+        "time_block_end": "17:30:00",
+        "travel_to_next_minutes": 8,
+        "travel_mode": "walking",
+        "why_this_place": "Climb at golden hour — the upper balcony has the only Charminar view that includes Charminar. Skip the rooftop cafes claiming the same.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Hotel Shadab",
+          "address": "21-1-140, Ghansi Bazaar, Pathergatti, Hyderabad 500002",
+          "lat": 17.3603,
+          "lng": 78.4767,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 30000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "food"
+          ],
+          "provider_id": "ChIJKyxGIoiXyzsRPY8PASGdTW0",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "17:38:00",
+        "time_block_end": "19:00:00",
+        "travel_to_next_minutes": 6,
+        "travel_mode": "walking",
+        "why_this_place": "The biryani arrives in dum, the haleem is ground twice — the upstairs hall has the slow-cooker setup the new outlets fake.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Nimrah Cafe & Bakery",
+          "address": "Patthar Gatti, near Charminar, Hyderabad 500002",
+          "lat": 17.3611,
+          "lng": 78.4756,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 25000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "cafe",
+            "bakery"
+          ],
+          "provider_id": "ChIJ1Z7b5_mXyzsR_6g6Az9fWjk",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "19:06:00",
+        "time_block_end": "19:50:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Stand at the counter for Irani chai and Osmania biscuit — sitting upstairs misses the point. Open since 1923, and they still bake into the night.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 200,
+    "total_cost_estimate": "cheap",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "The old city after work, before the rush. Climb Charminar at golden hour when the sandstone goes amber, then walk five minutes into Ghansi Bazaar for biryani at Shadab — the un-gentrified one, eat with your hands, sit at shared tables, and you'll understand why Hyderabadis argue about which place is best. Finish with Irani chai and Osmania biscuits at Nimrah, in the lane behind Charminar where the bakers have been doing this since the 1920s.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000002",
+    "title": "Jubilee Hills, Slow Burn",
+    "occasion": "date",
+    "stops": [
+      {
+        "place": {
+          "name": "Olive Bistro",
+          "address": "Road 46, Jubilee Hills, Hyderabad 500033",
+          "lat": 17.4308,
+          "lng": 78.4076,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 8000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "food"
+          ],
+          "provider_id": "ChIJBdTHClGRyzsRjU5SWqXEeJk",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "19:00:00",
+        "time_block_end": "20:30:00",
+        "travel_to_next_minutes": 12,
+        "travel_mode": "driving",
+        "why_this_place": "The terrace seating is the actual asset — book the corner pergola; the indoor bar misses the bougainvillea.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Concu",
+          "address": "Road 36, Jubilee Hills, Hyderabad 500033",
+          "lat": 17.4319,
+          "lng": 78.4071,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 4500,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "cafe",
+            "bakery"
+          ],
+          "provider_id": "ChIJZ3mAREiRyzsRIxCCJu8JwzU",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "20:42:00",
+        "time_block_end": "21:30:00",
+        "travel_to_next_minutes": 10,
+        "travel_mode": "driving",
+        "why_this_place": "Pastry chef trained in Paris; the millefeuille and the pistachio entremet are the ones to order. Closes 11pm sharp — don't dawdle at Olive.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Durgam Cheruvu Cable Bridge",
+          "address": "Madhapur, Hyderabad 500081",
+          "lat": 17.4348,
+          "lng": 78.3915,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 30000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "tourist_attraction",
+            "point_of_interest"
+          ],
+          "provider_id": "EkJEdXJnYW0gQ2hlcnV2dSBDYWJsZSBCcmlkZ2UsIE1hZGhhcHVyLCBIeWRlcmFiYWQsIFRlbGFuZ2FuYSwgSW5kaWEiLiosChQKEgk36-mhV5HLOxGp7kRvFFgEDBIUChIJBbIB8liRyzsRG0GSd77nuxE",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "21:40:00",
+        "time_block_end": "22:30:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Walk the lakefront promenade on the Madhapur side — quieter than the Jubilee end, and the bridge LEDs cycle every twenty minutes.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 210,
+    "total_cost_estimate": "mid",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "The version of date night that doesn't try too hard. Olive's pergola lit up like a Mediterranean garden — order the wood-fired pizza and a glass of wine because that's what the place is for. Then Concu, ten minutes down Road 36, where the desserts are the reason you skipped tiramisu earlier. End at the Cable Bridge after eleven, when the lake is empty and the LED rigging on the bridge does most of the work for you.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000003",
+    "title": "Banjara Hills, After Dark",
+    "occasion": "date",
+    "stops": [
+      {
+        "place": {
+          "name": "Roastery Coffee House",
+          "address": "Road 11, Banjara Hills, Hyderabad 500034",
+          "lat": 17.4127,
+          "lng": 78.4364,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 8000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "cafe",
+            "food"
+          ],
+          "provider_id": "ChIJWUl-wiqXyzsRud1hDiZM0aM",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "17:30:00",
+        "time_block_end": "18:30:00",
+        "travel_to_next_minutes": 14,
+        "travel_mode": "driving",
+        "why_this_place": "Single-origin pour-overs and a bookable upstairs nook. Pick the Yirgacheffe if it's on the menu — they roast lighter than the chains.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "AB's - Absolute Barbecues",
+          "address": "Road 1, Banjara Hills, Hyderabad 500034",
+          "lat": 17.4087,
+          "lng": 78.4385,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 12000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "food"
+          ],
+          "provider_id": "ChIJ43zFMTiXyzsR3y9h8DrXKP0",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "18:44:00",
+        "time_block_end": "20:45:00",
+        "travel_to_next_minutes": 8,
+        "travel_mode": "driving",
+        "why_this_place": "Live grills at the table mean nobody scrambles for the buffet. Cajun spice prawns and the lamb chops are the ones that justify the price.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Three Dots & a Dash",
+          "address": "Road 12, Banjara Hills, Hyderabad 500034",
+          "lat": 17.4133,
+          "lng": 78.4456,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 4000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "bar",
+            "restaurant"
+          ],
+          "provider_id": "ChIJf_Kpk1uXyzsRccfZU0XK14I",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "bar",
+        "time_block_start": "20:53:00",
+        "time_block_end": "22:30:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Tiki-leaning cocktail bar; the smoked old-fashioned is the move and the bartenders will riff if you tell them what you usually drink.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 300,
+    "total_cost_estimate": "splurge",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "An unhurried Banjara evening, paced for couples who like long conversations. Roastery first, because the coffee actually deserves the slow start — they roast in-house and you can taste it in the cortado. AB's for the unlimited grill: the staff plant skewers in front of you so you don't have to keep getting up to refill. Finish at Three Dots and a Dash, the speakeasy on Road 12, where the cocktails take fifteen minutes to make and that is precisely the point.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000004",
+    "title": "HITEC City Game Night",
+    "occasion": "friends",
+    "stops": [
+      {
+        "place": {
+          "name": "Smaaash Inorbit",
+          "address": "Inorbit Mall, HITEC City, Madhapur, Hyderabad 500081",
+          "lat": 17.4341,
+          "lng": 78.3819,
+          "distance_meters": 0,
+          "rating": 4.2,
+          "user_ratings_total": 6000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "amusement_park",
+            "establishment"
+          ],
+          "provider_id": "ChIJj9g7iFeRyzsRbTszJRXfmk8",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "activity",
+        "time_block_start": "18:00:00",
+        "time_block_end": "19:30:00",
+        "travel_to_next_minutes": 5,
+        "travel_mode": "walking",
+        "why_this_place": "Bowling lanes calibrated for actual social play, plus VR booths that work for non-gamers — better than the older Smaaash at Forum because the equipment isn't scuffed.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Farzi Cafe",
+          "address": "Inorbit Mall, HITEC City, Madhapur, Hyderabad 500081",
+          "lat": 17.4346,
+          "lng": 78.3815,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 5000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "food"
+          ],
+          "provider_id": "ChIJ6c7JgFeRyzsR8B1HlXqdITQ",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "19:35:00",
+        "time_block_end": "21:15:00",
+        "travel_to_next_minutes": 10,
+        "travel_mode": "driving",
+        "why_this_place": "Group-share menu, theatrical plating, decent acoustics for a noisy mall — Olive Cafe upstairs is calmer but doesn't do the small-plate thing as well.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Ironhill India",
+          "address": "VIP Hills, Silicon Valley, HITEC City, Hyderabad 500081",
+          "lat": 17.4486,
+          "lng": 78.3811,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 9000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "bar",
+            "restaurant"
+          ],
+          "provider_id": "ChIJ7YEROh2RyzsRoYA7VKQrAXY",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "bar",
+        "time_block_start": "21:25:00",
+        "time_block_end": "22:30:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Largest brewpub in the city; the rooftop has actual room. House Hefeweizen and the smoked-paneer flatbreads are the table-friendly orders.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 270,
+    "total_cost_estimate": "mid",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "For the group that says 'let's just hang' but never agrees on what. Smaaash takes care of the first hour — bowling, VR, whoever loses pays for a round. Farzi is downstairs with deconstructed Indian small plates that spark two arguments per table about whether it's pretentious. End at Ironhill, the brewery with house lagers and enough seating that no one has to stand.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000005",
+    "title": "Jubilee Hills Bar Loop",
+    "occasion": "friends",
+    "stops": [
+      {
+        "place": {
+          "name": "Aaromale",
+          "address": "Road 36, Jubilee Hills, Hyderabad 500033",
+          "lat": 17.4309,
+          "lng": 78.4116,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 3500,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "cafe"
+          ],
+          "provider_id": "ChIJ5RdM7DeXyzsRns6LsLrfreA",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "19:00:00",
+        "time_block_end": "20:30:00",
+        "travel_to_next_minutes": 7,
+        "travel_mode": "driving",
+        "why_this_place": "Mediterranean small-plate menu actually built for sharing — the hummus platter and za'atar focaccia order well for groups of six. Quieter than Olive next door at peak hours.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Prost Brew Pub",
+          "address": "Road 36, Jubilee Hills, Hyderabad 500033",
+          "lat": 17.4291,
+          "lng": 78.4093,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 8000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "bar",
+            "restaurant"
+          ],
+          "provider_id": "ChIJPU_G2E6RyzsRs95LdTHxZek",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "bar",
+        "time_block_start": "20:37:00",
+        "time_block_end": "22:00:00",
+        "travel_to_next_minutes": 10,
+        "travel_mode": "driving",
+        "why_this_place": "Six house brews on tap and an outdoor deck that absorbs the noise; the Hefeweizen is the consistent one. The newer Hyatt branch is quieter but lacks the deck.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Concu",
+          "address": "Road 36, Jubilee Hills, Hyderabad 500033",
+          "lat": 17.4319,
+          "lng": 78.4071,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 4500,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "cafe",
+            "bakery"
+          ],
+          "provider_id": "ChIJZ3mAREiRyzsRIxCCJu8JwzU",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "22:10:00",
+        "time_block_end": "23:00:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Open till 11pm with takeaway boxes till close — French pastry chef, not a chain. The pistachio entremet survives a car ride home.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 240,
+    "total_cost_estimate": "splurge",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "Six friends, one car, three stops. Aaromale's wood-and-plant aesthetic does the heavy lifting on the photos; the small plates are designed for sharing without negotiating. Prost is loud in a good way — house brews on tap, an outdoor section that doesn't make you yell. Then everyone says 'one last thing' and ends up at Concu eating millefeuille off paper plates near midnight.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000006",
+    "title": "Paradise, Promenade, Repeat",
+    "occasion": "friends",
+    "stops": [
+      {
+        "place": {
+          "name": "Paradise Restaurant — Secunderabad",
+          "address": "SD Road, Sarojini Devi Road, Secunderabad 500003",
+          "lat": 17.4399,
+          "lng": 78.4983,
+          "distance_meters": 0,
+          "rating": 4.1,
+          "user_ratings_total": 55000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "food"
+          ],
+          "provider_id": "ChIJG_3xjA-ayzsRFh3aJZ-Rbjg",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "19:00:00",
+        "time_block_end": "20:15:00",
+        "travel_to_next_minutes": 12,
+        "travel_mode": "driving",
+        "why_this_place": "The original 1953 outlet — the franchise outlets in HITEC and Banjara are cleaner but the rice doesn't sit the same. Order the mutton, not the chicken.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Necklace Road / Hussain Sagar",
+          "address": "Necklace Road, Khairatabad, Hyderabad 500004",
+          "lat": 17.4239,
+          "lng": 78.4738,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 30000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "tourist_attraction",
+            "park"
+          ],
+          "provider_id": "ChIJk3cyj1WXyzsRI3jyhg9Mo7c",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "20:27:00",
+        "time_block_end": "21:30:00",
+        "travel_to_next_minutes": 10,
+        "travel_mode": "driving",
+        "why_this_place": "Walk the People's Plaza stretch — the lakefront west of the Buddha is the quieter side; food stalls and sound systems cluster east.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Karachi Bakery — Mozamjahi Market",
+          "address": "Mozamjahi Market, Mozzam Jahi Road, Hyderabad 500001",
+          "lat": 17.3858,
+          "lng": 78.4747,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 30000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "bakery",
+            "cafe"
+          ],
+          "provider_id": "ChIJ47aqamGXyzsRGJq-YWhbiyk",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "21:40:00",
+        "time_block_end": "22:15:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "The 1953 original — fruit biscuits and dil khush, not the dressed-up airport branches. They run out by 10pm; arrive earlier than feels reasonable.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 195,
+    "total_cost_estimate": "cheap",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "The Hyderabad starter pack, on a budget. Paradise's Secunderabad flagship is the one — you'll wait twenty minutes, you'll be glad you did. The biryani is calibrated. Then Necklace Road for the walk you owe yourself after that quantity of rice — the Buddha statue lit gold across the water. Karachi Bakery before it closes for fruit biscuits to take to work tomorrow. The boxes are part of the city's grammar.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000007",
+    "title": "Banjara Quiet Hours",
+    "occasion": "solo",
+    "stops": [
+      {
+        "place": {
+          "name": "Roastery Coffee House",
+          "address": "Road 11, Banjara Hills, Hyderabad 500034",
+          "lat": 17.4127,
+          "lng": 78.4364,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 8000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "cafe",
+            "food"
+          ],
+          "provider_id": "ChIJWUl-wiqXyzsRud1hDiZM0aM",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "16:00:00",
+        "time_block_end": "17:00:00",
+        "travel_to_next_minutes": 10,
+        "travel_mode": "driving",
+        "why_this_place": "Long-stay coffee culture; the upstairs reading nook and ample power outlets make it the only Banjara cafe that doesn't passive-aggressively turn over tables.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "KBR National Park",
+          "address": "Road 2, Banjara Hills, Hyderabad 500034",
+          "lat": 17.4239,
+          "lng": 78.4212,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 17000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "park",
+            "tourist_attraction"
+          ],
+          "provider_id": "EksyLCBNYWluIFJvYWQsIE1MQSBDb2xvbnksIEJhbmphcmEgSGlsbHMsIEh5ZGVyYWJhZCwgVGVsYW5nYW5hIDUwMDA5NiwgSW5kaWEiMBIuChQKEgm7ptTD0JbLOxH8kf6SwcP3lRACKhQKEglnf5XG0JbLOxEEd4bvc9KGHQ",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "17:10:00",
+        "time_block_end": "18:30:00",
+        "travel_to_next_minutes": 14,
+        "travel_mode": "driving",
+        "why_this_place": "Three-kilometer forest loop with actual peacocks; closes 7pm so the late-evening window is the calmer one. Avoid the Road 1 entrance — Road 2 has the shaded path.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Cafe Niloufer",
+          "address": "Lakdikapul, Hyderabad 500004",
+          "lat": 17.4044,
+          "lng": 78.4639,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 7500,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "cafe",
+            "bakery"
+          ],
+          "provider_id": "ChIJk8izi1qXyzsRK50iW4oimEY",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "18:44:00",
+        "time_block_end": "19:30:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Stand at the counter for Irani chai and Osmania biscuits — the seated section is for tourists, the standing one is for regulars.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 210,
+    "total_cost_estimate": "mid",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "A solo route built around the small luxuries Hyderabad does well: good coffee, public greenery, neighborhood chai. Roastery for an hour with a book — the lighting is forgiving and nobody rushes you out. KBR's loop is three kilometers of actual forest in the middle of the city; peacocks if you're lucky, definitely monkeys. Niloufer's tea is the unfussy reward — you stand at the counter, you don't sit, you watch the city do its evening commute.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000008",
+    "title": "Salar Jung Slow Looking",
+    "occasion": "solo",
+    "stops": [
+      {
+        "place": {
+          "name": "Salar Jung Museum",
+          "address": "Salar Jung Marg, Darulshifa, Hyderabad 500002",
+          "lat": 17.3713,
+          "lng": 78.4801,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 50000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "museum",
+            "tourist_attraction"
+          ],
+          "provider_id": "ChIJu9dj4oeXyzsRQaBpm0uTOzU",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "13:00:00",
+        "time_block_end": "15:30:00",
+        "travel_to_next_minutes": 9,
+        "travel_mode": "driving",
+        "why_this_place": "Closed Fridays. The Eastern and Western blocks are the highlights — skip the founder's gallery if pressed for time. The veiled Rebecca and the musical clock are non-negotiable.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Chowmahalla Palace",
+          "address": "Khilwat, Motigalli, Hyderabad 500002",
+          "lat": 17.3578,
+          "lng": 78.4717,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 30000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "museum",
+            "tourist_attraction"
+          ],
+          "provider_id": "ChIJq6qq2oqXyzsR6Ovd2kXV2U0",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "15:39:00",
+        "time_block_end": "16:45:00",
+        "travel_to_next_minutes": 10,
+        "travel_mode": "walking",
+        "why_this_place": "Closed Fridays. Smaller and quieter than Salar Jung; the durbar hall ceiling and the vintage car courtyard are the photographs nobody else's feed has.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Nimrah Cafe & Bakery",
+          "address": "Patthar Gatti, near Charminar, Hyderabad 500002",
+          "lat": 17.3611,
+          "lng": 78.4756,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 25000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "cafe",
+            "bakery"
+          ],
+          "provider_id": "ChIJ1Z7b5_mXyzsR_6g6Az9fWjk",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "16:55:00",
+        "time_block_end": "17:50:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Counter chai, fruit biscuit, and the bazaar at peak commute — solo seating is fine here, nobody minds.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 290,
+    "total_cost_estimate": "cheap",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "An afternoon for one, in the city's deepest archive. Salar Jung holds the country's largest single-collector hoard — three rooms in, you stop trying to see everything and start picking favorites (mine: the veiled Rebecca, the Mughal daggers, the room of clocks at the top of the hour). Chowmahalla, twenty minutes by auto, is what the Nizams actually lived in — courtyards open to the sky, fewer crowds than you'd expect. End at Nimrah for the sugar pull-back: chai, biscuit, watch the bazaar.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-000000000009",
+    "title": "Gachibowli Green Hours",
+    "occasion": "solo",
+    "stops": [
+      {
+        "place": {
+          "name": "Hyderabad Botanical Garden",
+          "address": "Kothaguda Reserve Forest, Kothaguda, Hyderabad 500084",
+          "lat": 17.4631,
+          "lng": 78.3661,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 25000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "park",
+            "tourist_attraction"
+          ],
+          "provider_id": "ChIJ-1FZALiTyzsR029wqV9TCNM",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "15:30:00",
+        "time_block_end": "17:00:00",
+        "travel_to_next_minutes": 12,
+        "travel_mode": "driving",
+        "why_this_place": "Closes 5pm; afternoon entry catches the peak butterfly hour at the bonsai pond. The bamboo loop trail is the quiet one — the rose garden is the crowded one.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Shilparamam",
+          "address": "Shilparamam Marg, Madhapur, Hyderabad 500081",
+          "lat": 17.4519,
+          "lng": 78.3812,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 75000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "tourist_attraction",
+            "shopping_mall"
+          ],
+          "provider_id": "ChIJnViW-duTyzsRATOZDbnTtdU",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "activity",
+        "time_block_start": "17:12:00",
+        "time_block_end": "19:00:00",
+        "travel_to_next_minutes": 8,
+        "travel_mode": "driving",
+        "why_this_place": "Crafts village, not a market — the artisan stalls actually make-on-site. Friday and Saturday evenings have live folk music in the amphitheatre, no extra ticket.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Ironhill India",
+          "address": "VIP Hills, Silicon Valley, HITEC City, Hyderabad 500081",
+          "lat": 17.4486,
+          "lng": 78.3811,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 9000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "bar",
+            "restaurant"
+          ],
+          "provider_id": "ChIJ7YEROh2RyzsRoYA7VKQrAXY",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "bar",
+        "time_block_start": "19:08:00",
+        "time_block_end": "20:30:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Solo-friendly: the bar counter has individual seating, the staff don't push group menus. House Hefeweizen + the cheese platter is the right one-person order.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 300,
+    "total_cost_estimate": "mid",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "Hyderabad's tech triangle has more green than the brochures admit. Start at Kothaguda Botanical — actual forest cover, walking trails most office workers haven't found yet. Shilparamam afterward, where the rural artisan stalls feel like a slowed-down version of the metro: terracotta, ikat, dokra metalwork, no one upselling. Ironhill to close the loop — the kind of brewery that lets one person nurse a beer for an hour without making it weird.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-00000000000a",
+    "title": "Golconda Sunset, Tolichowki Dinner",
+    "occasion": "family",
+    "stops": [
+      {
+        "place": {
+          "name": "Golconda Fort",
+          "address": "Khair Complex, Ibrahim Bagh, Hyderabad 500008",
+          "lat": 17.3833,
+          "lng": 78.4011,
+          "distance_meters": 0,
+          "rating": 4.5,
+          "user_ratings_total": 100000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "tourist_attraction",
+            "point_of_interest"
+          ],
+          "provider_id": "ChIJj6mupo6WyzsRWjNa1t_sdms",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "16:00:00",
+        "time_block_end": "18:30:00",
+        "travel_to_next_minutes": 15,
+        "travel_mode": "walking",
+        "why_this_place": "Climb to Bala Hisar before sunset — the clap-stone at the entrance reaches the top, that's the one bit of hands-on history kids remember.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Golconda Sound & Light Show",
+          "address": "Golconda Fort, Hyderabad 500008",
+          "lat": 17.3829,
+          "lng": 78.4006,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 12000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "tourist_attraction",
+            "point_of_interest"
+          ],
+          "provider_id": "ChIJNVsj-YuWyzsRtRwFMRQ7dNM",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "activity",
+        "time_block_start": "18:45:00",
+        "time_block_end": "20:00:00",
+        "travel_to_next_minutes": 15,
+        "travel_mode": "driving",
+        "why_this_place": "Wed–Sun only; English show on Wed, Sat, Sun. Buy tickets at the gate — the online site is unreliable. Sit centre, not the side benches.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Shah Ghouse Cafe & Restaurant",
+          "address": "Tolichowki, Hyderabad 500008",
+          "lat": 17.3997,
+          "lng": 78.4106,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 25000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "food"
+          ],
+          "provider_id": "ChIJNSA7fT-XyzsRrYhLnbu7KlQ",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "20:15:00",
+        "time_block_end": "22:00:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Open till 3am, family hall on the first floor is the calmer section — the haleem at this branch is ground twice and the difference is real. Kid-friendly biryani portions on request.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 360,
+    "total_cost_estimate": "mid",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "Climb Golconda before the heat dies — kids will run ahead, the older folks will take the breaks they need on the stone benches. Bala Hisar at the top has the best skyline view in Hyderabad and the acoustics the queens supposedly used to hear court below. The Sound and Light show after dusk is theatrical in the way kids love and adults secretly enjoy too — Amitabh narrates the English version. Shah Ghouse for late dinner because it's open till 3am and serves haleem worth driving to Tolichowki for.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-00000000000b",
+    "title": "Necklace Road Picnic",
+    "occasion": "family",
+    "stops": [
+      {
+        "place": {
+          "name": "Lumbini Park",
+          "address": "Tank Bund Road, Hussain Sagar, Hyderabad 500063",
+          "lat": 17.4119,
+          "lng": 78.4744,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 100000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "park",
+            "tourist_attraction"
+          ],
+          "provider_id": "ChIJpeyxLF-XyzsRXBhk5vcfEmU",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "attraction",
+        "time_block_start": "17:00:00",
+        "time_block_end": "18:30:00",
+        "travel_to_next_minutes": 8,
+        "travel_mode": "walking",
+        "why_this_place": "Speedboat to the Buddha statue runs every twenty minutes — buy the combo ticket at the gate, not separately. The musical fountain show is at 7:15pm, plan accordingly.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Eat Street",
+          "address": "Necklace Road, Khairatabad, Hyderabad 500004",
+          "lat": 17.4203,
+          "lng": 78.4737,
+          "distance_meters": 0,
+          "rating": 4.1,
+          "user_ratings_total": 25000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "food_court"
+          ],
+          "provider_id": "ChIJp1McUR2ayzsRVwo-Ww9MCak",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "18:38:00",
+        "time_block_end": "20:00:00",
+        "travel_to_next_minutes": 12,
+        "travel_mode": "driving",
+        "why_this_place": "One open-air strip of stalls with shared seating along the lake — pick differently per person; the pani puri counter at the south end is the consistent one.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Karachi Bakery — Mozamjahi Market",
+          "address": "Mozamjahi Market, Mozzam Jahi Road, Hyderabad 500001",
+          "lat": 17.3858,
+          "lng": 78.4747,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 30000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "bakery",
+            "cafe"
+          ],
+          "provider_id": "ChIJ47aqamGXyzsRGJq-YWhbiyk",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "20:12:00",
+        "time_block_end": "20:50:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "The 1953 original — fruit biscuits and dil khush, not the dressed-up airport branches. Closes at 10pm; the take-home boxes survive a school lunch the next day.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 230,
+    "total_cost_estimate": "cheap",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "The walking-and-snacking version of a family outing. Lumbini Park has the speedboat to the Buddha statue mid-lake — kids will want to do it twice. The musical fountain at dusk is corny enough that everyone secretly likes it. Eat Street is one stretch of food stalls along the lake — let everyone pick their own dinner from a different counter. Karachi Bakery on the way home for fruit biscuits, because that's how Hyderabad family outings end.",
+    "created_at": "2026-05-05T18:00:00"
+  },
+  {
+    "id": "10000000-0000-4000-8000-00000000000c",
+    "title": "HITEC Family Weekend",
+    "occasion": "family",
+    "stops": [
+      {
+        "place": {
+          "name": "Inorbit Mall Hyderabad",
+          "address": "APIIC Software Layout, HITEC City, Madhapur, Hyderabad 500081",
+          "lat": 17.4341,
+          "lng": 78.3819,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 60000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "shopping_mall",
+            "establishment"
+          ],
+          "provider_id": "ChIJEUdt5i-XyzsRE1OhHGknLX8",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "activity",
+        "time_block_start": "16:00:00",
+        "time_block_end": "18:30:00",
+        "travel_to_next_minutes": 10,
+        "travel_mode": "driving",
+        "why_this_place": "Smaaash inside the mall handles 6–14 year-olds; the third-floor food court holds the fall-back if anyone gets hungry early. Less crawl-distance than Sarath City.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "AB's - Absolute Barbecues",
+          "address": "Sarath City Capital Mall, HITEC City, Hyderabad 500081",
+          "lat": 17.4584,
+          "lng": 78.3672,
+          "distance_meters": 0,
+          "rating": 4.4,
+          "user_ratings_total": 8000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "restaurant",
+            "food"
+          ],
+          "provider_id": "ChIJRRXO2kmRyzsRITDIrd8zHRk",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "restaurant",
+        "time_block_start": "18:40:00",
+        "time_block_end": "20:45:00",
+        "travel_to_next_minutes": 8,
+        "travel_mode": "driving",
+        "why_this_place": "The HITEC branch is newer and quieter than Banjara — table grills mean nobody waits in buffet queues, kids choose their own skewers, dessert is included.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      },
+      {
+        "place": {
+          "name": "Coffee Cup",
+          "address": "Image Garden Road, Madhapur, Hyderabad 500081",
+          "lat": 17.4498,
+          "lng": 78.3893,
+          "distance_meters": 0,
+          "rating": 4.3,
+          "user_ratings_total": 4000,
+          "price_level": null,
+          "price_range_start_inr": null,
+          "price_range_end_inr": null,
+          "business_status": "OPERATIONAL",
+          "types": [
+            "cafe",
+            "food"
+          ],
+          "provider_id": "ChIJRSbJXL-RyzsRXGIJZMjF-Bs",
+          "opens_today": null,
+          "closes_today": null,
+          "open_24h_today": false
+        },
+        "category": "cafe",
+        "time_block_start": "20:53:00",
+        "time_block_end": "22:00:00",
+        "travel_to_next_minutes": null,
+        "travel_mode": null,
+        "why_this_place": "Late-evening cafe with comfortable family seating and an unrushed staff — the Belgian waffle and a pot of filter coffee land the older relatives in the right end-of-night mood.",
+        "est_cost_per_person_min_inr": null,
+        "est_cost_per_person_max_inr": null,
+        "price_source": null
+      }
+    ],
+    "total_duration_minutes": 360,
+    "total_cost_estimate": "splurge",
+    "est_total_per_person_min_inr": null,
+    "est_total_per_person_max_inr": null,
+    "weather_note": null,
+    "narrative": "Hitec City does family weekends well because everything is climate-controlled and within a five-kilometer triangle. Smaaash inside Inorbit covers two hours easy — the bowling lanes are kid-friendly, the VR booths separate teenagers from parents. AB's for the buffet that earns its hype: skewers come to you, dessert is included, the kids never run out of things to try. Coffee Cup at the end for slow coffee and the kind of atmosphere that lets the older relatives wind down before the drive home.",
+    "created_at": "2026-05-05T18:00:00"
+  }
+]

@@ -550,8 +550,13 @@ async def _pick_viable_candidate(
     used: set[str],
     requested_place_type: str,
     rng: random.Random | None = None,
+    seen: frozenset[str] = frozenset(),
 ) -> _CandidatePick | None:
-    ranked = _rank_unused(candidates, cost, prev_lat, prev_lng, used)
+    # Recently-seen places (from the user's past quests) are avoided only
+    # while fresh options exist — variety never costs a stop.
+    ranked = _rank_unused(candidates, cost, prev_lat, prev_lng, used | seen)
+    if not ranked and seen:
+        ranked = _rank_unused(candidates, cost, prev_lat, prev_lng, used)
     if rng is not None:
         ranked = _variety_shuffle(ranked, cost, prev_lat, prev_lng, rng)
     drop_counts: Counter[str] = Counter()
@@ -807,6 +812,7 @@ async def assemble_quest(
     elif req.duration_hours is not None and req.duration_hours >= _LONG_QUEST_HOURS:
         template.insert(2, _LONG_QUEST_EXTRA_STOP[req.occasion])
     used_ids: set[str] = set()
+    seen_ids = frozenset(req.exclude_place_ids)
     slots: list[_Slot] = []
     prev_lat: float | None = None
     prev_lng: float | None = None
@@ -858,6 +864,7 @@ async def assemble_quest(
                 used=used_ids,
                 requested_place_type=place_type,
                 rng=rng,
+                seen=seen_ids,
             )
             if picked is not None:
                 break

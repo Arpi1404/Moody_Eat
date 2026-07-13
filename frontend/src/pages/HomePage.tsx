@@ -5,6 +5,7 @@ import type { Quest } from '../types/quest'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel } from '../lib/budget'
+import { getRecentPlaceIds, recordQuestPlaces } from '../lib/questHistory'
 import '../App.css'
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -397,6 +398,8 @@ export function HomePage() {
       people: PEOPLE_BY_OCCASION[activeOccasion],
       stop_count: stopCount,
       day_part: dayPart,
+      // Avoid repeating places from recent quests (soft exclusion).
+      exclude_place_ids: getRecentPlaceIds(),
     }
 
     try {
@@ -414,6 +417,7 @@ export function HomePage() {
         quest.stops.length > 0 && quest.stops.length < stopCount
           ? `Found ${quest.stops.length} great stop${quest.stops.length === 1 ? '' : 's'} — couldn't fill all ${stopCount} in this area.`
           : undefined
+      recordQuestPlaces(quest)
       localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
       navigate(`/quest/${quest.id}`, {
         state: { quest, softMessage, justCreated: true, request },
