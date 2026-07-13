@@ -434,6 +434,22 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     setShareMenuOpen(true)
   }
 
+  const handleShareWhatsApp = async () => {
+    const titledQuest = { ...quest, title: title.trim() || quest.title }
+    const url = await makeQuestShareUrl(titledQuest)
+    const text = `${titledQuest.title} — here's the plan 👇\n${url}`
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      '_blank',
+      'noopener,noreferrer',
+    )
+    track('quest_shared', {
+      quest_id: titledQuest.id,
+      share_method: 'whatsapp',
+    })
+    setShareMenuOpen(false)
+  }
+
   const handleCopyShareLink = async () => {
     const titledQuest = { ...quest, title: title.trim() || quest.title }
     await copyToClipboard(await makeQuestShareUrl(titledQuest))
@@ -743,6 +759,27 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
                 </p>
               </div>
               <div className="qp-share-actions">
+                <button
+                  type="button"
+                  className="qp-share-option"
+                  onClick={handleShareWhatsApp}
+                  disabled={sharing}
+                >
+                  <span
+                    className="qp-share-option-icon qp-share-option-icon--wa"
+                    aria-hidden
+                  >
+                    WA
+                  </span>
+                  <span>
+                    <span className="qp-share-option-title">
+                      Share on WhatsApp
+                    </span>
+                    <span className="qp-share-option-subtitle">
+                      Send the plan straight to the group.
+                    </span>
+                  </span>
+                </button>
                 <button
                   type="button"
                   className="qp-share-option"

@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Landing from './pages/Landing'
 import { HomePage } from './pages/HomePage'
+import { CreateQuestPage } from './pages/CreateQuestPage'
 import { PlanPage } from './pages/PlanPage'
 import { QuestPage } from './pages/QuestPage'
 import { ResultsPage } from './pages/ResultsPage'
@@ -53,6 +54,7 @@ function App() {
       <TopNavGate />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/create" element={<CreateQuestPage />} />
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<HomePage />} />
         <Route path="/plan" element={<PlanPage />} />

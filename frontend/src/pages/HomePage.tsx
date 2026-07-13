@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
 import type { Quest } from '../types/quest'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
@@ -507,6 +507,14 @@ export function HomePage() {
               </button>
             ))}
           </div>
+          <Link
+            to="/create"
+            className="home-build-own"
+            onClick={() => track('build_own_tapped')}
+          >
+            <span aria-hidden>🛠️</span> Know your spots? Build your own quest
+            <span aria-hidden> →</span>
+          </Link>
         </section>
 
         <section

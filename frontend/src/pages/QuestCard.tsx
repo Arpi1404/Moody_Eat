@@ -2,10 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { fetchStopAlternatives, getApiBase } from '../api'
-import type { Quest, Stop, StopAlternative, TravelMode } from '../types/quest'
+import type { Quest, Stop, StopAlternative } from '../types/quest'
 import { EmptyState } from '../components/states'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
+import {
+  addMinutes,
+  durationMinutes,
+  questDuration,
+  rescheduleStops,
+} from '../lib/questBuild'
 import { SwapSheet } from './SwapSheet'
 
 const TRAVEL_EMOJI: Record<string, string> = {
@@ -43,94 +49,6 @@ function directionsUrl(place: Stop['place']): string {
     return `${base}&destination=${encodeURIComponent(place.name)}&destination_place_id=${place.provider_id}`
   }
   return `${base}&destination=${place.lat},${place.lng}`
-}
-
-function toMinutes(hhmm: string): number {
-  const [hStr, mStr] = hhmm.split(':')
-  return parseInt(hStr, 10) * 60 + parseInt(mStr, 10)
-}
-
-function addMinutes(hhmm: string, minutes: number): string {
-  const total = toMinutes(hhmm) + minutes
-  const day = 24 * 60
-  const wrapped = ((total % day) + day) % day
-  const h = Math.floor(wrapped / 60)
-  const m = wrapped % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
-}
-
-function durationMinutes(start: string, end: string): number {
-  let delta = toMinutes(end) - toMinutes(start)
-  if (delta < 0) delta += 24 * 60
-  return delta
-}
-
-function questDuration(stops: Stop[]): number {
-  if (stops.length === 0) return 0
-  return durationMinutes(
-    stops[0].time_block_start,
-    stops[stops.length - 1].time_block_end,
-  )
-}
-
-// Travel model mirrors the backend (quest_generator.py) so recomputed legs
-// after a swap match what the generator would have produced.
-const WALK_M_PER_MIN = 80
-const DRIVE_M_PER_MIN = 350
-const WALK_THRESHOLD_M = 1400
-
-function haversineM(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
-  const R = 6_371_000
-  const rad = (d: number) => (d * Math.PI) / 180
-  const dLat = rad(lat2 - lat1)
-  const dLng = rad(lng2 - lng1)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(Math.min(1, a)))
-}
-
-function travelLeg(from: Stop, to: Stop): { minutes: number; mode: TravelMode } {
-  const dist = haversineM(from.place.lat, from.place.lng, to.place.lat, to.place.lng)
-  if (dist <= WALK_THRESHOLD_M) {
-    return { minutes: Math.max(1, Math.round(dist / WALK_M_PER_MIN)), mode: 'walking' }
-  }
-  return { minutes: Math.max(1, Math.round(dist / DRIVE_M_PER_MIN)), mode: 'driving' }
-}
-
-// Recompute every leg from geometry: changing any stop (swap or reorder)
-// changes the travel time AND mode of the legs around it, and stale minutes
-// would silently shift the whole downstream schedule. Each stop keeps its
-// dwell; the first stop's start time anchors the chain.
-function rescheduleStops(stops: Stop[]): Stop[] {
-  for (let i = 0; i < stops.length; i += 1) {
-    const dwell = durationMinutes(
-      stops[i].time_block_start,
-      stops[i].time_block_end,
-    )
-    if (i > 0) {
-      const leg = travelLeg(stops[i - 1], stops[i])
-      stops[i - 1] = {
-        ...stops[i - 1],
-        travel_to_next_minutes: leg.minutes,
-        travel_mode: leg.mode,
-      }
-      const nextStart = addMinutes(stops[i - 1].time_block_end, leg.minutes)
-      stops[i] = {
-        ...stops[i],
-        time_block_start: nextStart,
-        time_block_end: addMinutes(nextStart, dwell),
-      }
-    }
-  }
-  const last = stops.length - 1
-  stops[last] = { ...stops[last], travel_to_next_minutes: null, travel_mode: null }
-  return stops
 }
 
 function rescheduleWithAlternative(
