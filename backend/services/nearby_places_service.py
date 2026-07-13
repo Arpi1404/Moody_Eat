@@ -67,6 +67,18 @@ _TYPE_DENYLIST = frozenset(
         "insurance_agency",
         "meal_takeaway",
         "moving_company",
+        # Service businesses that co-tag outing-ish types (a pet boarding
+        # service tagging `park` once landed in a family quest).
+        "veterinary_care",
+        "pet_store",
+        "doctor",
+        "dentist",
+        "hospital",
+        "physiotherapist",
+        "beauty_salon",
+        "hair_care",
+        "gym",
+        "pharmacy",
     }
 )
 _STORE_FOOD_CULTURE_TYPES = frozenset(
@@ -82,6 +94,9 @@ _STORE_FOOD_CULTURE_TYPES = frozenset(
 )
 _NAME_DENYLIST_RE = re.compile(
     r"\b(?:stationery|xerox|wholesale|enterprises|traders|agency|consultancy|pvt\.?\s?ltd)\b"
+    # Service businesses, tuition mills, and clinics — not outing stops even
+    # when Google co-tags them park/art_gallery/tourist_attraction.
+    r"|\b(?:services|institute|academy|classes|coaching|training|clinic|hospital|veterinary|grooming)\b"
     r"|(?<!\w)&\s*sons\b"
     r"|\(\s*mob[\.\s]"
     r"|\d{10}",

@@ -373,6 +373,49 @@ def test_quality_filter_drops_plain_store_without_food_or_culture_type() -> None
     assert names == ["Cafe With Shelves"]
 
 
+def test_quality_filter_drops_service_businesses() -> None:
+    """Pet services, tuition institutes, and clinics co-tag outing types on
+    Google and must never become quest stops ("Soulmate Pet Services" once
+    landed in a family quest as the activity)."""
+
+    class ServiceNoiseProvider(FakeProvider):
+        async def nearby_by_type(
+            self,
+            *,
+            lat: float,
+            lng: float,
+            radius_meters: int,
+            place_type: str,
+            target_count: int | None = None,
+        ) -> list[RawPlace]:
+            self.nearby_types.append(place_type)
+            return [
+                # Name-denylist catches
+                RawPlace("pets", "Soulmate Pet Services", "Road", 0.001, 0.0, 4.9, ["park"], 800),
+                RawPlace("draw", "Inspire Drawing Painting Institute", "Road", 0.002, 0.0, 4.8, ["art_gallery"], 350),
+                RawPlace("tuition", "Sri Chaitanya Academy", "Road", 0.003, 0.0, 4.7, ["park"], 500),
+                # Type-denylist catches (clean name, service type co-tag)
+                RawPlace("vet", "Happy Tails", "Road", 0.004, 0.0, 4.8, ["park", "veterinary_care"], 600),
+                RawPlace("salon", "Blush Beauty", "Road", 0.005, 0.0, 4.6, ["park", "beauty_salon"], 400),
+                # Legit park — keep
+                RawPlace("park", "Central Park", "Road", 0.006, 0.0, 4.4, ["park"], 900),
+            ]
+
+    settings = get_settings()
+    provider = ServiceNoiseProvider()
+    svc = NearbyPlacesService(provider, settings)
+    app.dependency_overrides[get_nearby_places_service] = lambda: svc
+    try:
+        with TestClient(app) as c:
+            res = c.post("/api/places/nearby", json={"query": "parks in Hyderabad", "categories": ["park"]})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    names = [p["name"] for p in res.json()["places"]]
+    assert names == ["Central Park"]
+
+
 def test_quality_filter_drops_name_denylist_matches() -> None:
     class NameDenylistProvider(FakeProvider):
         async def nearby_by_type(

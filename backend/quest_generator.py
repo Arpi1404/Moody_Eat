@@ -149,6 +149,12 @@ _PRICE_SOURCE_CONFIDENCE: dict[str, float] = {
 # never trades away real quality.
 _VARIETY_SCORE_EPSILON = 0.045
 
+# On a cheap quest, a place *known* to be at this price level or above is
+# rejected outright (kept only as a last resort when nothing cheaper exists).
+# Score penalties alone let a stellar-but-pricey cafe outrank unknown-price
+# budget spots, which breaks the "cheap" promise.
+_CHEAP_REJECT_MIN_PRICE_LEVEL = 3
+
 _PRICE_FIT: dict[CostEstimate, dict[int, float]] = {
     CostEstimate.cheap: {
         0: 0.95,
@@ -201,6 +207,7 @@ _VIABILITY_RULES = (
     "already_used",
     "mood_type",
     "mood_name",
+    "over_budget",
     "hours_unknown",
     "hours_closed",
 )
@@ -551,10 +558,11 @@ async def _pick_viable_candidate(
         drop_counts["already_used"] = len(candidates) - len(ranked)
     price_known = sum(1 for p in ranked if price_signal(p).source != PRICE_SOURCE_UNKNOWN)
 
-    # A candidate whose hours Google doesn't know is a weaker pick than one we
-    # can verify is open, but a better pick than an empty stop. Keep the best
-    # one aside and use it only if every verifiable candidate falls through.
+    # Weaker candidates kept aside and used only if every clean candidate
+    # falls through: budget-fit places with unknown hours first (the budget
+    # promise outranks hours certainty), then over-budget-but-open places.
     unknown_hours_fallback: _CandidatePick | None = None
+    over_budget_fallback: _CandidatePick | None = None
 
     for place in ranked[:_VIABILITY_CHECK_LIMIT]:
         dist_m = (
@@ -571,9 +579,18 @@ async def _pick_viable_candidate(
             drop_counts[mood_rule] += 1
             continue
 
+        over_budget = (
+            cost == CostEstimate.cheap
+            and (level := price_signal(place).level) is not None
+            and level >= _CHEAP_REJECT_MIN_PRICE_LEVEL
+        )
+        if over_budget and over_budget_fallback is not None:
+            drop_counts["over_budget"] += 1
+            continue
+
         place_with_hours = await _with_hours(place, service, weekday_g)
         hours_rule = _hours_reject_rule(place_with_hours, start, end)
-        if hours_rule == "hours_unknown":
+        if hours_rule == "hours_unknown" and not over_budget:
             drop_counts[hours_rule] += 1
             if unknown_hours_fallback is None:
                 unknown_hours_fallback = _CandidatePick(
@@ -585,6 +602,16 @@ async def _pick_viable_candidate(
             continue
         if hours_rule is not None:
             drop_counts[hours_rule] += 1
+            continue
+
+        if over_budget:
+            drop_counts["over_budget"] += 1
+            over_budget_fallback = _CandidatePick(
+                place=place_with_hours,
+                dist_from_prev_m=dist_m,
+                start=start,
+                end=end,
+            )
             continue
 
         logger.info(
@@ -604,18 +631,25 @@ async def _pick_viable_candidate(
             end=end,
         )
 
+    fallback = unknown_hours_fallback or over_budget_fallback
+    if fallback is unknown_hours_fallback and fallback is not None:
+        selected_label = "hours_unknown_fallback"
+    elif fallback is not None:
+        selected_label = "over_budget_fallback"
+    else:
+        selected_label = "false"
     logger.info(
         "quest_candidate_viability type=%s category=%s checked=%d selected=%s "
         "price_known=%d/%d drops=%s",
         requested_place_type,
         tmpl.category.value,
         min(len(ranked), _VIABILITY_CHECK_LIMIT),
-        "hours_unknown_fallback" if unknown_hours_fallback is not None else "false",
+        selected_label,
         price_known,
         len(ranked),
         {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
     )
-    return unknown_hours_fallback
+    return fallback
 
 
 class _Slot(NamedTuple):

@@ -443,6 +443,87 @@ def test_day_part_changes_start_time_and_filters_closed_places(monkeypatch) -> N
     assert night.stops[0].time_block_start == time(20, 0)
 
 
+class PriceyPoolProvider:
+    """Restaurant pool for cheap-budget tests: one known-expensive star and,
+    optionally, a modest budget-fit spot. Everything is verifiably open."""
+
+    def __init__(self, include_cheap: bool) -> None:
+        self.include_cheap = include_cheap
+
+    async def geocode(self, query: str) -> ResolvedLocation:
+        return ResolvedLocation(name=query, lat=0.0, lng=0.0)
+
+    async def nearby_by_type(
+        self,
+        *,
+        lat: float,
+        lng: float,
+        radius_meters: int,
+        place_type: str,
+        target_count: int | None = None,
+    ) -> list[RawPlace]:
+        if place_type != "restaurant":
+            return []
+        pool = [
+            RawPlace(
+                "pricey", "Tasting Room", "Road", 0.001, 0.0, 4.9, ["restaurant"], 9000,
+                price_level=3,
+            ),
+        ]
+        if self.include_cheap:
+            pool.append(
+                RawPlace(
+                    "budget", "Everyday Mess", "Road", 0.002, 0.0, 4.1, ["restaurant"], 150,
+                    price_level=1,
+                ),
+            )
+        return pool
+
+    async def place_hours(self, *, provider_id: str, weekday: int) -> PlaceHours:
+        return PlaceHours("08:00", "23:59", False)
+
+
+def test_cheap_quest_rejects_known_expensive_when_cheaper_exists(monkeypatch) -> None:
+    async def fake_narrative(**kwargs) -> str:
+        return "A test quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+    service = NearbyPlacesService(PriceyPoolProvider(include_cheap=True))
+    quest = asyncio.run(assemble_quest(
+        QuestGenerationRequest(
+            location="Govindpuram",
+            occasion=Occasion.date,
+            cost_estimate=CostEstimate.cheap,
+            people=2,
+            stop_count=1,
+        ),
+        service,
+    ))
+
+    assert [s.place.name for s in quest.stops] == ["Everyday Mess"]
+
+
+def test_cheap_quest_keeps_expensive_place_as_last_resort(monkeypatch) -> None:
+    """When the whole pool is pricey, the stop is filled, not dropped."""
+    async def fake_narrative(**kwargs) -> str:
+        return "A test quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+    service = NearbyPlacesService(PriceyPoolProvider(include_cheap=False))
+    quest = asyncio.run(assemble_quest(
+        QuestGenerationRequest(
+            location="Govindpuram",
+            occasion=Occasion.date,
+            cost_estimate=CostEstimate.cheap,
+            people=2,
+            stop_count=1,
+        ),
+        service,
+    ))
+
+    assert [s.place.name for s in quest.stops] == ["Tasting Room"]
+
+
 class StopCountProvider:
     """One good, always-open place per category the date template can ask for."""
 
