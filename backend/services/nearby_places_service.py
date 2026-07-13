@@ -190,6 +190,10 @@ class NearbyPlacesService:
                 response=response,
             )
 
+    async def resolve_location(self, query: str) -> ResolvedLocation:
+        """Geocode pass-through (used by the quest generator's weather check)."""
+        return await self._provider.geocode(query)
+
     async def get_place_hours(self, provider_id: str, weekday: int) -> PlaceHours:
         """Pass-through to the provider's place_hours; safe to call for any place_id."""
         return await self._provider.place_hours(

@@ -35,6 +35,7 @@ from quest_templates import TEMPLATES, TemplateStop
 from services.nearby_places_service import NearbyPlacesService
 from services.place_blurbs_service import generate_quest_narrative
 from services.places_exceptions import PlacesProviderError
+from services.weather_service import OUTDOOR_TYPES, rain_expected
 
 logger = logging.getLogger(__name__)
 
@@ -815,9 +816,25 @@ async def assemble_quest(
     weekday_g = (datetime.now().weekday() + 1) % 7
     rng = random.Random(req.variety_seed) if req.variety_seed is not None else None
 
+    # Rain check for the quest window (fail-open: unknown weather = no change).
+    rain_risk: bool | None = None
+    try:
+        anchor = await service.resolve_location(req.location)
+        rain_risk = await rain_expected(anchor.lat, anchor.lng, sh)
+    except Exception as exc:
+        logger.warning("weather_anchor_failed err_type=%s", exc.__class__.__name__)
+    outdoor_skipped = False
+
     for tmpl in template:
         picked: _CandidatePick | None = None
-        for place_type in tmpl.places_types:
+        stop_place_types = tmpl.places_types
+        if rain_risk:
+            indoor_only = tuple(t for t in stop_place_types if t not in OUTDOOR_TYPES)
+            # Only narrow when an indoor fallback exists — never empty a stop.
+            if indoor_only and len(indoor_only) < len(stop_place_types):
+                stop_place_types = indoor_only
+                outdoor_skipped = True
+        for place_type in stop_place_types:
             candidates = await _search_with_expansion(
                 service, req.location, place_type
             )
@@ -917,5 +934,10 @@ async def assemble_quest(
         total_cost_estimate=req.cost_estimate,
         est_total_per_person_min_inr=est_total_min,
         est_total_per_person_max_inr=est_total_max,
+        weather_note=(
+            "Rain looks likely around your start time, so we kept the plan indoors."
+            if outdoor_skipped
+            else None
+        ),
         narrative=narrative,
     )

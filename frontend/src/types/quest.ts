@@ -54,6 +54,8 @@ export interface Quest {
   /** Sum of per-stop INR estimates. null when no stop had a price signal. */
   est_total_per_person_min_inr?: number | null
   est_total_per_person_max_inr?: number | null
+  /** Present when the rain forecast changed how the quest was planned. */
+  weather_note?: string | null
   narrative: string
   /** ISO 8601 datetime string */
   created_at: string

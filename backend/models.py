@@ -189,6 +189,8 @@ class Quest(BaseModel):
     # None when no stop had any price signal.
     est_total_per_person_min_inr: Optional[int] = None
     est_total_per_person_max_inr: Optional[int] = None
+    # Present when the rain forecast changed how the quest was planned.
+    weather_note: Optional[str] = None
     narrative: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

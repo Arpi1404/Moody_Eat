@@ -392,6 +392,7 @@ class DayPartProvider:
             "restaurant": [RawPlace("rest", "Family Diner", "Road", 0.001, 0.0, 4.5, ["restaurant"], 600)],
             "park": [RawPlace("park", "Sunset Park", "Road", 0.002, 0.0, 4.6, ["park"], 900)],
             "amusement_park": [RawPlace("funfair", "Night Funfair", "Road", 0.003, 0.0, 4.4, ["amusement_park"], 500)],
+            "museum": [RawPlace("museum", "Indoor Museum", "Road", 0.005, 0.0, 4.5, ["museum"], 800)],
             "bakery": [RawPlace("bakery", "Allday Bakery", "Road", 0.004, 0.0, 4.4, ["bakery"], 400)],
         }
         return by_type.get(place_type, [])
@@ -401,6 +402,7 @@ class DayPartProvider:
             "rest": PlaceHours("08:00", "23:59", False),
             "park": PlaceHours("06:00", "19:00", False),
             "funfair": PlaceHours("10:00", "23:00", False),
+            "museum": PlaceHours("09:00", "21:00", False),
             "bakery": PlaceHours("08:00", "23:59", False),
         }
         return hours[provider_id]
@@ -441,6 +443,49 @@ def test_day_part_changes_start_time_and_filters_closed_places(monkeypatch) -> N
     assert "Sunset Park" not in night_names
     assert "Night Funfair" in night_names
     assert night.stops[0].time_block_start == time(20, 0)
+
+
+def test_rain_gating_swaps_outdoor_stop_for_indoor(monkeypatch) -> None:
+    """Rainy forecast: the family activity slot must skip the park type and
+    fall through to the (indoor-ish) funfair. Unknown weather changes nothing."""
+    async def fake_narrative(**kwargs) -> str:
+        return "A test quest."
+
+    monkeypatch.setattr("quest_generator.generate_quest_narrative", fake_narrative)
+
+    def _quest(rainy: bool | None):
+        async def fake_rain(lat: float, lng: float, start_hour: int) -> bool | None:
+            return rainy
+
+        monkeypatch.setattr("quest_generator.rain_expected", fake_rain)
+        service = NearbyPlacesService(DayPartProvider())
+        return asyncio.run(assemble_quest(
+            QuestGenerationRequest(
+                location="Govindpuram",
+                occasion=Occasion.family,
+                cost_estimate=CostEstimate.mid,
+                people=4,
+                duration_hours=3.0,
+                day_part=DayPart.afternoon,
+            ),
+            service,
+        ))
+
+    rainy_quest = _quest(True)
+    rainy_names = [s.place.name for s in rainy_quest.stops]
+    assert "Sunset Park" not in rainy_names
+    # The funfair (amusement_park) is outdoor too — the indoor museum wins.
+    assert "Night Funfair" not in rainy_names
+    assert "Indoor Museum" in rainy_names
+    assert rainy_quest.weather_note is not None
+
+    clear_quest = _quest(False)
+    assert "Sunset Park" in [s.place.name for s in clear_quest.stops]
+    assert clear_quest.weather_note is None
+
+    unknown_quest = _quest(None)
+    assert "Sunset Park" in [s.place.name for s in unknown_quest.stops]
+    assert unknown_quest.weather_note is None
 
 
 class PriceyPoolProvider:
