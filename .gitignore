@@ -79,6 +79,9 @@ lerna-debug.log*
 *.key
 .cache/
 
+# Local shared-quest store (prod uses the Railway volume at /data)
+backend/.data/
+
 .cursorignore
 .claude/worktrees/
 .gstack/

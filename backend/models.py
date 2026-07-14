@@ -180,9 +180,11 @@ class StopAlternative(Stop):
 
 class Quest(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    title: str
+    title: str = Field(max_length=200)
     occasion: Occasion
-    stops: list[Stop]
+    # Real quests have 1–4 stops; the cap only guards the public store
+    # endpoint against oversized hand-crafted payloads.
+    stops: list[Stop] = Field(max_length=10)
     total_duration_minutes: int
     total_cost_estimate: CostEstimate
     # Sum of per-stop estimates (stops without a price signal contribute 0).
@@ -193,6 +195,19 @@ class Quest(BaseModel):
     weather_note: Optional[str] = None
     narrative: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class StoredQuestCreateResponse(BaseModel):
+    short_id: str
+    # Path on the frontend origin; the client prefixes its own origin so the
+    # backend never needs to know the canonical domain.
+    path: str
+
+
+class StoredQuestStats(BaseModel):
+    short_id: str
+    views: int
+    created_at: str
 
 
 class QuestGenerationRequest(BaseModel):

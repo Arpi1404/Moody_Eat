@@ -1,7 +1,11 @@
+import json
 import uuid
 from datetime import time
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from curated_quests import CURATED_QUESTS
 from deps import get_nearby_places_service
@@ -16,7 +20,10 @@ from models import (
     Stop,
     StopAlternative,
     StopSwapDelta,
+    StoredQuestCreateResponse,
+    StoredQuestStats,
 )
+from quest_store import fetch_quest, store_quest
 from price_inference import CostBand, estimate_cost_band
 from quest_generator import (
     _DWELL,
@@ -90,6 +97,55 @@ async def generate_quest(
         if exc.provider_status:
             detail["provider_status"] = exc.provider_status
         raise HTTPException(status_code=status_code, detail=detail) from exc
+
+
+# A 4-stop quest serializes to ~6 KB; the cap only exists so the public
+# endpoint can't be used as arbitrary blob storage on the volume.
+_MAX_STORE_BYTES = 100_000
+_SHORT_ID_PATTERN = r"^[a-z0-9]{4,16}$"
+
+
+@router.post("/api/quest/store", response_model=StoredQuestCreateResponse)
+async def store_shared_quest(request: Request) -> StoredQuestCreateResponse:
+    """Persist a quest for short-link sharing (moodyeat.in/q/<short_id>)."""
+    body = await request.body()
+    if len(body) > _MAX_STORE_BYTES:
+        raise HTTPException(status_code=413, detail={"message": "Quest payload is too large."})
+    try:
+        quest = Quest.model_validate_json(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail={"message": "Invalid quest payload."}) from exc
+
+    short_id = await run_in_threadpool(store_quest, quest)
+    return StoredQuestCreateResponse(short_id=short_id, path=f"/q/{short_id}")
+
+
+@router.get("/api/quest/stored/{short_id}")
+async def get_shared_quest(
+    short_id: str = Path(pattern=_SHORT_ID_PATTERN),
+    count_view: bool = Query(default=True),
+) -> JSONResponse:
+    """Return a stored quest by short id.
+
+    The stored JSON is returned as-is (not re-validated against the current
+    Quest model) so old links keep working even if the model grows stricter.
+    count_view=false is for crawler prefetches (OG previews) so the view
+    count only measures humans opening the link.
+    """
+    stored = await run_in_threadpool(fetch_quest, short_id, count_view=count_view)
+    if stored is None:
+        raise HTTPException(status_code=404, detail={"message": "Shared quest not found."})
+    return JSONResponse(content=json.loads(stored.quest_json))
+
+
+@router.get("/api/quest/stored/{short_id}/stats", response_model=StoredQuestStats)
+async def get_shared_quest_stats(
+    short_id: str = Path(pattern=_SHORT_ID_PATTERN),
+) -> StoredQuestStats:
+    stored = await run_in_threadpool(fetch_quest, short_id, count_view=False)
+    if stored is None:
+        raise HTTPException(status_code=404, detail={"message": "Shared quest not found."})
+    return StoredQuestStats(short_id=stored.short_id, views=stored.views, created_at=stored.created_at)
 
 
 @router.post(

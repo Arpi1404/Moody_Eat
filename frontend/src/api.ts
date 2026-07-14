@@ -39,6 +39,38 @@ export async function generateQuest(payload: {
   return res.json()
 }
 
+/** Store a quest server-side for short-link sharing. Returns the short id. */
+export async function storeQuestForShare(quest: Quest): Promise<string> {
+  const res = await fetch(`${getApiBase()}/api/quest/store`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(quest),
+  })
+  if (!res.ok) {
+    throw new Error('Could not store quest for sharing.')
+  }
+  const data: { short_id?: string } = await res.json()
+  if (!data.short_id) {
+    throw new Error('Could not store quest for sharing.')
+  }
+  return data.short_id
+}
+
+/** Fetch a quest stored behind a /q/<shortId> share link. Counts a view. */
+export async function fetchStoredQuest(shortId: string): Promise<Quest> {
+  const res = await fetch(
+    `${getApiBase()}/api/quest/stored/${encodeURIComponent(shortId)}`,
+  )
+  if (!res.ok) {
+    throw new Error(
+      res.status === 404
+        ? 'This shared quest link does not exist — check for typos.'
+        : 'Could not load the shared quest.',
+    )
+  }
+  return res.json()
+}
+
 export async function fetchCuratedQuests(city: string): Promise<Quest[]> {
   const params = new URLSearchParams({ city })
   const res = await fetch(`${getApiBase()}/api/quests/curated?${params}`)

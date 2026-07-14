@@ -1,9 +1,11 @@
 import type { Quest } from '../types/quest'
+import { storeQuestForShare } from '../api'
 
-// Quests only exist in the creator's browser (localStorage), so a bare
-// /quest/:id URL is dead for anyone else. Share links therefore carry the
-// full quest, deflate-compressed and base64url-encoded, in the #q= fragment.
-// The fragment never reaches the server and survives copy/paste intact.
+// Share links are short server-stored URLs (/q/<shortId>): the backend keeps
+// the quest in SQLite, counts views, and gives crawlers real OG previews.
+// The original mechanism — the full quest deflate-compressed into a #q=
+// fragment — remains as the fallback when the store API is unreachable, and
+// old fragment links keep decoding forever.
 
 const FRAGMENT_PREFIX = '#q='
 
@@ -85,16 +87,29 @@ function shareDescription(quest: Quest): string {
   return `${occasion} · ${quest.stops.length} stops · ${duration}`
 }
 
-/** Build a share URL for the quest on the current origin.
- *
- * The full quest travels in the #q= fragment (client-only). The short st/sd
- * query params exist for link-preview crawlers: fragments never reach the
- * server, so api/quest-og.js reads these to render per-quest og tags. */
-export async function makeQuestShareUrl(quest: Quest): Promise<string> {
+/** Legacy share URL: the full quest in the #q= fragment (client-only), with
+ * st/sd query params for link-preview crawlers (fragments never reach the
+ * server, so api/quest-og.js reads these to render per-quest og tags). */
+export async function makeFragmentShareUrl(quest: Quest): Promise<string> {
   const payload = await encodeQuestForUrl(quest)
   const meta = new URLSearchParams({
     st: quest.title.slice(0, 90),
     sd: shareDescription(quest),
   })
   return `${window.location.origin}/quest/${quest.id}?${meta}${FRAGMENT_PREFIX}${payload}`
+}
+
+/** Build a share URL for the quest on the current origin.
+ *
+ * Prefers a short server-stored link (repeat calls with the same content are
+ * deduped server-side, so this is safe to call per share tap). Falls back to
+ * the self-contained fragment URL when the API is unreachable — a share must
+ * never fail because the backend is down. */
+export async function makeQuestShareUrl(quest: Quest): Promise<string> {
+  try {
+    const shortId = await storeQuestForShare(quest)
+    return `${window.location.origin}/q/${shortId}`
+  } catch {
+    return makeFragmentShareUrl(quest)
+  }
 }

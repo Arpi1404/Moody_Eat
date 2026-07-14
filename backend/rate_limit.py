@@ -39,14 +39,18 @@ def _get_limiter(max_rpm: int) -> _SlidingWindowLimiter:
     return _limiter_state[1]
 
 
+# POST endpoints that either spend Google quota or write to disk.
+_LIMITED_POST_PATHS = frozenset({"/api/places/nearby", "/api/quest/store"})
+
+
 class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
-    """Apply per-client rate limiting to POST /api/places/nearby only."""
+    """Apply per-client rate limiting to quota- and disk-spending POSTs."""
 
     async def dispatch(self, request: Request, call_next) -> Response:
         settings = get_settings()
         if not settings.rate_limit_enabled or settings.rate_limit_per_minute <= 0:
             return await call_next(request)
-        if request.method != "POST" or request.url.path != "/api/places/nearby":
+        if request.method != "POST" or request.url.path not in _LIMITED_POST_PATHS:
             return await call_next(request)
 
         forwarded = request.headers.get("x-forwarded-for")

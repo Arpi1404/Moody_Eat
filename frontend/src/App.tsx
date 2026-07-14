@@ -24,8 +24,8 @@ import { TopNav } from './components/TopNav'
 import './App.css'
 
 const HIDE_TOPNAV_PREFIXES = ['/landing', '/dev/']
-const HIDE_BOTTOMNAV_PREFIXES = ['/quest/', '/landing', '/dev/']
-const HIDE_FOOTER_PREFIXES = ['/landing', '/quest/', '/dev/']
+const HIDE_BOTTOMNAV_PREFIXES = ['/quest/', '/q/', '/landing', '/dev/']
+const HIDE_FOOTER_PREFIXES = ['/landing', '/quest/', '/q/', '/dev/']
 
 function TopNavGate() {
   const { pathname } = useLocation()
@@ -63,6 +63,8 @@ function App() {
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/quest/preview/:id" element={<QuestPage preview />} />
         <Route path="/quest/:id" element={<QuestPage />} />
+        {/* Short share links — quest fetched from the server-side store. */}
+        <Route path="/q/:shortId" element={<QuestPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/explore" element={<Navigate to="/plan" replace />} />

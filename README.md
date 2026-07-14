@@ -85,6 +85,7 @@ Create `backend/.env` (never commit it — it's in `.gitignore`).
 | `PLACES_RATE_LIMIT_PER_MINUTE` | `60` | Requests/min cap (0 = disabled) |
 | `SENTRY_DSN` | — | Enables Sentry error monitoring when set; inert otherwise |
 | `SENTRY_ENVIRONMENT` | `production` | Environment tag on Sentry events |
+| `QUEST_DB_PATH` | auto | SQLite file for the shared-quest store (short links). Auto-resolves to `/data/quests.db` when the Railway volume is mounted, else `backend/.data/quests.db` locally. |
 
 ---
 

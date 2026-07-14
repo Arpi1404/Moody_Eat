@@ -32,6 +32,7 @@ Instrumented via Plausible.
 ```
 backend/
   quest_generator.py        # the engine: scoring, viability, scheduling, weather gating
+  quest_store.py            # SQLite shared-quest store (short links, view counts) on /data
   quest_templates.py        # stop-sequence templates per occasion (ordered type fallbacks)
   price_inference.py        # price signal chain + INR band tables
   curated_quests.py         # 12 hand-authored Hyderabad quests (3 per occasion)
@@ -125,6 +126,20 @@ verified in a real browser before push.
    checked-in snapshot; Vercel serves static files before the SPA rewrite,
    footer links `/guides/` with a plain `<a>`.
 
+9. **Short links + server-side quest store (Tier 1 #1).** SQLite on the
+   Railway volume (`/data/quests.db`; `QUEST_DB_PATH` overrides,
+   `backend/.data/` local fallback). `POST /api/quest/store` (content-hash
+   deduped, 8-char short id, 100 KB cap, rate-limited) →
+   `moodyeat.in/q/<shortid>`; `GET /api/quest/stored/<id>` serves it and
+   counts a view (`?count_view=false` for crawlers), `/stats` exposes the
+   count — the receiving side of the share loop is finally measured.
+   Share sheet now produces short links (WhatsApp/copy), falling back to
+   the old `#q=` fragment URL if the store API is down; old fragment links
+   keep working. `/api/quest-og` fetches stored quests to render real
+   per-quest previews (title + stop route) for `/q/*` crawler hits
+   (vercel.json rewrite added). New route `/q/:shortId` in the SPA;
+   `shared_quest_opened` Plausible event on open.
+
 Also merged during this period (by the owner, not this engagement):
 **`51645a2`** — dark editorial share-card redesign PR + `/api/quest-og`
 crawler preview function.
@@ -133,7 +148,9 @@ crawler preview function.
 `quest_generated` (occasion, budget, day_part, stops_requested, stop_count),
 `quest_reshuffled`, `quest_feedback` (vote), `custom_quest_created`,
 `build_own_tapped`, `stops_reordered`, `quest_shared` (share_method now
-includes `whatsapp`). Pre-existing funnel events unchanged.
+includes `whatsapp`), `shared_quest_opened` (short_id — recipient opened a
+/q/ link; server-side `views` in the quest store counts the same thing
+without needing Plausible). Pre-existing funnel events unchanged.
 
 ---
 
@@ -174,16 +191,12 @@ venv\Scripts\python -m pytest  npm run build   # also generates dist/guides/
 ## 4. Next steps (agreed with the owner — do these)
 
 ### Tier 1 — highest value
-1. **Short links + quest store + per-quest OG previews.**
-   Decision made: **SQLite on a Railway volume** (~$0.25–0.50/mo), NOT
-   Postgres, NOT free external DBs (they pause on inactivity). Waiting on
-   the owner to attach a volume (Railway → service → Settings → Volumes,
-   e.g. mount `/data`) and share the mount path. Then build:
-   `POST /api/quest/store` → `moodyeat.in/q/<shortid>`; extend the existing
-   `/api/quest-og` crawler function (or backend equivalent) so each shared
-   quest renders its own title/stops/image in WhatsApp; count views —
-   this finally measures the receiving side of the share loop. Replaces the
-   800-char `#q=` URLs (keep them working as fallback for old links).
+1. ~~**Short links + quest store + per-quest OG previews.**~~ **DONE
+   (15 Jul 2026, see item 9 above).** Owner attached the Railway volume at
+   `/data`. Remaining nice-to-have: a *rendered OG image* per quest (the
+   preview currently reuses the static brand image with per-quest
+   title/description text; a @vercel/og card with the stop list would pop
+   more in WhatsApp).
 2. **Creator-named quests.** Optional "made by" name on `/create`, shown on
    quest page + share card. Turns the influencer program self-serve
    ("Priya's Old City Crawl"). ~1 day.

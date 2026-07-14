@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import type { Quest, QuestGenerationRequest } from '../types/quest'
 import type { JournalEntry } from '../types/journal'
-import { generateQuest } from '../api'
+import { fetchStoredQuest, generateQuest } from '../api'
 import { useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
 import { ErrorState, LoadingState } from '../components/states'
@@ -154,7 +154,7 @@ function clearActiveQuest() {
 // ── QuestPage ─────────────────────────────────────────────────────────────────
 
 export function QuestPage({ preview = false }: { preview?: boolean }) {
-  const { id } = useParams<{ id: string }>()
+  const { id, shortId } = useParams<{ id: string; shortId: string }>()
   const navigate = useNavigate()
   const { state } = useLocation() as {
     state: {
@@ -212,6 +212,13 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
 
         if (state?.quest) {
           nextQuest = state.quest
+        } else if (shortId) {
+          // Short share link (/q/<shortId>): the quest lives in the
+          // server-side store. The fetch also counts a view — the receiving
+          // side of the share loop.
+          nextQuest = await fetchStoredQuest(shortId)
+          localStorage.setItem(`quest_${nextQuest.id}`, JSON.stringify(nextQuest))
+          track('shared_quest_opened', { short_id: shortId })
         } else if (id) {
           const raw =
             localStorage.getItem(`quest_${id}`) ??
@@ -260,7 +267,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     return () => {
       cancelled = true
     }
-  }, [id, state])
+  }, [id, shortId, state])
 
   useEffect(() => {
     if (!quest) return
@@ -438,13 +445,19 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
 
   const handleShareWhatsApp = async () => {
     const titledQuest = { ...quest, title: title.trim() || quest.title }
+    // Open the window synchronously inside the tap gesture: building the
+    // share URL now involves a network call (short-link store), and Safari
+    // blocks window.open after an await.
+    const popup = window.open('about:blank', '_blank')
+    if (popup) popup.opener = null
     const url = await makeQuestShareUrl(titledQuest)
     const text = `${titledQuest.title} — here's the plan 👇\n${url}`
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(text)}`,
-      '_blank',
-      'noopener,noreferrer',
-    )
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
+    if (popup) {
+      popup.location.href = waUrl
+    } else {
+      window.open(waUrl, '_blank', 'noopener,noreferrer')
+    }
     track('quest_shared', {
       quest_id: titledQuest.id,
       share_method: 'whatsapp',
