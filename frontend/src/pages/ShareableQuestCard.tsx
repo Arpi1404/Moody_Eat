@@ -40,9 +40,10 @@ function formatDuration(minutes: number): string {
   return Number.isInteger(hours) ? `${hours} hrs` : `${hours.toFixed(1)} hrs`
 }
 
-/** "17:30" → "5:30 PM"; returns null when the value isn't HH:MM. */
+/** "17:30" or "17:30:00" → "5:30 PM"; null when the value isn't a clock time.
+ * The backend serializes Python `time` as HH:MM:SS. */
 function formatClock(hhmm: string): string | null {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm)
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(hhmm)
   if (!match) return null
   const hours = Number(match[1])
   const minutes = match[2]
