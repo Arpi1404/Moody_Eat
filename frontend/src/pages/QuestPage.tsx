@@ -448,6 +448,9 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
         backgroundColor: '#1c1310',
         cacheBust: true,
         fontEmbedCSS,
+        // Photo URLs differ only in ?place_id=; without this, html-to-image
+        // caches by path and every stop gets the first stop's photo.
+        includeQueryParams: true,
         pixelRatio: 1,
         skipFonts: true,
         width: 1080,
