@@ -140,6 +140,23 @@ verified in a real browser before push.
    (vercel.json rewrite added). New route `/q/:shortId` in the SPA;
    `shared_quest_opened` Plausible event on open.
 
+10. **Creator-named quests + pure-veg filter (Tier 1 #2 and #3).**
+    `Quest.created_by` (optional, ≤60 chars): a "Made by" field on `/create`
+    titles the quest "Priya's Banjara Hills Quest" and shows a byline on the
+    quest page ("✦ made by Priya"), the story card ("Curated by Priya"), and
+    the OG preview ("· by Priya") — the influencer program is now self-serve.
+    Pure veg: `places.servesVegetarianFood` added to the field mask (same
+    Enterprise+Atmosphere SKU as priceRange — no billing tier change);
+    `pure_veg` on the generate request makes food-type searches (restaurant/
+    cafe/bar/bakery/takeaway/club) prefer veg-confirmed places (Google flag
+    OR "pure veg/shudh" in the name), use unknowns only as fallback, and
+    never offer places explicitly marked non-veg. Quest carries `veg_note`
+    when confirmation wasn't possible everywhere. 🌱 toggle lives in the
+    builder sheet's Budget row. Swap alternatives do NOT veg-filter yet
+    (known gap). Analytics: `quest_generated` gains `pure_veg`,
+    `custom_quest_created` gains `has_creator_name` (boolean — the name
+    itself never goes to analytics).
+
 Also merged during this period (by the owner, not this engagement):
 **`51645a2`** — dark editorial share-card redesign PR + `/api/quest-og`
 crawler preview function.
@@ -150,7 +167,9 @@ crawler preview function.
 `build_own_tapped`, `stops_reordered`, `quest_shared` (share_method now
 includes `whatsapp`), `shared_quest_opened` (short_id — recipient opened a
 /q/ link; server-side `views` in the quest store counts the same thing
-without needing Plausible). Pre-existing funnel events unchanged.
+without needing Plausible), `quest_generated` also carries `pure_veg`,
+`custom_quest_created` also carries `has_creator_name`. Pre-existing funnel
+events unchanged.
 
 ---
 
@@ -197,13 +216,10 @@ venv\Scripts\python -m pytest  npm run build   # also generates dist/guides/
    preview currently reuses the static brand image with per-quest
    title/description text; a @vercel/og card with the stop list would pop
    more in WhatsApp).
-2. **Creator-named quests.** Optional "made by" name on `/create`, shown on
-   quest page + share card. Turns the influencer program self-serve
-   ("Priya's Old City Crawl"). ~1 day.
-3. **Pure-veg filter.** Places API (New) exposes `servesVegetarianFood` —
-   add to the field mask (check SKU impact), a "Pure veg" toggle in the
-   builder filtering food stops. Deeply India-relevant, no competitor does
-   it well.
+2. ~~**Creator-named quests.**~~ **DONE (15 Jul 2026, see item 10 above).**
+3. ~~**Pure-veg filter.**~~ **DONE (15 Jul 2026, see item 10 above).**
+   Follow-up candidates: veg-filter the swap-alternatives endpoint too, and
+   surface a 🌱 marker on stops that are veg-confirmed.
 
 ### Tier 2 — engagement
 4. **"Free right now" mode** — one tap: geolocation + current time as day

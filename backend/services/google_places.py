@@ -38,6 +38,10 @@ _NEARBY_FIELD_MASK_NEW = ",".join(
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
+        # Same SKU tier as priceRange (Enterprise + Atmosphere), so requesting
+        # it does not bump the searchNearby bill beyond what price data
+        # already costs. Powers the pure-veg quest filter.
+        "places.servesVegetarianFood",
     )
 )
 
@@ -376,6 +380,7 @@ class GooglePlacesProvider(PlacesProvider):
         price_range = item.get("priceRange") or {}
         start_inr = cls._inr_units(price_range.get("startPrice"))
         end_inr = cls._inr_units(price_range.get("endPrice"))
+        serves_veg = item.get("servesVegetarianFood")
         return RawPlace(
             provider_id=str(item.get("id") or ""),
             name=str(display.get("text") or "").strip(),
@@ -389,6 +394,7 @@ class GooglePlacesProvider(PlacesProvider):
             price_level=p_level,
             price_range_start_inr=start_inr,
             price_range_end_inr=end_inr,
+            serves_vegetarian_food=bool(serves_veg) if serves_veg is not None else None,
         )
 
     @staticmethod

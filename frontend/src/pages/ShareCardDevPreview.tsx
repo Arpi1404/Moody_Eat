@@ -72,6 +72,7 @@ const SAMPLE_QUEST: Quest = {
   ],
   total_duration_minutes: 285,
   total_cost_estimate: 'mid',
+  created_by: 'Priya',
   narrative:
     'Three unhurried stops through the hills — coffee under old trees, a candlelit dinner, and a rooftop to close the night.',
   created_at: new Date().toISOString(),

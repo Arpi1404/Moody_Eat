@@ -219,6 +219,7 @@ export function HomePage() {
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [budget, setBudget] = useState<Budget>('mid')
+  const [pureVeg, setPureVeg] = useState(false)
   const [stopCount, setStopCount] = useState(3)
   // null = follow the occasion's default start time
   const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
@@ -400,6 +401,7 @@ export function HomePage() {
       day_part: dayPart,
       // Avoid repeating places from recent quests (soft exclusion).
       exclude_place_ids: getRecentPlaceIds(),
+      pure_veg: pureVeg,
     }
 
     try {
@@ -410,6 +412,7 @@ export function HomePage() {
         day_part: dayPart,
         stops_requested: stopCount,
         stop_count: quest.stops.length,
+        pure_veg: pureVeg,
       })
       // Only flag a shortfall against what the user actually asked for — a
       // 1- or 2-stop quest is a deliberate choice now, not a failure.
@@ -752,6 +755,16 @@ export function HomePage() {
                       {b.label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    className={`sheet-pill sheet-pill--veg${pureVeg ? ' sheet-pill--active' : ''}`}
+                    aria-pressed={pureVeg}
+                    title="Only suggest food stops with vegetarian options"
+                    onClick={() => setPureVeg((v) => !v)}
+                  >
+                    <span aria-hidden style={{ marginRight: 6 }}>🌱</span>
+                    Pure veg
+                  </button>
                 </div>
               </div>
 

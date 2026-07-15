@@ -662,10 +662,20 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           </div>
         )}
 
+        {quest.created_by && (
+          <p className="qp-byline">
+            <span aria-hidden>✦</span> made by {quest.created_by}
+          </p>
+        )}
         {quest.narrative && <p className="qp-narrative">{quest.narrative}</p>}
         {quest.weather_note && (
           <p className="qp-soft-note">
             <span aria-hidden>🌧️</span> {quest.weather_note}
+          </p>
+        )}
+        {quest.veg_note && (
+          <p className="qp-soft-note">
+            <span aria-hidden>🌱</span> {quest.veg_note}
           </p>
         )}
         {questNotice && <p className="qp-soft-note">{questNotice}</p>}

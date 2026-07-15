@@ -62,6 +62,7 @@ export function CreateQuestPage() {
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [selected, setSelected] = useState<PlaceItem[]>([])
+  const [creatorName, setCreatorName] = useState('')
 
   const dayPart = dayPartChoice ?? DAY_PART_DEFAULT_BY_OCCASION[occasion]
   const selectedIds = new Set(selected.map((p) => p.provider_id))
@@ -140,11 +141,14 @@ export function CreateQuestPage() {
       occasion,
       dayPart,
       area: resolvedArea || location.trim(),
+      createdBy: creatorName.trim() || undefined,
     })
     track('custom_quest_created', {
       stop_count: selected.length,
       occasion,
       day_part: dayPart,
+      // Boolean only — the name itself is PII and never leaves the quest.
+      has_creator_name: Boolean(creatorName.trim()),
     })
     localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
     navigate(`/quest/${quest.id}`, { state: { quest, justCreated: true } })
@@ -221,6 +225,24 @@ export function CreateQuestPage() {
                 {geoLoading ? '…' : '📍'}
               </button>
             </div>
+          </div>
+
+          <div>
+            <label className="sheet-field-label" htmlFor="cq-creator-name">
+              Made by <span className="cq-optional">(optional)</span>
+            </label>
+            <input
+              id="cq-creator-name"
+              className="cq-location-input"
+              value={creatorName}
+              onChange={(e) => setCreatorName(e.target.value)}
+              placeholder="Your name or IG handle"
+              maxLength={40}
+              autoComplete="off"
+            />
+            <p className="cq-hint">
+              Put your name on it — shown on the quest page and the share card.
+            </p>
           </div>
 
           <div>

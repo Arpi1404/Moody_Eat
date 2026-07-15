@@ -52,6 +52,9 @@ async function fetchStoredQuestMeta(shortId) {
       OCCASION_LABELS[quest.occasion] ?? 'Quest',
       `${names.length} stops`,
       duration,
+      typeof quest.created_by === 'string' && quest.created_by
+        ? `by ${quest.created_by}`
+        : null,
     ]
       .filter(Boolean)
       .join(' · ')

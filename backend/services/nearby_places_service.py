@@ -271,6 +271,7 @@ class NearbyPlacesService:
                     price_range_end_inr=raw.price_range_end_inr,
                     business_status=raw.business_status,
                     types=raw.types,
+                    serves_vegetarian_food=raw.serves_vegetarian_food,
                     provider_id=raw.provider_id,
                 )
             )

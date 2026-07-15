@@ -156,3 +156,18 @@ def test_store_rejects_too_many_stops(client: TestClient) -> None:
     payload["stops"] = payload["stops"] * 20
     res = client.post("/api/quest/store", json=payload)
     assert res.status_code == 422
+
+
+def test_creator_name_survives_store_roundtrip(client: TestClient) -> None:
+    payload = _quest_payload(title="Priya's Old City Crawl")
+    payload["created_by"] = "Priya"
+    short_id = client.post("/api/quest/store", json=payload).json()["short_id"]
+    fetched = client.get(f"/api/quest/stored/{short_id}").json()
+    assert fetched["created_by"] == "Priya"
+
+
+def test_store_rejects_over_long_creator_name(client: TestClient) -> None:
+    payload = _quest_payload()
+    payload["created_by"] = "x" * 61
+    res = client.post("/api/quest/store", json=payload)
+    assert res.status_code == 422

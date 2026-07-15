@@ -21,6 +21,8 @@ export async function generateQuest(payload: {
   day_part?: string
   /** Recently seen places to avoid (soft — never at the cost of a stop). */
   exclude_place_ids?: string[]
+  /** Food stops require veg-confirmed places; non-veg-only never offered. */
+  pure_veg?: boolean
 }): Promise<Quest> {
   const res = await fetch(`${getApiBase()}/api/quest/generate`, {
     method: 'POST',
@@ -120,6 +122,8 @@ export type PlaceItem = {
   price_range_end_inr?: number | null
   business_status?: string | null
   types?: string[] | null
+  /** True = veg options exist (not necessarily pure-veg). null when unknown. */
+  serves_vegetarian_food?: boolean | null
   provider_id: string
   /** "HH:MM" 24-hour, today only. null when unknown. */
   opens_today?: string | null

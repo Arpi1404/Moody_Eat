@@ -146,6 +146,9 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
         <section className="share-hero">
           <p className="share-eyebrow">Tonight's food quest</p>
           <h1 className="share-title">{quest.title}</h1>
+          {quest.created_by && (
+            <p className="share-byline">Curated by {quest.created_by}</p>
+          )}
           {quest.narrative && (
             <p className="share-narrative">{quest.narrative}</p>
           )}

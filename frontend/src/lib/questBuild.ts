@@ -207,8 +207,10 @@ export function buildCustomQuest(opts: {
   occasion: Occasion
   dayPart: DayPart
   area: string
+  /** Optional creator display name — titles the quest "Priya's … Quest". */
+  createdBy?: string
 }): Quest {
-  const { places, occasion, dayPart, area } = opts
+  const { places, occasion, dayPart, area, createdBy } = opts
   const start = DAY_PART_START[dayPart]
 
   // Lay stops out back-to-back from the day-part start, then let the shared
@@ -246,11 +248,24 @@ export function buildCustomQuest(opts: {
     totalMin != null && totalMax != null ? (totalMin + totalMax) / 2 : null
 
   const areaShort = area.split(',')[0].trim()
+  const creator = createdBy?.trim() || null
+  // "Priya" → "Priya's"; names already ending in s just get an apostrophe.
+  const possessive = creator
+    ? /s$/i.test(creator)
+      ? `${creator}'`
+      : `${creator}'s`
+    : null
+  const title = possessive
+    ? `${possessive} ${areaShort || 'Custom'} Quest`
+    : areaShort
+      ? `My ${areaShort} Quest`
+      : 'My Custom Quest'
   return {
     id: crypto.randomUUID(),
-    title: areaShort ? `My ${areaShort} Quest` : 'My Custom Quest',
+    title,
     occasion,
     stops,
+    created_by: creator,
     total_duration_minutes: questDuration(stops),
     total_cost_estimate: costTierFromTotal(midTotal),
     est_total_per_person_min_inr: totalMin,

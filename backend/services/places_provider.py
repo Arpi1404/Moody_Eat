@@ -31,6 +31,9 @@ class RawPlace:
     # None when the provider has no range data (or the currency is not INR).
     price_range_start_inr: int | None = None
     price_range_end_inr: int | None = None
+    # Places API (New) `servesVegetarianFood`. None when unknown (legacy API
+    # or no Google data). True = veg options exist, not necessarily pure-veg.
+    serves_vegetarian_food: bool | None = None
 
 
 @dataclass(frozen=True)

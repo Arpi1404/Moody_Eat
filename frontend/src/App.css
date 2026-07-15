@@ -2368,6 +2368,11 @@ a.explore-edit-filters {
   opacity: 0.7;
 }
 
+.cq-optional {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
 .cq-error {
   margin: 8px 0 0;
   font-size: 13px;
@@ -2603,6 +2608,13 @@ a.explore-edit-filters {
   background: var(--accent-bg);
   color: var(--accent);
   font-weight: 600;
+}
+
+/* Pure-veg reads green, not terracotta, when active. */
+.sheet-pill--veg.sheet-pill--active {
+  border-color: #5c7148;
+  background: rgba(92, 113, 72, 0.14);
+  color: #46593a;
 }
 
 .sheet-submit {
@@ -2909,6 +2921,14 @@ a.explore-edit-filters {
 }
 
 /* Narrative */
+
+.qp-byline {
+  margin: -14px 0 18px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
 
 .qp-narrative {
   margin: 0 0 24px;
@@ -4324,6 +4344,15 @@ a.explore-edit-filters {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.share-byline {
+  margin: 26px 0 0;
+  color: var(--share-accent-soft);
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .share-narrative {

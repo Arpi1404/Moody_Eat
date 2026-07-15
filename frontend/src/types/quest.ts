@@ -56,6 +56,10 @@ export interface Quest {
   est_total_per_person_max_inr?: number | null
   /** Present when the rain forecast changed how the quest was planned. */
   weather_note?: string | null
+  /** Present when pure-veg mode couldn't be confirmed for every food stop. */
+  veg_note?: string | null
+  /** Display name of the custom-quest creator ("Priya's Old City Crawl"). */
+  created_by?: string | null
   narrative: string
   /** ISO 8601 datetime string */
   created_at: string
@@ -77,6 +81,8 @@ export interface QuestGenerationRequest {
   day_part?: DayPart
   /** Recently seen places to avoid (soft — never at the cost of a stop). */
   exclude_place_ids?: string[]
+  /** Food stops require veg-confirmed places; non-veg-only places are never offered. */
+  pure_veg?: boolean
 }
 
 export type DayPart = 'morning' | 'afternoon' | 'evening' | 'night'

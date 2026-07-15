@@ -208,10 +208,41 @@ _VIABILITY_RULES = (
     "already_used",
     "mood_type",
     "mood_name",
+    "non_veg",
     "over_budget",
     "hours_unknown",
     "hours_closed",
 )
+
+# ── Pure-veg mode ─────────────────────────────────────────────────────────────
+# Google's servesVegetarianFood=True means veg options exist, not that the
+# kitchen is pure-veg — but a name that says so is as strong a signal as India
+# produces. Confirmed = Google flag OR name declaration.
+_PURE_VEG_NAME_RE = re.compile(
+    r"\b(?:pure\s*veg(?:etarian)?|shudh|veg\s*only|100%\s*veg)\b",
+    re.IGNORECASE,
+)
+# Google place types where food is the point — the only searches the veg
+# filter touches (a museum has no menu to be non-veg about). Keyed on the
+# searched place type, not the stop category: a date quest's second stop is
+# category "other" but searches bakeries, and those must still be filtered.
+_FOOD_PLACE_TYPES = frozenset(
+    {
+        "restaurant",
+        "cafe",
+        "bar",
+        "bakery",
+        "meal_takeaway",
+        "meal_delivery",
+        "night_club",
+    }
+)
+
+
+def _is_veg_confirmed(place: PlaceItem) -> bool:
+    return place.serves_vegetarian_food is True or bool(
+        _PURE_VEG_NAME_RE.search(place.name)
+    )
 
 # ── Quest title lookup ────────────────────────────────────────────────────────
 
@@ -551,6 +582,7 @@ async def _pick_viable_candidate(
     requested_place_type: str,
     rng: random.Random | None = None,
     seen: frozenset[str] = frozenset(),
+    require_veg: bool = False,
 ) -> _CandidatePick | None:
     # Recently-seen places (from the user's past quests) are avoided only
     # while fresh options exist — variety never costs a stop.
@@ -562,6 +594,18 @@ async def _pick_viable_candidate(
     drop_counts: Counter[str] = Counter()
     if len(ranked) < len(candidates):
         drop_counts["already_used"] = len(candidates) - len(ranked)
+    if require_veg:
+        # A dietary constraint outranks score: confirmed-veg places first,
+        # unknowns only as fallback, and places Google explicitly marks as
+        # not serving vegetarian food are never offered — better a shorter
+        # quest than a broken promise.
+        confirmed = [p for p in ranked if _is_veg_confirmed(p)]
+        unknown = [
+            p for p in ranked
+            if not _is_veg_confirmed(p) and p.serves_vegetarian_food is not False
+        ]
+        drop_counts["non_veg"] = len(ranked) - len(confirmed) - len(unknown)
+        ranked = confirmed + unknown
     price_known = sum(1 for p in ranked if price_signal(p).source != PRICE_SOURCE_UNKNOWN)
 
     # Weaker candidates kept aside and used only if every clean candidate
@@ -830,9 +874,11 @@ async def assemble_quest(
     except Exception as exc:
         logger.warning("weather_anchor_failed err_type=%s", exc.__class__.__name__)
     outdoor_skipped = False
+    veg_unconfirmed = False
 
     for tmpl in template:
         picked: _CandidatePick | None = None
+        picked_veg_filtered = False
         stop_place_types = tmpl.places_types
         if rain_risk:
             indoor_only = tuple(t for t in stop_place_types if t not in OUTDOOR_TYPES)
@@ -841,6 +887,7 @@ async def assemble_quest(
                 stop_place_types = indoor_only
                 outdoor_skipped = True
         for place_type in stop_place_types:
+            require_veg = req.pure_veg and place_type in _FOOD_PLACE_TYPES
             candidates = await _search_with_expansion(
                 service, req.location, place_type
             )
@@ -865,9 +912,18 @@ async def assemble_quest(
                 requested_place_type=place_type,
                 rng=rng,
                 seen=seen_ids,
+                require_veg=require_veg,
             )
             if picked is not None:
+                picked_veg_filtered = require_veg
                 break
+
+        if (
+            picked is not None
+            and picked_veg_filtered
+            and not _is_veg_confirmed(picked.place)
+        ):
+            veg_unconfirmed = True
 
         if picked is None:
             logger.info(
@@ -944,6 +1000,12 @@ async def assemble_quest(
         weather_note=(
             "Rain looks likely around your start time, so we kept the plan indoors."
             if outdoor_skipped
+            else None
+        ),
+        veg_note=(
+            "We prioritised vegetarian-friendly spots, but couldn't confirm a "
+            "veg menu at every stop — worth a quick check before you order."
+            if req.pure_veg and veg_unconfirmed
             else None
         ),
         narrative=narrative,
