@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
+import JSZip from 'jszip'
 import { shareCardFontEmbedCss } from '../lib/shareFonts'
 import { ShareableQuestCard } from './ShareableQuestCard'
 import type { Quest } from '../types/quest'
@@ -57,15 +58,15 @@ export function MarketingCardsPage() {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
   const frameRefs = useRef<(HTMLDivElement | null)[]>([])
   const [busy, setBusy] = useState<string | null>(null)
+  const [progress, setProgress] = useState<string | null>(null)
   const [lastPng, setLastPng] = useState<string | null>(null)
 
   const capture = async (
     node: HTMLElement | null,
     width: number,
     height: number,
-    fileName: string,
-  ) => {
-    if (!node) return
+  ): Promise<string | null> => {
+    if (!node) return null
     await waitForAssets(node)
     const fontEmbedCSS = await shareCardFontEmbedCss().catch(() => '')
     const dataUrl = await toPng(node, {
@@ -78,18 +79,16 @@ export function MarketingCardsPage() {
       height,
     })
     setLastPng(dataUrl)
-    downloadPng(dataUrl, fileName)
+    return dataUrl
   }
 
   const downloadStory = async (index: number) => {
     setBusy(`story-${index}`)
     try {
-      await capture(
-        cardRefs.current[index],
-        STORY_W,
-        STORY_H,
-        `moodyeat-${slugify(QUESTS[index].title)}-story.png`,
-      )
+      const dataUrl = await capture(cardRefs.current[index], STORY_W, STORY_H)
+      if (dataUrl) {
+        downloadPng(dataUrl, `moodyeat-${slugify(QUESTS[index].title)}-story.png`)
+      }
     } finally {
       setBusy(null)
     }
@@ -98,34 +97,54 @@ export function MarketingCardsPage() {
   const downloadFeed = async (index: number) => {
     setBusy(`feed-${index}`)
     try {
-      await capture(
-        frameRefs.current[index],
-        FEED_W,
-        FEED_H,
-        `moodyeat-${slugify(QUESTS[index].title)}-feed.png`,
-      )
+      const dataUrl = await capture(frameRefs.current[index], FEED_W, FEED_H)
+      if (dataUrl) {
+        downloadPng(dataUrl, `moodyeat-${slugify(QUESTS[index].title)}-feed.png`)
+      }
     } finally {
       setBusy(null)
     }
   }
 
+  // Browsers block bursts of programmatic downloads (Chrome allows only the
+  // first few), so "download all" bundles every PNG into ONE zip file.
   const downloadAll = async () => {
     setBusy('all')
     try {
-      for (let i = 0; i < QUESTS.length; i += 1) {
-        await capture(
-          cardRefs.current[i],
-          STORY_W,
-          STORY_H,
-          `moodyeat-${slugify(QUESTS[i].title)}-story.png`,
-        )
-        await capture(
-          frameRefs.current[i],
-          FEED_W,
-          FEED_H,
-          `moodyeat-${slugify(QUESTS[i].title)}-feed.png`,
-        )
+      const zip = new JSZip()
+      const total = QUESTS.length * 2
+      let done = 0
+      const add = async (
+        node: HTMLElement | null,
+        width: number,
+        height: number,
+        fileName: string,
+      ) => {
+        done += 1
+        setProgress(`Rendering ${done}/${total} — ${fileName}`)
+        const dataUrl = await capture(node, width, height)
+        if (dataUrl) {
+          zip.file(fileName, dataUrl.split(',')[1], { base64: true })
+        }
       }
+
+      for (let i = 0; i < QUESTS.length; i += 1) {
+        const slug = slugify(QUESTS[i].title)
+        await add(cardRefs.current[i], STORY_W, STORY_H, `moodyeat-${slug}-story.png`)
+        await add(frameRefs.current[i], FEED_W, FEED_H, `moodyeat-${slug}-feed.png`)
+      }
+
+      const fileCount = Object.keys(zip.files).length
+      setProgress(`Zipping ${fileCount} files…`)
+      const blob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(blob)
+      downloadPng(url, 'moodyeat-instagram-cards.zip')
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      setProgress(
+        `Done — moodyeat-instagram-cards.zip (${fileCount} files, ${(blob.size / 1024 / 1024).toFixed(1)} MB)`,
+      )
+    } catch (err) {
+      setProgress(`Failed: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusy(null)
     }
@@ -144,10 +163,15 @@ export function MarketingCardsPage() {
           type="button"
           onClick={downloadAll}
           disabled={busy !== null}
-          style={{ marginBottom: 20, padding: '10px 18px', fontSize: 14, cursor: 'pointer' }}
+          style={{ marginBottom: 8, padding: '10px 18px', fontSize: 14, cursor: 'pointer' }}
         >
-          {busy === 'all' ? 'Rendering… (one file per card)' : `Download all ${QUESTS.length * 2} PNGs`}
+          {busy === 'all' ? 'Rendering…' : `Download all ${QUESTS.length * 2} PNGs as one ZIP`}
         </button>
+        {progress && (
+          <p style={{ margin: '0 0 16px', fontSize: 13, opacity: 0.85 }} aria-live="polite">
+            {progress}
+          </p>
+        )}
 
         {QUESTS.map((quest, i) => (
           <div
