@@ -18,6 +18,15 @@ const ShareCardDevPreview = import.meta.env.DEV
       })),
     )
   : null
+
+// Dev-only Instagram asset factory (curated quests → story/feed PNGs).
+const MarketingCardsPage = import.meta.env.DEV
+  ? lazy(() =>
+      import('./pages/MarketingCardsPage').then((m) => ({
+        default: m.MarketingCardsPage,
+      })),
+    )
+  : null
 import { BottomNav } from './components/BottomNav'
 import { Footer } from './components/Footer'
 import { TopNav } from './components/TopNav'
@@ -74,6 +83,16 @@ function App() {
             element={
               <Suspense fallback={null}>
                 <ShareCardDevPreview />
+              </Suspense>
+            }
+          />
+        )}
+        {MarketingCardsPage && (
+          <Route
+            path="/dev/marketing-cards"
+            element={
+              <Suspense fallback={null}>
+                <MarketingCardsPage />
               </Suspense>
             }
           />

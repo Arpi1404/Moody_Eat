@@ -51,9 +51,15 @@ function formatClock(hhmm: string): string | null {
   return `${hour12}:${minutes} ${suffix}`
 }
 
-/** Public host for the CTA, without a leading www. */
+/** Public host for the CTA, without a leading www. Local dev (including the
+ * marketing-card export harness) shows the real domain — an exported PNG
+ * must never say "localhost". */
 function displayHost(): string {
-  return window.location.host.replace(/^www\./, '')
+  const host = window.location.host.replace(/^www\./, '')
+  if (host.startsWith('localhost') || host.startsWith('127.')) {
+    return 'moodyeat.in'
+  }
+  return host
 }
 
 function ShareableStopThumbnail({ stop }: { stop: Stop }) {

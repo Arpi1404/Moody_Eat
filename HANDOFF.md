@@ -55,6 +55,9 @@ frontend/src/
 frontend/scripts/
   generate-guides.mjs       # postbuild: static SEO pages under dist/guides/ + sitemap + robots
   curated-snapshot.json     # checked-in data for deterministic guide builds
+marketing/                  # 6-week launch playbook, captions, reddit post, influencer DM
+                            # (assets: dev route /dev/marketing-cards renders curated quests
+                            #  into IG story/feed PNGs via the share-card component)
 frontend/api/quest-og       # Vercel function: OG preview for crawlers hitting /quest/* (from share-card PR)
 ```
 
