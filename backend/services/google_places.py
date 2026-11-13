@@ -23,6 +23,7 @@ _GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 _NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 _DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 _NEARBY_URL_NEW = "https://places.googleapis.com/v1/places:searchNearby"
+_DETAILS_URL_NEW = "https://places.googleapis.com/v1/places/{place_id}"
 
 # Every response field costs money: this mask keeps searchNearby in the cheapest
 # SKU that still includes price data. Extend deliberately.
@@ -85,6 +86,34 @@ def _hours_for_weekday(periods: list[dict[str, Any]], weekday: int) -> PlaceHour
             return PlaceHours(opens_today=opens, closes_today=closes, open_24h_today=False)
 
     return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+
+
+def _new_periods_to_legacy(periods: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convert Places API (New) `regularOpeningHours.periods` into the legacy shape.
+
+    New: {"open": {"day": 1, "hour": 9, "minute": 0}, "close": {...}}
+    Legacy: {"open": {"day": 1, "time": "0900"}, "close": {...}}
+    Both use day 0 = Sunday, and both signal 24/7 as a single open-only period.
+    """
+
+    def _point(p: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not p:
+            return None
+        hour = int(p.get("hour") or 0)
+        minute = int(p.get("minute") or 0)
+        return {"day": int(p.get("day") or 0), "time": f"{hour:02d}{minute:02d}"}
+
+    out: list[dict[str, Any]] = []
+    for period in periods:
+        opn = _point(period.get("open"))
+        if opn is None:
+            continue
+        converted: dict[str, Any] = {"open": opn}
+        close = _point(period.get("close"))
+        if close is not None:
+            converted["close"] = close
+        out.append(converted)
+    return out
 
 
 def _map_geocode_status(status: str, error_message: str | None) -> None:
@@ -336,6 +365,8 @@ class GooglePlacesProvider(PlacesProvider):
     ) -> PlaceHours:
         if not provider_id:
             return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+        if self._settings.use_new_places_api:
+            return await self._place_hours_new(provider_id=provider_id, weekday=weekday)
         params = {
             "place_id": provider_id,
             "fields": "opening_hours",
@@ -354,6 +385,34 @@ class GooglePlacesProvider(PlacesProvider):
         oh = result.get("opening_hours") or {}
         periods = oh.get("periods") or []
         return _hours_for_weekday(periods, weekday)
+
+    async def _place_hours_new(self, *, provider_id: str, weekday: int) -> PlaceHours:
+        unknown = PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+        url = _DETAILS_URL_NEW.format(place_id=provider_id)
+        headers = {
+            "X-Goog-Api-Key": self._api_key,
+            "X-Goog-FieldMask": "regularOpeningHours.periods",
+        }
+        try:
+            async with self._client() as client:
+                r = await client.get(url, headers=headers)
+        except httpx.HTTPError as exc:
+            logger.warning("place_details_failed place_id=%s err=%s", provider_id, exc)
+            return unknown
+        if r.status_code >= 400:
+            try:
+                body = r.json()
+            except ValueError:
+                body = None
+            logger.warning(
+                "place_details_status status=%s place_id=%s err=%s",
+                r.status_code,
+                provider_id,
+                _map_new_api_http_error(r.status_code, body),
+            )
+            return unknown
+        periods = (r.json().get("regularOpeningHours") or {}).get("periods") or []
+        return _hours_for_weekday(_new_periods_to_legacy(periods), weekday)
 
     @staticmethod
     def _inr_units(money: dict[str, Any] | None) -> int | None:

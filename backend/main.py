@@ -13,6 +13,9 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
+# httpx logs every request URL at INFO, and the Geocoding API takes the key as
+# a query param, so INFO would write GOOGLE_PLACES_API_KEY into the logs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Error monitoring is opt-in: set SENTRY_DSN in the deploy environment.
 _sentry_dsn = os.environ.get("SENTRY_DSN", "").strip()
