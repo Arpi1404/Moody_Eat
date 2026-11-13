@@ -86,6 +86,8 @@ Create `backend/.env` (never commit it — it's in `.gitignore`).
 | `SENTRY_DSN` | — | Enables Sentry error monitoring when set; inert otherwise |
 | `SENTRY_ENVIRONMENT` | `production` | Environment tag on Sentry events |
 | `QUEST_DB_PATH` | auto | SQLite file for the shared-quest store (short links). Auto-resolves to `/data/quests.db` when the Railway volume is mounted, else `backend/.data/quests.db` locally. |
+| `QUEST_STORE_BACKEND` | `sqlite` | Where shared quests live: `sqlite` (local file, needs a persistent disk) or `firestore` (required on Cloud Run, whose disk is wiped on restart). Copy existing links over with `backend/scripts/migrate_quests_to_firestore.py`. |
+| `FIRESTORE_PROJECT` / `FIRESTORE_DATABASE` | auto / `(default)` | Firestore project and database id when `QUEST_STORE_BACKEND=firestore`. The project defaults to the one Cloud Run runs in. |
 
 ---
 

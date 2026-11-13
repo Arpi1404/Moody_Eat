@@ -32,7 +32,7 @@ Instrumented via Plausible.
 ```
 backend/
   quest_generator.py        # the engine: scoring, viability, scheduling, weather gating
-  quest_store.py            # SQLite shared-quest store (short links, view counts) on /data
+  quest_store.py            # shared-quest store (short links, view counts): SQLite on /data, or Firestore via QUEST_STORE_BACKEND
   quest_templates.py        # stop-sequence templates per occasion (ordered type fallbacks)
   price_inference.py        # price signal chain + INR band tables
   curated_quests.py         # 12 hand-authored Hyderabad quests (3 per occasion)

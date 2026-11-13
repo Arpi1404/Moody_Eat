@@ -9,10 +9,64 @@ from fastapi.testclient import TestClient
 from main import app
 
 
-@pytest.fixture(autouse=True)
-def isolated_db(tmp_path, monkeypatch):
-    """Point the store at a throwaway SQLite file per test."""
+class _FakeSnapshot:
+    def __init__(self, data: dict | None) -> None:
+        self.exists = data is not None
+        self._data = data
+
+    def to_dict(self) -> dict | None:
+        return dict(self._data) if self._data is not None else None
+
+
+class _FakeDocument:
+    """Just the DocumentReference calls quest_store makes, with Firestore's
+    create/update error semantics."""
+
+    def __init__(self, docs: dict, key: tuple[str, str]) -> None:
+        self._docs = docs
+        self._key = key
+
+    def get(self) -> _FakeSnapshot:
+        return _FakeSnapshot(self._docs.get(self._key))
+
+    def create(self, data: dict) -> None:
+        from google.api_core.exceptions import AlreadyExists
+
+        if self._key in self._docs:
+            raise AlreadyExists("exists")
+        self._docs[self._key] = dict(data)
+
+    def update(self, data: dict) -> None:
+        from google.api_core.exceptions import NotFound
+        from google.cloud.firestore_v1.transforms import Increment
+
+        if self._key not in self._docs:
+            raise NotFound("missing")
+        doc = self._docs[self._key]
+        for field, value in data.items():
+            doc[field] = doc.get(field, 0) + value.value if isinstance(value, Increment) else value
+
+    def delete(self) -> None:
+        self._docs.pop(self._key, None)
+
+
+class _FakeFirestore:
+    def __init__(self) -> None:
+        self.docs: dict = {}
+
+    def collection(self, name: str):
+        return SimpleNamespace(document=lambda doc_id: _FakeDocument(self.docs, (name, doc_id)))
+
+
+@pytest.fixture(autouse=True, params=["sqlite", "firestore"])
+def isolated_db(request, tmp_path, monkeypatch):
+    """Run every test against a throwaway SQLite file and against an
+    in-memory stand-in for the Firestore client."""
+    monkeypatch.setenv("QUEST_STORE_BACKEND", request.param)
     monkeypatch.setenv("QUEST_DB_PATH", str(tmp_path / "quests.db"))
+    fake = _FakeFirestore()
+    monkeypatch.setattr("quest_store.firestore_client", lambda: fake)
+    return fake
 
 
 @pytest.fixture(autouse=True)
@@ -171,3 +225,28 @@ def test_store_rejects_over_long_creator_name(client: TestClient) -> None:
     payload["created_by"] = "x" * 61
     res = client.post("/api/quest/store", json=payload)
     assert res.status_code == 422
+
+
+def test_firestore_concurrent_same_content_keeps_one_link(isolated_db, monkeypatch) -> None:
+    """If another request stores identical content between our hash check and
+    our hash create, we return their short id and drop our duplicate doc."""
+    import quest_store
+    from models import Quest
+
+    if quest_store._backend() != "firestore":
+        pytest.skip("firestore-only race")
+    quest = Quest.model_validate(_quest_payload())
+    _, content_hash = quest_store._canonical(quest)
+    fake = isolated_db
+
+    real_new_id = quest_store._new_short_id
+
+    def racing_new_id() -> str:
+        # Simulate the other request winning the hash doc mid-flight.
+        fake.docs[("shared_quest_hashes", content_hash)] = {"short_id": "theirs22"}
+        fake.docs[("shared_quests", "theirs22")] = {"quest_json": "{}", "created_at": "x", "views": 0}
+        return real_new_id()
+
+    monkeypatch.setattr(quest_store, "_new_short_id", racing_new_id)
+    assert quest_store.store_quest(quest) == "theirs22"
+    assert [k for k in fake.docs if k[0] == "shared_quests"] == [("shared_quests", "theirs22")]

@@ -1,14 +1,20 @@
-"""SQLite-backed store for shared quests (short links).
+"""Store for shared quests (short links).
 
 Shared quests otherwise live only in the creator's browser, so share links
 had to carry the whole quest in an 800-char #q= fragment. Storing the quest
 server-side gives moodyeat.in/q/<short_id> links, per-quest OG previews for
 crawlers, and a view count — the receiving side of the share loop.
 
-Database location, in priority order:
-  1. QUEST_DB_PATH env var (tests point this at a tmp dir)
-  2. /data/quests.db when /data exists (the Railway volume mount)
-  3. backend/.data/quests.db for local dev (gitignored)
+Two backends, picked by QUEST_STORE_BACKEND:
+
+* ``sqlite`` (default): a local file. Fine on a host with a persistent disk
+  (Railway volume) and for local dev. Location, in priority order:
+    1. QUEST_DB_PATH env var (tests point this at a tmp dir)
+    2. /data/quests.db when /data exists (the Railway volume mount)
+    3. backend/.data/quests.db for local dev (gitignored)
+* ``firestore``: Google Cloud Firestore. Required on Cloud Run, whose disk is
+  wiped on every restart. Uses Application Default Credentials; optional
+  FIRESTORE_PROJECT and FIRESTORE_DATABASE (default "(default)").
 
 All functions are synchronous; call them from async routes via
 fastapi.concurrency.run_in_threadpool.
@@ -23,7 +29,9 @@ import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from models import Quest
 
@@ -31,6 +39,12 @@ from models import Quest
 _ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz"
 SHORT_ID_LENGTH = 8
 _RAILWAY_VOLUME = Path("/data")
+
+# Firestore layout: one doc per quest keyed by short id, plus one doc per
+# content hash so re-sharing identical content is idempotent. Both are written
+# with create(), which fails if the doc exists — that is the uniqueness check.
+QUESTS_COLLECTION = "shared_quests"
+HASHES_COLLECTION = "shared_quest_hashes"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS stored_quests (
@@ -52,6 +66,51 @@ class StoredQuest:
     views: int
 
 
+def _backend() -> str:
+    return os.environ.get("QUEST_STORE_BACKEND", "sqlite").strip().lower() or "sqlite"
+
+
+def _new_short_id() -> str:
+    return "".join(secrets.choice(_ALPHABET) for _ in range(SHORT_ID_LENGTH))
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _canonical(quest: Quest) -> tuple[str, str]:
+    """Canonical JSON from the validated model (unknown request fields are
+    never stored) and its content hash."""
+    quest_json = quest.model_dump_json()
+    return quest_json, hashlib.sha256(quest_json.encode("utf-8")).hexdigest()
+
+
+def store_quest(quest: Quest) -> str:
+    """Persist a quest and return its short id.
+
+    Idempotent per content: re-sharing the same quest (same id, title, stops)
+    returns the existing short id instead of inserting a duplicate.
+    """
+    quest_json, content_hash = _canonical(quest)
+    if _backend() == "firestore":
+        return _firestore_store(quest_json, content_hash)
+    return _sqlite_store(quest_json, content_hash)
+
+
+def fetch_quest(short_id: str, *, count_view: bool = True) -> StoredQuest | None:
+    """Look up a stored quest, bumping its view count unless told not to.
+
+    Crawler prefetches (the OG preview function) pass count_view=False so
+    views only measure humans opening the link.
+    """
+    if _backend() == "firestore":
+        return _firestore_fetch(short_id, count_view=count_view)
+    return _sqlite_fetch(short_id, count_view=count_view)
+
+
+# --- SQLite ---------------------------------------------------------------
+
+
 def _db_path() -> Path:
     env = os.environ.get("QUEST_DB_PATH", "").strip()
     if env:
@@ -71,25 +130,7 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
-def _new_short_id() -> str:
-    return "".join(secrets.choice(_ALPHABET) for _ in range(SHORT_ID_LENGTH))
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-
-def store_quest(quest: Quest) -> str:
-    """Persist a quest and return its short id.
-
-    Idempotent per content: re-sharing the same quest (same id, title, stops)
-    returns the existing short id instead of inserting a duplicate row. The
-    canonical JSON comes from the validated model, so unknown/extra fields in
-    the request body are never stored.
-    """
-    quest_json = quest.model_dump_json()
-    content_hash = hashlib.sha256(quest_json.encode("utf-8")).hexdigest()
-
+def _sqlite_store(quest_json: str, content_hash: str) -> str:
     with closing(_connect()) as conn, conn:
         row = conn.execute(
             "SELECT short_id FROM stored_quests WHERE content_hash = ?",
@@ -119,12 +160,7 @@ def store_quest(quest: Quest) -> str:
                     return row["short_id"]
 
 
-def fetch_quest(short_id: str, *, count_view: bool = True) -> StoredQuest | None:
-    """Look up a stored quest, bumping its view count unless told not to.
-
-    Crawler prefetches (the OG preview function) pass count_view=False so
-    views only measure humans opening the link.
-    """
+def _sqlite_fetch(short_id: str, *, count_view: bool) -> StoredQuest | None:
     with closing(_connect()) as conn, conn:
         if count_view:
             conn.execute(
@@ -145,4 +181,74 @@ def fetch_quest(short_id: str, *, count_view: bool = True) -> StoredQuest | None
         quest_json=row["quest_json"],
         created_at=row["created_at"],
         views=row["views"],
+    )
+
+
+# --- Firestore ------------------------------------------------------------
+
+
+@lru_cache
+def firestore_client() -> Any:
+    """Process-wide Firestore client (tests monkeypatch this)."""
+    from google.cloud import firestore
+
+    project = os.environ.get("FIRESTORE_PROJECT", "").strip() or None
+    database = os.environ.get("FIRESTORE_DATABASE", "").strip() or "(default)"
+    return firestore.Client(project=project, database=database)
+
+
+def _firestore_store(quest_json: str, content_hash: str) -> str:
+    from google.api_core.exceptions import AlreadyExists
+
+    client = firestore_client()
+    hash_ref = client.collection(HASHES_COLLECTION).document(content_hash)
+    existing = hash_ref.get()
+    if existing.exists:
+        return existing.to_dict()["short_id"]
+
+    while True:
+        short_id = _new_short_id()
+        quest_ref = client.collection(QUESTS_COLLECTION).document(short_id)
+        try:
+            quest_ref.create(
+                {
+                    "content_hash": content_hash,
+                    "quest_json": quest_json,
+                    "created_at": _now_iso(),
+                    "views": 0,
+                    "last_viewed_at": None,
+                }
+            )
+            break
+        except AlreadyExists:
+            continue  # short_id collision: pick another
+
+    try:
+        hash_ref.create({"short_id": short_id})
+    except AlreadyExists:
+        # A concurrent request stored the same content first: keep theirs.
+        quest_ref.delete()
+        return hash_ref.get().to_dict()["short_id"]
+    return short_id
+
+
+def _firestore_fetch(short_id: str, *, count_view: bool) -> StoredQuest | None:
+    from google.api_core.exceptions import NotFound
+    from google.cloud import firestore
+
+    ref = firestore_client().collection(QUESTS_COLLECTION).document(short_id)
+    if count_view:
+        try:
+            ref.update({"views": firestore.Increment(1), "last_viewed_at": _now_iso()})
+        except NotFound:
+            return None
+    snap = ref.get()
+    if not snap.exists:
+        return None
+    data = snap.to_dict()
+    return StoredQuest(
+        short_id=short_id,
+        quest_json=data["quest_json"],
+        created_at=data["created_at"],
+        views=int(data.get("views") or 0),
     )
