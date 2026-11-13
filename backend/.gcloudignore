@@ -1,0 +1,17 @@
+# What `gcloud run deploy --source .` uploads. gcloud reads this file, not
+# .dockerignore, so keep the two in sync. Never upload secrets or venvs.
+.gcloudignore
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.data/
+tests/
+scripts/
+.DS_Store
