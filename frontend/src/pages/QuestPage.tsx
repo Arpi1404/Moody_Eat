@@ -673,11 +673,6 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
             <span aria-hidden>🌧️</span> {quest.weather_note}
           </p>
         )}
-        {quest.veg_note && (
-          <p className="qp-soft-note">
-            <span aria-hidden>🌱</span> {quest.veg_note}
-          </p>
-        )}
         {questNotice && <p className="qp-soft-note">{questNotice}</p>}
 
         <QuestCard

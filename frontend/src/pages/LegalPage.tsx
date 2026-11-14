@@ -45,9 +45,11 @@ export function PrivacyPage() {
         </li>
         <li>
           <strong>Location access.</strong> If you tap "Use my current
-          location", your coordinates are used once to detect your area (via
-          OpenStreetMap Nominatim) and are not stored. Denying access works
-          fine — just type an area instead.
+          location", your coordinates are used to look up the name of your
+          area (via OpenStreetMap Nominatim) and, rounded to about 100 metres,
+          are sent to our server with that quest request so the plan is built
+          around where you actually are. They are not stored. Denying access
+          works fine — just type an area instead.
         </li>
         <li>
           <strong>Analytics.</strong> We use Plausible, a cookie-free

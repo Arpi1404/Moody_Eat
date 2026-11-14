@@ -26,7 +26,9 @@ _NEARBY_URL_NEW = "https://places.googleapis.com/v1/places:searchNearby"
 _DETAILS_URL_NEW = "https://places.googleapis.com/v1/places/{place_id}"
 
 # Every response field costs money: this mask keeps searchNearby in the cheapest
-# SKU that still includes price data. Extend deliberately.
+# SKU that still includes price data (Enterprise). Atmosphere fields such as
+# servesVegetarianFood or dineIn would bump every search to the
+# Enterprise + Atmosphere SKU. Extend deliberately.
 _NEARBY_FIELD_MASK_NEW = ",".join(
     (
         "places.id",
@@ -39,10 +41,6 @@ _NEARBY_FIELD_MASK_NEW = ",".join(
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
-        # Same SKU tier as priceRange (Enterprise + Atmosphere), so requesting
-        # it does not bump the searchNearby bill beyond what price data
-        # already costs. Powers the pure-veg quest filter.
-        "places.servesVegetarianFood",
     )
 )
 
@@ -66,6 +64,8 @@ def _hours_for_weekday(periods: list[dict[str, Any]], weekday: int) -> PlaceHour
     """Given Google's `opening_hours.periods` array, extract today's hours.
 
     A 24h place is signalled by a single period with day=0 time='0000' and no close.
+    opens_today/closes_today describe the day's first window; `windows` lists
+    every window so split-shift places can be checked against any time slot.
     """
     if not periods:
         return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
@@ -77,15 +77,32 @@ def _hours_for_weekday(periods: list[dict[str, Any]], weekday: int) -> PlaceHour
         if opn.get("day") == 0 and opn.get("time") == "0000" and "close" not in only:
             return PlaceHours(opens_today=None, closes_today=None, open_24h_today=True)
 
+    # A weekday can carry several periods: restaurants that close between
+    # lunch and dinner, parks open mornings and evenings. Keep them all —
+    # reading only the first made every such place look shut in the evening.
+    todays: list[tuple[str | None, str | None]] = []
     for p in periods:
         opn = p.get("open") or {}
-        if opn.get("day") == weekday:
-            opens = _fmt_hhmm(str(opn.get("time") or ""))
-            close = p.get("close") or {}
-            closes = _fmt_hhmm(str(close.get("time") or "")) if close else None
-            return PlaceHours(opens_today=opens, closes_today=closes, open_24h_today=False)
+        if opn.get("day") != weekday:
+            continue
+        opens = _fmt_hhmm(str(opn.get("time") or ""))
+        close = p.get("close") or {}
+        closes = _fmt_hhmm(str(close.get("time") or "")) if close else None
+        todays.append((opens, closes))
 
-    return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+    if not todays:
+        return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+
+    todays.sort(key=lambda window: window[0] or "")
+    first_opens, first_closes = todays[0]
+    return PlaceHours(
+        opens_today=first_opens,
+        closes_today=first_closes,
+        open_24h_today=False,
+        windows=tuple(
+            (opens, closes) for opens, closes in todays if opens and closes
+        ),
+    )
 
 
 def _new_periods_to_legacy(periods: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -439,7 +456,6 @@ class GooglePlacesProvider(PlacesProvider):
         price_range = item.get("priceRange") or {}
         start_inr = cls._inr_units(price_range.get("startPrice"))
         end_inr = cls._inr_units(price_range.get("endPrice"))
-        serves_veg = item.get("servesVegetarianFood")
         return RawPlace(
             provider_id=str(item.get("id") or ""),
             name=str(display.get("text") or "").strip(),
@@ -453,7 +469,6 @@ class GooglePlacesProvider(PlacesProvider):
             price_level=p_level,
             price_range_start_inr=start_inr,
             price_range_end_inr=end_inr,
-            serves_vegetarian_food=bool(serves_veg) if serves_veg is not None else None,
         )
 
     @staticmethod

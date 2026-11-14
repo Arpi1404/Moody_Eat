@@ -101,7 +101,18 @@ const PEOPLE_BY_OCCASION: Record<OccasionKey, number> = {
 
 // ── Geolocation helpers ───────────────────────────────────────────────────────
 
-async function reverseGeocode(lat: number, lng: number): Promise<string> {
+type ReverseGeocode = {
+  /** City-level name — what curated quests are keyed on. */
+  city: string | null
+  /** Neighbourhood-level name for the location field, e.g. "Gachibowli, Hyderabad". */
+  label: string | null
+}
+
+// Shown in the location field when the area name couldn't be looked up; the
+// coordinates still anchor the search.
+const GEO_FALLBACK_LABEL = 'Current location'
+
+async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocode> {
   // Uses OpenStreetMap Nominatim — no API key required for light/personal use.
   const res = await fetch(
     `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
@@ -110,9 +121,12 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   if (!res.ok) throw new Error('Geocode failed')
   const data = await res.json()
   const a = data.address ?? {}
-  return (
-    a.city ?? a.town ?? a.suburb ?? a.village ?? a.county ?? 'your location'
-  )
+  const city: string | null =
+    a.city ?? a.town ?? a.suburb ?? a.village ?? a.county ?? null
+  const area: string | null =
+    a.suburb ?? a.neighbourhood ?? a.town ?? a.village ?? null
+  const label = area && city && area !== city ? `${area}, ${city}` : (area ?? city)
+  return { city, label }
 }
 
 function getCurrentPosition(): Promise<GeolocationPosition> {
@@ -127,11 +141,12 @@ function getCurrentPosition(): Promise<GeolocationPosition> {
 
 async function detectCity(): Promise<string> {
   const pos = await getCurrentPosition()
-  const city = (await reverseGeocode(pos.coords.latitude, pos.coords.longitude)).trim()
-  if (!city || city === 'your location') {
+  const { city } = await reverseGeocode(pos.coords.latitude, pos.coords.longitude)
+  const name = city?.trim()
+  if (!name) {
     throw new Error('City not detected')
   }
-  return city
+  return name
 }
 
 function wait(ms: number): Promise<void> {
@@ -216,10 +231,13 @@ export function HomePage() {
 
   const [activeOccasion, setActiveOccasion] = useState<OccasionKey | null>(null)
   const [location, setLocation] = useState('')
+  // Set while the location field holds a place picked with the 📍 button:
+  // the quest is searched around these coordinates and the field's text is
+  // only a readable label. Typing in the field clears it.
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [budget, setBudget] = useState<Budget>('mid')
-  const [pureVeg, setPureVeg] = useState(false)
   const [stopCount, setStopCount] = useState(3)
   // null = follow the occasion's default start time
   const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
@@ -256,17 +274,16 @@ export function HomePage() {
     setGeoError(null)
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        let label: string | null = null
         try {
-          const name = await reverseGeocode(
-            pos.coords.latitude,
-            pos.coords.longitude,
-          )
-          setLocation(name)
+          label = (await reverseGeocode(lat, lng)).label
         } catch {
-          // silent — user can type manually
-        } finally {
-          setGeoLoading(false)
+          // The area name is cosmetic — the coordinates still anchor the search.
         }
+        setLocation(label ?? GEO_FALLBACK_LABEL)
+        setGeoCoords({ lat, lng })
+        setGeoLoading(false)
       },
       () => {
         setGeoLoading(false)
@@ -392,8 +409,20 @@ export function HomePage() {
     }, 3000)
 
     const dayPart = dayPartChoice ?? DAY_PART_DEFAULT_BY_OCCASION[activeOccasion]
+    const typedLocation = location.trim()
     const request = {
-      location: location.trim(),
+      // A 📍 location is searched around the device's position, not around
+      // the centre of whatever the area is called — "Hyderabad" resolves to
+      // a point 14 km from Gachibowli. Rounded to ~100 m: ample for a 3 km
+      // search without sending an exact position.
+      location: geoCoords
+        ? `${geoCoords.lat.toFixed(3)},${geoCoords.lng.toFixed(3)}`
+        : typedLocation,
+      // Names the quest ("… in Gachibowli") so coordinates never show up in
+      // a title or a shared link.
+      ...(geoCoords && typedLocation !== GEO_FALLBACK_LABEL
+        ? { location_label: typedLocation }
+        : {}),
       occasion: activeOccasion,
       cost_estimate: budget,
       people: PEOPLE_BY_OCCASION[activeOccasion],
@@ -401,7 +430,6 @@ export function HomePage() {
       day_part: dayPart,
       // Avoid repeating places from recent quests (soft exclusion).
       exclude_place_ids: getRecentPlaceIds(),
-      pure_veg: pureVeg,
     }
 
     try {
@@ -412,7 +440,6 @@ export function HomePage() {
         day_part: dayPart,
         stops_requested: stopCount,
         stop_count: quest.stops.length,
-        pure_veg: pureVeg,
       })
       // Only flag a shortfall against what the user actually asked for — a
       // 1- or 2-stop quest is a deliberate choice now, not a failure.
@@ -693,7 +720,10 @@ export function HomePage() {
                     type="text"
                     placeholder="City, neighbourhood, or area"
                     value={location}
-                    onChange={(e) => setLocation(e.target.value)}
+                    onChange={(e) => {
+                      setLocation(e.target.value)
+                      setGeoCoords(null)
+                    }}
                     required
                     autoComplete="off"
                   />
@@ -710,6 +740,11 @@ export function HomePage() {
                 {geoError && (
                   <p className="sheet-geo-status sheet-geo-status--error">
                     {geoError}
+                  </p>
+                )}
+                {geoCoords && !geoError && (
+                  <p className="sheet-geo-status">
+                    Searching around your current location
                   </p>
                 )}
               </div>
@@ -755,16 +790,6 @@ export function HomePage() {
                       {b.label}
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    className={`sheet-pill sheet-pill--veg${pureVeg ? ' sheet-pill--active' : ''}`}
-                    aria-pressed={pureVeg}
-                    title="Only suggest food stops with vegetarian options"
-                    onClick={() => setPureVeg((v) => !v)}
-                  >
-                    <span aria-hidden style={{ marginRight: 6 }}>🌱</span>
-                    Pure veg
-                  </button>
                 </div>
               </div>
 

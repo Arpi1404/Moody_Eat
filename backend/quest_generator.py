@@ -35,6 +35,7 @@ from quest_templates import TEMPLATES, TemplateStop
 from services.nearby_places_service import NearbyPlacesService
 from services.place_blurbs_service import generate_quest_narrative
 from services.places_exceptions import PlacesProviderError
+from services.places_provider import PlaceHours
 from services.weather_service import OUTDOOR_TYPES, rain_expected
 
 logger = logging.getLogger(__name__)
@@ -187,6 +188,14 @@ _STRONG_RATING_FLOOR: float = 4.0
 _STRONG_RATINGS_TOTAL_FLOOR: int = 100
 _STRONG_TARGET_COUNT: int = 3
 _VIABILITY_CHECK_LIMIT: int = 8
+# Destination types most neighbourhoods simply don't have (around Kukatpally
+# a zoo search returns nothing and an aquarium search only pet-fish shops, at
+# every radius). For these the widest tier is searched first: results are
+# popularity-ranked, so if nothing strong shows up within the full reach the
+# nearer tiers won't have it either and are skipped — one paid search instead
+# of three. When something is there, the usual near-to-far expansion runs and
+# reuses the cached wide result, so picks are unchanged.
+_SPARSE_PLACE_TYPES = frozenset({"zoo", "aquarium"})
 
 # ── Mood-specific hard rejects ────────────────────────────────────────────────
 
@@ -208,41 +217,10 @@ _VIABILITY_RULES = (
     "already_used",
     "mood_type",
     "mood_name",
-    "non_veg",
     "over_budget",
     "hours_unknown",
     "hours_closed",
 )
-
-# ── Pure-veg mode ─────────────────────────────────────────────────────────────
-# Google's servesVegetarianFood=True means veg options exist, not that the
-# kitchen is pure-veg — but a name that says so is as strong a signal as India
-# produces. Confirmed = Google flag OR name declaration.
-_PURE_VEG_NAME_RE = re.compile(
-    r"\b(?:pure\s*veg(?:etarian)?|shudh|veg\s*only|100%\s*veg)\b",
-    re.IGNORECASE,
-)
-# Google place types where food is the point — the only searches the veg
-# filter touches (a museum has no menu to be non-veg about). Keyed on the
-# searched place type, not the stop category: a date quest's second stop is
-# category "other" but searches bakeries, and those must still be filtered.
-_FOOD_PLACE_TYPES = frozenset(
-    {
-        "restaurant",
-        "cafe",
-        "bar",
-        "bakery",
-        "meal_takeaway",
-        "meal_delivery",
-        "night_club",
-    }
-)
-
-
-def _is_veg_confirmed(place: PlaceItem) -> bool:
-    return place.serves_vegetarian_food is True or bool(
-        _PURE_VEG_NAME_RE.search(place.name)
-    )
 
 # ── Quest title lookup ────────────────────────────────────────────────────────
 
@@ -283,6 +261,21 @@ def _quest_title(occasion: Occasion, cost: CostEstimate, location: str) -> str:
     if area.islower():
         area = area.title()
     return f"{base} in {area}"
+
+
+def _display_location(req: QuestGenerationRequest) -> str:
+    """Where the quest is, in words — never raw coordinates.
+
+    A location shared from the device arrives as "lat,lng" plus an optional
+    readable label; anything shown to a person or sent to the narrative model
+    uses the label (or a neutral phrase) instead of the numbers.
+    """
+    label = (req.location_label or "").strip()
+    if label and not _COORDS_RE.match(label):
+        return label
+    if _COORDS_RE.match(req.location):
+        return "your area"
+    return req.location
 
 
 # ── Haversine ─────────────────────────────────────────────────────────────────
@@ -499,9 +492,18 @@ def _parse_hhmm(value: str | None) -> int | None:
 def _slot_fits_hours(place: PlaceItem, start: time, end: time) -> bool:
     if place.open_24h_today:
         return True
+    return _slot_fits_window(place.opens_today, place.closes_today, start, end)
 
-    opens_at = _parse_hhmm(place.opens_today)
-    closes_at = _parse_hhmm(place.closes_today)
+
+def _slot_fits_window(
+    opens: str | None,
+    closes: str | None,
+    start: time,
+    end: time,
+) -> bool:
+    """True when [start, end] sits inside one opens–closes window."""
+    opens_at = _parse_hhmm(opens)
+    closes_at = _parse_hhmm(closes)
     if opens_at is None or closes_at is None:
         return False
 
@@ -547,10 +549,31 @@ def _hours_reject_rule(place: PlaceItem, start: time, end: time) -> str | None:
     return None
 
 
+def _window_for_slot(
+    hours: PlaceHours,
+    start: time,
+    end: time,
+) -> tuple[str | None, str | None]:
+    """The opening window that applies to a visit at [start, end].
+
+    Many places close for part of the day — restaurants between lunch and
+    dinner, parks from mid-morning to late afternoon. Judging an evening slot
+    against the day's first window would call all of them closed, so pick the
+    window the slot actually falls in. When none fits, the first window is
+    returned and the slot is rejected as closed downstream.
+    """
+    for opens, closes in hours.windows:
+        if _slot_fits_window(opens, closes, start, end):
+            return opens, closes
+    return hours.opens_today, hours.closes_today
+
+
 async def _with_hours(
     place: PlaceItem,
     service: NearbyPlacesService,
     weekday_g: int,
+    start: time,
+    end: time,
 ) -> PlaceItem:
     try:
         hours = await service.get_place_hours(place.provider_id, weekday_g)
@@ -560,9 +583,10 @@ async def _with_hours(
             exc.__class__.__name__,
         )
         return place
+    opens, closes = _window_for_slot(hours, start, end)
     return place.model_copy(update={
-        "opens_today": hours.opens_today,
-        "closes_today": hours.closes_today,
+        "opens_today": opens,
+        "closes_today": closes,
         "open_24h_today": hours.open_24h_today,
     })
 
@@ -582,7 +606,6 @@ async def _pick_viable_candidate(
     requested_place_type: str,
     rng: random.Random | None = None,
     seen: frozenset[str] = frozenset(),
-    require_veg: bool = False,
 ) -> _CandidatePick | None:
     # Recently-seen places (from the user's past quests) are avoided only
     # while fresh options exist — variety never costs a stop.
@@ -594,18 +617,6 @@ async def _pick_viable_candidate(
     drop_counts: Counter[str] = Counter()
     if len(ranked) < len(candidates):
         drop_counts["already_used"] = len(candidates) - len(ranked)
-    if require_veg:
-        # A dietary constraint outranks score: confirmed-veg places first,
-        # unknowns only as fallback, and places Google explicitly marks as
-        # not serving vegetarian food are never offered — better a shorter
-        # quest than a broken promise.
-        confirmed = [p for p in ranked if _is_veg_confirmed(p)]
-        unknown = [
-            p for p in ranked
-            if not _is_veg_confirmed(p) and p.serves_vegetarian_food is not False
-        ]
-        drop_counts["non_veg"] = len(ranked) - len(confirmed) - len(unknown)
-        ranked = confirmed + unknown
     price_known = sum(1 for p in ranked if price_signal(p).source != PRICE_SOURCE_UNKNOWN)
 
     # Weaker candidates kept aside and used only if every clean candidate
@@ -638,7 +649,7 @@ async def _pick_viable_candidate(
             drop_counts["over_budget"] += 1
             continue
 
-        place_with_hours = await _with_hours(place, service, weekday_g)
+        place_with_hours = await _with_hours(place, service, weekday_g, start, end)
         hours_rule = _hours_reject_rule(place_with_hours, start, end)
         if hours_rule == "hours_unknown" and not over_budget:
             drop_counts[hours_rule] += 1
@@ -789,6 +800,29 @@ def _is_strong(p: PlaceItem) -> bool:
     )
 
 
+async def _search_tier(
+    service: NearbyPlacesService,
+    location: str,
+    place_type: str,
+    radius: int,
+) -> list[PlaceItem] | None:
+    """One radius tier of a type search. None means the provider failed."""
+    try:
+        result = await service.search(NearbyPlacesRequest(
+            query=location,
+            categories=[place_type],
+            radius_meters=radius,
+            limit=20,
+        ))
+    except PlacesProviderError as exc:
+        logger.warning(
+            "Places search failed type=%s radius=%dm location=%r: %s",
+            place_type, radius, location, exc,
+        )
+        return None
+    return result.places
+
+
 async def _search_with_expansion(
     service: NearbyPlacesService,
     location: str,
@@ -802,26 +836,22 @@ async def _search_with_expansion(
     returns []: the template fallback chain will try the next place_type
     rather than admitting weak picks.
     """
+    if place_type in _SPARSE_PLACE_TYPES:
+        widest = await _search_tier(service, location, place_type, _RADIUS_TIERS_M[-1])
+        if widest is not None and not any(_is_strong(p) for p in widest):
+            logger.info(
+                "Sparse type=%s has nothing strong within %dm — skipping nearer tiers",
+                place_type, _RADIUS_TIERS_M[-1],
+            )
+            return []
+
     best_strong: list[PlaceItem] = []
     for radius in _RADIUS_TIERS_M:
-        try:
-            result = await service.search(NearbyPlacesRequest(
-                query=location,
-                categories=[place_type],
-                radius_meters=radius,
-                limit=20,
-            ))
-        except PlacesProviderError as exc:
-            logger.warning(
-                "Places search failed type=%s radius=%dm location=%r: %s",
-                place_type, radius, location, exc,
-            )
+        places = await _search_tier(service, location, place_type, radius)
+        if not places:
             continue
 
-        if not result.places:
-            continue
-
-        strong = [p for p in result.places if _is_strong(p)]
+        strong = [p for p in places if _is_strong(p)]
         if len(strong) >= _STRONG_TARGET_COUNT:
             logger.info(
                 "Strong-pool hit type=%s radius=%dm strong=%d",
@@ -874,11 +904,9 @@ async def assemble_quest(
     except Exception as exc:
         logger.warning("weather_anchor_failed err_type=%s", exc.__class__.__name__)
     outdoor_skipped = False
-    veg_unconfirmed = False
 
     for tmpl in template:
         picked: _CandidatePick | None = None
-        picked_veg_filtered = False
         stop_place_types = tmpl.places_types
         if rain_risk:
             indoor_only = tuple(t for t in stop_place_types if t not in OUTDOOR_TYPES)
@@ -887,7 +915,6 @@ async def assemble_quest(
                 stop_place_types = indoor_only
                 outdoor_skipped = True
         for place_type in stop_place_types:
-            require_veg = req.pure_veg and place_type in _FOOD_PLACE_TYPES
             candidates = await _search_with_expansion(
                 service, req.location, place_type
             )
@@ -912,18 +939,9 @@ async def assemble_quest(
                 requested_place_type=place_type,
                 rng=rng,
                 seen=seen_ids,
-                require_veg=require_veg,
             )
             if picked is not None:
-                picked_veg_filtered = require_veg
                 break
-
-        if (
-            picked is not None
-            and picked_veg_filtered
-            and not _is_veg_confirmed(picked.place)
-        ):
-            veg_unconfirmed = True
 
         if picked is None:
             logger.info(
@@ -943,9 +961,10 @@ async def assemble_quest(
         prev_lat, prev_lng = place.lat, place.lng
         cursor = picked.end
 
+    where = _display_location(req)
     if not slots:
         raise ValueError(
-            f"No places could be found for any stop in {req.location!r}. "
+            f"No places could be found for any stop in {where!r}. "
             "Check that the location is recognisable and the Places API key is valid."
         )
 
@@ -975,7 +994,7 @@ async def assemble_quest(
         for s in stops
     ]
     narrative = await generate_quest_narrative(
-        location=req.location,
+        location=where,
         occasion=req.occasion.value,
         cost_estimate=req.cost_estimate.value,
         people=req.people,
@@ -990,7 +1009,11 @@ async def assemble_quest(
     total_duration_minutes = last_min - first_min
 
     return Quest(
-        title=_quest_title(req.occasion, req.cost_estimate, req.location),
+        title=_quest_title(
+            req.occasion,
+            req.cost_estimate,
+            (req.location_label or "").strip() or req.location,
+        ),
         occasion=req.occasion,
         stops=stops,
         total_duration_minutes=total_duration_minutes,
@@ -1000,12 +1023,6 @@ async def assemble_quest(
         weather_note=(
             "Rain looks likely around your start time, so we kept the plan indoors."
             if outdoor_skipped
-            else None
-        ),
-        veg_note=(
-            "We prioritised vegetarian-friendly spots, but couldn't confirm a "
-            "veg menu at every stop — worth a quick check before you order."
-            if req.pure_veg and veg_unconfirmed
             else None
         ),
         narrative=narrative,

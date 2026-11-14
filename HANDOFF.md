@@ -148,17 +148,43 @@ verified in a real browser before push.
     titles the quest "Priya's Banjara Hills Quest" and shows a byline on the
     quest page ("✦ made by Priya"), the story card ("Curated by Priya"), and
     the OG preview ("· by Priya") — the influencer program is now self-serve.
-    Pure veg: `places.servesVegetarianFood` added to the field mask (same
-    Enterprise+Atmosphere SKU as priceRange — no billing tier change);
-    `pure_veg` on the generate request makes food-type searches (restaurant/
-    cafe/bar/bakery/takeaway/club) prefer veg-confirmed places (Google flag
-    OR "pure veg/shudh" in the name), use unknowns only as fallback, and
-    never offer places explicitly marked non-veg. Quest carries `veg_note`
-    when confirmation wasn't possible everywhere. 🌱 toggle lives in the
-    builder sheet's Budget row. Swap alternatives do NOT veg-filter yet
-    (known gap). Analytics: `quest_generated` gains `pure_veg`,
-    `custom_quest_created` gains `has_creator_name` (boolean — the name
-    itself never goes to analytics).
+    Pure veg shipped here too but was **removed in Nov 2026 (item 11)**.
+    Analytics: `custom_quest_created` gains `has_creator_name` (boolean —
+    the name itself never goes to analytics).
+
+11. **Search fixes + pure-veg removal (Nov 2026).** Found by running real
+    quest generations and reading the candidate pools.
+    - **Pure veg removed end to end** (toggle, `pure_veg` request field,
+      `veg_note`, `servesVegetarianFood` in the field mask). Google's flag
+      is true for biryani/mandi/chicken restaurants, so the filter was
+      close to a no-op: a "pure veg" family quest led with a biryani house.
+      Dropping the field also takes searchNearby back down from the
+      Enterprise + Atmosphere SKU to Enterprise (per Google's SKU table,
+      `priceRange` is Enterprise; the veg flag was what raised the tier).
+      If it comes back, key it on the `vegetarian_restaurant` type and the
+      place name, not the flag. `marketing/captions.md` and
+      `marketing/reddit-post.md` still advertise the toggle.
+    - **📍 anchors to the device, not the city centre.** The button used to
+      fill in the city name ("Hyderabad"), which geocodes to Himayatnagar —
+      ~14 km from Gachibowli. It now sends `lat,lng` (rounded to 3 decimals)
+      as `location` plus a display-only `location_label` ("Gachibowli,
+      Hyderabad") used for the title and narrative, so coordinates never
+      reach a title or a shared link. Typing in the field clears the
+      coordinates. Privacy page updated to match.
+    - **Split opening hours.** `PlaceHours.windows` carries every window of
+      the day; the generator checks a slot against the window it falls in.
+      Reading only the first window made parks (open mornings + evenings)
+      and lunch/dinner restaurants look shut every evening.
+    - **Wasted paid calls.** `meal_takeaway` dropped from the friends
+      template (it is deny-listed, so its three searches always returned
+      nothing); zoo/aquarium probe the widest radius first and skip the
+      nearer tiers when it has nothing strong; geocoding is reused within a
+      request instead of repeating once per search.
+    Still open from that study: match on Google's primary type instead of
+    any tag, slot-appropriate types (dessert ≠ bakery), day-part-aware stop
+    order, and scoring the first stop on distance from the searched area.
+    Also noticed: `deps.py` builds a new `NearbyPlacesService` per request,
+    so the 10-minute places cache never survives across requests.
 
 Also merged during this period (by the owner, not this engagement):
 **`51645a2`** — dark editorial share-card redesign PR + `/api/quest-og`
@@ -170,8 +196,8 @@ crawler preview function.
 `build_own_tapped`, `stops_reordered`, `quest_shared` (share_method now
 includes `whatsapp`), `shared_quest_opened` (short_id — recipient opened a
 /q/ link; server-side `views` in the quest store counts the same thing
-without needing Plausible), `quest_generated` also carries `pure_veg`,
-`custom_quest_created` also carries `has_creator_name`. Pre-existing funnel
+without needing Plausible), `custom_quest_created` also carries
+`has_creator_name`. Pre-existing funnel
 events unchanged.
 
 ---
@@ -220,9 +246,8 @@ venv\Scripts\python -m pytest  npm run build   # also generates dist/guides/
    title/description text; a @vercel/og card with the stop list would pop
    more in WhatsApp).
 2. ~~**Creator-named quests.**~~ **DONE (15 Jul 2026, see item 10 above).**
-3. ~~**Pure-veg filter.**~~ **DONE (15 Jul 2026, see item 10 above).**
-   Follow-up candidates: veg-filter the swap-alternatives endpoint too, and
-   surface a 🌱 marker on stops that are veg-confirmed.
+3. ~~**Pure-veg filter.**~~ Shipped 15 Jul 2026, **removed Nov 2026** (see
+   item 11 above for why and what a rebuild should key on).
 
 ### Tier 2 — engagement
 4. **"Free right now" mode** — one tap: geolocation + current time as day

@@ -54,6 +54,7 @@ _CATEGORY_ALIASES = {
 }
 _MIN_RATING = 3.5
 _MIN_USER_RATINGS_TOTAL = 40
+_RESOLVED_CACHE_MAX = 500
 _TYPE_DENYLIST = frozenset(
     {
         "travel_agency",
@@ -148,6 +149,9 @@ class NearbyPlacesService:
         self._settings = settings or get_settings()
         self._cache: dict[str, _CacheEntry] = {}
         self._cache_lock = asyncio.Lock()
+        # One quest runs many searches around the same spot; geocoding is a
+        # paid call, so each distinct query is resolved once per service.
+        self._resolved: dict[str, ResolvedLocation] = {}
 
     def _cache_key(
         self,
@@ -191,8 +195,19 @@ class NearbyPlacesService:
             )
 
     async def resolve_location(self, query: str) -> ResolvedLocation:
-        """Geocode pass-through (used by the quest generator's weather check)."""
-        return await self._provider.geocode(query)
+        """Geocode a query, reusing the answer for repeats of the same query.
+
+        Failures are not remembered, so a transient provider error can still
+        be retried by the next search.
+        """
+        key = query.strip().casefold()
+        resolved = self._resolved.get(key)
+        if resolved is None:
+            resolved = await self._provider.geocode(query)
+            if len(self._resolved) >= _RESOLVED_CACHE_MAX:
+                self._resolved.clear()
+            self._resolved[key] = resolved
+        return resolved
 
     async def get_place_hours(self, provider_id: str, weekday: int) -> PlaceHours:
         """Pass-through to the provider's place_hours; safe to call for any place_id."""
@@ -210,7 +225,7 @@ class NearbyPlacesService:
         if cached is not None:
             return cached
 
-        resolved: ResolvedLocation = await self._provider.geocode(geocode_query)
+        resolved: ResolvedLocation = await self.resolve_location(geocode_query)
         category_concurrency = max(1, int(self._settings.category_concurrency))
         semaphore = asyncio.Semaphore(category_concurrency)
 
@@ -271,7 +286,6 @@ class NearbyPlacesService:
                     price_range_end_inr=raw.price_range_end_inr,
                     business_status=raw.business_status,
                     types=raw.types,
-                    serves_vegetarian_food=raw.serves_vegetarian_food,
                     provider_id=raw.provider_id,
                 )
             )

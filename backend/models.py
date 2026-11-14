@@ -80,10 +80,6 @@ class PlaceItem(BaseModel):
     price_range_end_inr: Optional[int] = Field(default=None, ge=0)
     business_status: Optional[str] = None
     types: Optional[list[str]] = None
-    # From Places API (New) `servesVegetarianFood`. None = unknown (legacy
-    # API, or Google has no data). True means veg options exist — NOT that
-    # the kitchen is pure-veg; the quest generator treats it accordingly.
-    serves_vegetarian_food: Optional[bool] = None
     provider_id: str
     # "HH:MM" 24-hour, today only. None when unknown or 24h.
     opens_today: Optional[str] = None
@@ -197,9 +193,6 @@ class Quest(BaseModel):
     est_total_per_person_max_inr: Optional[int] = None
     # Present when the rain forecast changed how the quest was planned.
     weather_note: Optional[str] = None
-    # Present when a pure-veg request couldn't be fully confirmed from
-    # Google's data — honesty over silence.
-    veg_note: Optional[str] = None
     # Optional display name of the person who assembled a custom quest
     # ("Priya's Old City Crawl"). Never set on generated quests.
     created_by: Optional[str] = Field(default=None, max_length=60)
@@ -221,7 +214,13 @@ class StoredQuestStats(BaseModel):
 
 
 class QuestGenerationRequest(BaseModel):
+    # Free text ("Banjara Hills") or "lat,lng" when the user shared their
+    # position — the search is anchored wherever this resolves to.
     location: str = Field(min_length=1, max_length=500)
+    # Human-readable area for a "lat,lng" location ("Gachibowli, Hyderabad").
+    # Display only: it names the quest and feeds the narrative, so raw
+    # coordinates never end up in a title or a shared link.
+    location_label: Optional[str] = Field(default=None, max_length=120)
     occasion: Occasion
     cost_estimate: CostEstimate
     people: int = Field(default=2, ge=1, le=20)
@@ -243,8 +242,3 @@ class QuestGenerationRequest(BaseModel):
     # (soft exclusion — never at the cost of an empty stop), so regulars see
     # variety instead of the same anchor spots every time.
     exclude_place_ids: list[str] = Field(default_factory=list, max_length=30)
-    # Pure-veg mode: food stops require places Google marks as serving
-    # vegetarian food (or whose name declares pure-veg); places explicitly
-    # marked non-veg-only are rejected. Unknowns are a last resort, and the
-    # quest carries a veg_note when confirmation wasn't possible everywhere.
-    pure_veg: bool = False

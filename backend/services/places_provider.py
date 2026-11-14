@@ -31,9 +31,6 @@ class RawPlace:
     # None when the provider has no range data (or the currency is not INR).
     price_range_start_inr: int | None = None
     price_range_end_inr: int | None = None
-    # Places API (New) `servesVegetarianFood`. None when unknown (legacy API
-    # or no Google data). True = veg options exist, not necessarily pure-veg.
-    serves_vegetarian_food: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -43,6 +40,11 @@ class PlaceHours:
     opens_today: str | None
     closes_today: str | None
     open_24h_today: bool
+    # Every (opens, closes) window for the day, earliest first. Places with a
+    # midday break — lunch and dinner service, parks open mornings and
+    # evenings — have more than one; opens_today/closes_today describe only
+    # the first, so anything checking a time slot must look at all of these.
+    windows: tuple[tuple[str, str], ...] = ()
 
 
 @runtime_checkable

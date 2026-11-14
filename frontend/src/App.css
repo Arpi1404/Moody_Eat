@@ -2610,13 +2610,6 @@ a.explore-edit-filters {
   font-weight: 600;
 }
 
-/* Pure-veg reads green, not terracotta, when active. */
-.sheet-pill--veg.sheet-pill--active {
-  border-color: #5c7148;
-  background: rgba(92, 113, 72, 0.14);
-  color: #46593a;
-}
-
 .sheet-submit {
   width: 100%;
   border-radius: 999px;

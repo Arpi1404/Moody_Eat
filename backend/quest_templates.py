@@ -56,7 +56,10 @@ TEMPLATES: dict[Occasion, list[TemplateStop]] = {
         ),
         TemplateStop(
             category=StopCategory.restaurant,
-            places_types=("meal_takeaway", "restaurant", "cafe"),
+            # No "meal_takeaway" here: the quality filter deny-lists that
+            # type, so searching it spent three paid calls per quest to
+            # return nothing before falling through to restaurants anyway.
+            places_types=("restaurant", "cafe"),
         ),
     ],
     Occasion.solo: [
