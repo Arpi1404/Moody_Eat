@@ -22,11 +22,42 @@ Instrumented via Plausible.
 | Layer | Tech | Deploy |
 |---|---|---|
 | Frontend | React 19 + TypeScript + Vite 6 + React Router 7 | Vercel, auto-deploys `main` → www.moodyeat.in |
-| Backend | FastAPI + Pydantic v2 + httpx (Python 3.11) | Railway, auto-deploys `main` → moodyeat-production-f1b5.up.railway.app |
-| Places data | Google Places API (New) `places:searchNearby` + legacy Details for hours/photos | key in Railway env |
+| Backend | FastAPI + Pydantic v2 + httpx (`python:3.13-slim` image) | **Cloud Run**, service `moodyeat-api` (asia-south1) → moodyeat-api-tm4cqfantq-el.a.run.app. **Deployed by hand — pushing `main` does not update it** (see Deploying) |
+| Places data | Google Places API (New) `places:searchNearby` + legacy Details for hours/photos | key in the Cloud Run service env |
 | Weather | Open-Meteo (free, keyless) | — |
 | Analytics | Plausible (`frontend/src/lib/analytics.ts`) | — |
-| Errors | Sentry SDK installed, **opt-in**: activates only when `SENTRY_DSN` env is set on Railway | — |
+| Errors | Sentry SDK installed, **opt-in**: activates only when `SENTRY_DSN` env is set on the Cloud Run service (not set as of 14 Nov 2026) | — |
+
+### Deploying
+- **Frontend:** push `main`. Vercel builds and publishes www.moodyeat.in
+  (live about 20 s after the push on 14 Nov 2026).
+- **Backend:** not connected to git. From the repo root, with `gcloud`
+  signed in to the project:
+  ```
+  gcloud run deploy moodyeat-api --source backend --region asia-south1
+  ```
+  It builds `backend/Dockerfile` from the **working tree, not a commit** —
+  run `git status --short backend` first. `backend/.gcloudignore` decides
+  what is uploaded. The service keeps its env vars and limits (1 CPU,
+  512 MB, max 3 instances) and the new revision takes 100% of traffic.
+  Takes a few minutes.
+- **Service env:** `GOOGLE_PLACES_API_KEY`, `OPENCODE_API_KEY`,
+  `ALLOWED_ORIGINS`, `QUEST_STORE_BACKEND=firestore` (Cloud Run's disk is
+  wiped between instances, so share links live in Firestore).
+- **Order matters when a change spans both.** The frontend is live seconds
+  after a push; the backend only when someone runs the deploy. On
+  14 Nov 2026 a frontend that sent `location_label` reached a backend that
+  ignored it, and quest descriptions showed raw coordinates until the
+  backend was deployed. Deploy the backend first when it stays compatible
+  with the old frontend (it ignores request fields it doesn't know), then
+  push.
+- **Checking what is running:** `GET /openapi.json` on the service lists
+  the request fields the live revision accepts — free, no Places quota.
+  Roll back with `gcloud run services update-traffic moodyeat-api
+  --region asia-south1 --to-revisions <revision>=100`.
+- **Railway is no longer the backend.** moodyeat-production-f1b5.up.railway.app
+  returns 404 as of 14 Nov 2026. Whether the Railway project (and the
+  SQLite share-link data on its volume) still exists was not checked.
 
 ### Repo map (the parts that matter)
 ```
@@ -204,19 +235,22 @@ events unchanged.
 
 ## 3. Current state & known quirks (verify, don't assume)
 
-- **Production is healthy** (last verified 14 Jul 2026): budget changes
-  picks, day-part shifts schedules, quality filters active, guides live.
-- **Local dev is broken**: the Google key in `backend/.env` (untouched since
-  May) returns "You must enable Billing" for ALL Places calls. The owner
-  believes this was fixed — as of 14 Jul it was not. Workaround used for
-  browser QA: a tiny local FastAPI proxy on :8000 forwarding to the Railway
-  backend with permissive CORS (prod's `ALLOWED_ORIGINS` doesn't include
-  localhost). Rebuild it in a scratch dir if needed, or fix the key.
+- **Production is healthy** (last verified 14 Nov 2026, at the API level
+  on Cloud Run revision `moodyeat-api-00002-fqw`: a device-location quest
+  request, the curated list, a share-store lookup, and CORS from
+  www.moodyeat.in. The live site was not walked through in a browser).
+- **Local dev works again** (verified 14 Nov 2026): the Google key in
+  `backend/.env` returns Places data. Start the API from `backend/` with
+  `.venv/bin/python -m uvicorn main:app --port 8000` — the venv's own
+  `uvicorn` launcher points at the folder the venv was created in and
+  fails. With `ALLOWED_ORIGINS` unset in the shell, CORS allows the local
+  dev ports (5500, 5173, 3000); `frontend/.env.local` points at :8000.
 - **Search Console**: domain property verified, sitemap submitted 14 Jul,
   status "Couldn't fetch" = normal first-crawl lag. Sitemap confirmed live
   (200) at https://www.moodyeat.in/sitemap.xml.
 - **Sentry**: code ships ready; activates only when `SENTRY_DSN` is set on
-  Railway. Unknown whether the owner has set it.
+  the Cloud Run service. It was not set as of 14 Nov 2026, so errors are
+  not being reported anywhere.
 - **Google billing**: `priceRange` in the field mask may bill searchNearby
   at a higher SKU tier — watch the first weeks. A billing alert is
   recommended (see next steps).
@@ -263,7 +297,7 @@ venv\Scripts\python -m pytest  npm run build   # also generates dist/guides/
    so closed/degraded curated venues get flagged before users or Google
    notice.
 8. **Google Cloud billing alert** (owner action, ~5 min, no code).
-9. **Uptime monitoring** on the Railway backend (UptimeRobot free tier).
+9. **Uptime monitoring** on the Cloud Run backend (UptimeRobot free tier).
 
 ### Deliberately NOT doing (gates from ROADMAP.md still apply)
 - Second city before Hyderabad shows ≥100 weekly quest creations and ≥25%
