@@ -8,9 +8,11 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from curated_quests import CURATED_QUESTS
-from deps import get_nearby_places_service
+from deps import get_nearby_places_service, get_places_provider
 from models import (
     ALLOWED_NEARBY_TYPES,
+    LocationSuggestion,
+    LocationSuggestionsResponse,
     NearbyPlacesRequest,
     NearbyPlacesResponse,
     PlaceBlurbsRequest,
@@ -22,6 +24,7 @@ from models import (
     StopSwapDelta,
     StoredQuestCreateResponse,
     StoredQuestStats,
+    SuggestionLocation,
 )
 from quest_store import fetch_quest, store_quest
 from price_inference import CostBand, estimate_cost_band
@@ -34,6 +37,7 @@ from quest_generator import (
     assemble_quest,
     haversine_m,
 )
+from services.google_places import GooglePlacesProvider
 from services.nearby_places_service import NearbyPlacesService, map_provider_error
 from services.place_blurbs_service import generate_place_blurbs
 from services.place_photo_service import fetch_place_photo
@@ -306,6 +310,60 @@ async def nearby_places(
         if exc.provider_status:
             detail["provider_status"] = exc.provider_status
         raise HTTPException(status_code=status_code, detail=detail) from exc
+
+
+# Google's own limits: a session token is at most 36 URL-safe characters (a
+# UUID). The place id ends up in an upstream URL path, hence the strict shape.
+_SESSION_TOKEN_PATTERN = r"^[A-Za-z0-9_-]{1,36}$"
+_PLACE_ID_PATTERN = r"^[A-Za-z0-9_-]{10,400}$"
+
+
+def _provider_http_error(exc: PlacesProviderError) -> HTTPException:
+    status_code, message = map_provider_error(exc)
+    detail: dict[str, object] = {"message": message}
+    if exc.provider_status:
+        detail["provider_status"] = exc.provider_status
+    return HTTPException(status_code=status_code, detail=detail)
+
+
+@router.get("/api/places/autocomplete", response_model=LocationSuggestionsResponse)
+async def autocomplete_locations(
+    q: str = Query(max_length=120),
+    session: str | None = Query(default=None, pattern=_SESSION_TOKEN_PATTERN),
+    provider: GooglePlacesProvider = Depends(get_places_provider),
+) -> LocationSuggestionsResponse:
+    """Suggestions for the "Where?" field as the user types."""
+    text = q.strip()
+    if len(text) < 2:
+        return LocationSuggestionsResponse(suggestions=[])
+    try:
+        found = await provider.suggest_locations(text, session_token=session)
+    except PlacesProviderError as exc:
+        raise _provider_http_error(exc) from exc
+    return LocationSuggestionsResponse(
+        suggestions=[
+            LocationSuggestion(
+                place_id=s.place_id,
+                main_text=s.main_text,
+                secondary_text=s.secondary_text,
+            )
+            for s in found
+        ]
+    )
+
+
+@router.get("/api/places/autocomplete/location", response_model=SuggestionLocation)
+async def autocomplete_location(
+    place_id: str = Query(pattern=_PLACE_ID_PATTERN),
+    session: str | None = Query(default=None, pattern=_SESSION_TOKEN_PATTERN),
+    provider: GooglePlacesProvider = Depends(get_places_provider),
+) -> SuggestionLocation:
+    """Coordinates of the suggestion the user picked."""
+    try:
+        lat, lng = await provider.suggestion_location(place_id, session_token=session)
+    except PlacesProviderError as exc:
+        raise _provider_http_error(exc) from exc
+    return SuggestionLocation(lat=lat, lng=lng)
 
 
 @router.get("/api/places/photo")

@@ -10,6 +10,7 @@ export function Footer() {
         </span>
         <nav className="site-footer-links" aria-label="Footer navigation">
           {/* Plain <a>: /guides/ is prerendered static HTML outside the SPA */}
+          <Link to="/?tour=1">How it works</Link>
           <a href="/guides/">City guides</a>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>

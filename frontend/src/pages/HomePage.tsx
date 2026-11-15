@@ -2,9 +2,12 @@ import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useStat
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
 import type { Quest } from '../types/quest'
+import { LocationInput } from '../components/LocationInput'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
+import { TourSheet, WelcomeNudge } from '../components/WelcomeTour'
 import { track } from '../lib/analytics'
 import { budgetLabel } from '../lib/budget'
+import { hasQuestHistory, markTourSeen, tourSeen } from '../lib/onboarding'
 import { getRecentPlaceIds, recordQuestPlaces } from '../lib/questHistory'
 import '../App.css'
 
@@ -231,16 +234,23 @@ export function HomePage() {
 
   const [activeOccasion, setActiveOccasion] = useState<OccasionKey | null>(null)
   const [location, setLocation] = useState('')
-  // Set while the location field holds a place picked with the 📍 button:
-  // the quest is searched around these coordinates and the field's text is
-  // only a readable label. Typing in the field clears it.
-  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null)
+  // Set while the location field holds a place with known coordinates — the
+  // device's position (📍 button) or a picked suggestion. The quest is
+  // searched around these coordinates and the field's text is only a
+  // readable label. Typing in the field clears it.
+  const [geoCoords, setGeoCoords] = useState<{
+    lat: number
+    lng: number
+    source: 'device' | 'picked'
+  } | null>(null)
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [budget, setBudget] = useState<Budget>('mid')
   const [stopCount, setStopCount] = useState(3)
   // null = follow the occasion's default start time
   const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
+  // First-visit tour: 'nudge' is the small "New here?" card, 'open' the tour.
+  const [tour, setTour] = useState<'hidden' | 'nudge' | 'open'>('hidden')
   const [submitting, setSubmitting] = useState(false)
   const [submitSlow, setSubmitSlow] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -282,7 +292,7 @@ export function HomePage() {
           // The area name is cosmetic — the coordinates still anchor the search.
         }
         setLocation(label ?? GEO_FALLBACK_LABEL)
-        setGeoCoords({ lat, lng })
+        setGeoCoords({ lat, lng, source: 'device' })
         setGeoLoading(false)
       },
       () => {
@@ -339,6 +349,35 @@ export function HomePage() {
       setSearchParams(next, { replace: true })
     }
   }, [searchParams, setSearchParams])
+
+  // First visit: offer the tour a moment after the page has settled. It is
+  // only ever an offer — the page stays fully usable around it.
+  useEffect(() => {
+    if (tourSeen() || hasQuestHistory()) return
+    const timer = window.setTimeout(() => {
+      setTour((state) => (state === 'hidden' ? 'nudge' : state))
+    }, 1500)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  // "How it works" in the footer links to /?tour=1.
+  useEffect(() => {
+    if (!searchParams.has('tour')) return
+    track('tour_opened', { source: 'link' })
+    setTour('open')
+    const next = new URLSearchParams(searchParams)
+    next.delete('tour')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  const closeTour = useCallback(
+    (result: { step: number; completed: boolean }) => {
+      markTourSeen()
+      track('tour_closed', { step: result.step + 1, completed: result.completed })
+      setTour('hidden')
+    },
+    [],
+  )
 
   // Fade sections in as they enter the viewport
   useEffect(() => {
@@ -411,10 +450,10 @@ export function HomePage() {
     const dayPart = dayPartChoice ?? DAY_PART_DEFAULT_BY_OCCASION[activeOccasion]
     const typedLocation = location.trim()
     const request = {
-      // A 📍 location is searched around the device's position, not around
-      // the centre of whatever the area is called — "Hyderabad" resolves to
-      // a point 14 km from Gachibowli. Rounded to ~100 m: ample for a 3 km
-      // search without sending an exact position.
+      // A 📍 or picked location is searched around its coordinates, not
+      // around the centre of whatever the area is called — "Hyderabad"
+      // resolves to a point 14 km from Gachibowli. Rounded to ~100 m: ample
+      // for a 3 km search without sending an exact device position.
       location: geoCoords
         ? `${geoCoords.lat.toFixed(3)},${geoCoords.lng.toFixed(3)}`
         : typedLocation,
@@ -448,6 +487,8 @@ export function HomePage() {
           ? `Found ${quest.stops.length} great stop${quest.stops.length === 1 ? '' : 's'} — couldn't fill all ${stopCount} in this area.`
           : undefined
       recordQuestPlaces(quest)
+      // They found their way to a quest; no need to offer the tour again.
+      markTourSeen()
       localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
       navigate(`/quest/${quest.id}`, {
         state: { quest, softMessage, justCreated: true, request },
@@ -713,19 +754,23 @@ export function HomePage() {
                   Where?
                 </label>
                 <div className="sheet-location-wrap">
-                  <input
-                    ref={locationInputRef}
+                  <LocationInput
+                    inputRef={locationInputRef}
                     id="sheet-location"
                     className="sheet-location-input"
-                    type="text"
                     placeholder="City, neighbourhood, or area"
                     value={location}
-                    onChange={(e) => {
-                      setLocation(e.target.value)
+                    onChange={(text) => {
+                      setLocation(text)
                       setGeoCoords(null)
+                      // "Location access denied — type a city instead" has
+                      // done its job once they start typing.
+                      setGeoError(null)
                     }}
+                    onResolve={({ lat, lng }) =>
+                      setGeoCoords({ lat, lng, source: 'picked' })
+                    }
                     required
-                    autoComplete="off"
                   />
                   <button
                     type="button"
@@ -742,7 +787,7 @@ export function HomePage() {
                     {geoError}
                   </p>
                 )}
-                {geoCoords && !geoError && (
+                {geoCoords?.source === 'device' && !geoError && (
                   <p className="sheet-geo-status">
                     Searching around your current location
                   </p>
@@ -854,6 +899,33 @@ export function HomePage() {
             </form>
           </div>
         </>
+      )}
+
+      {tour === 'nudge' && !activeOccasion && (
+        <WelcomeNudge
+          onOpen={() => {
+            track('tour_opened', { source: 'nudge' })
+            setTour('open')
+          }}
+          onDismiss={() => {
+            markTourSeen()
+            track('tour_nudge_dismissed')
+            setTour('hidden')
+          }}
+        />
+      )}
+      {tour === 'open' && (
+        <TourSheet
+          onClose={closeTour}
+          onExample={
+            curatedQuests.length > 0
+              ? () => {
+                  closeTour({ step: 3, completed: true })
+                  openCuratedQuest(curatedQuests[0])
+                }
+              : undefined
+          }
+        />
       )}
     </>
   )

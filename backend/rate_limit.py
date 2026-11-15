@@ -29,28 +29,46 @@ class _SlidingWindowLimiter:
         return True
 
 
-_limiter_state: tuple[int, _SlidingWindowLimiter] | None = None
+_limiters: dict[str, tuple[int, _SlidingWindowLimiter]] = {}
 
 
-def _get_limiter(max_rpm: int) -> _SlidingWindowLimiter:
-    global _limiter_state
-    if _limiter_state is None or _limiter_state[0] != max_rpm:
-        _limiter_state = (max_rpm, _SlidingWindowLimiter(max_requests=max_rpm, window_seconds=60.0))
-    return _limiter_state[1]
+def _get_limiter(bucket: str, max_rpm: int) -> _SlidingWindowLimiter:
+    state = _limiters.get(bucket)
+    if state is None or state[0] != max_rpm:
+        state = (max_rpm, _SlidingWindowLimiter(max_requests=max_rpm, window_seconds=60.0))
+        _limiters[bucket] = state
+    return state[1]
 
 
-# POST endpoints that either spend Google quota or write to disk.
-_LIMITED_POST_PATHS = frozenset({"/api/places/nearby", "/api/quest/store"})
+# Endpoints that either spend Google quota or write to disk, and the allowance
+# each one counts against. Location suggestions fire every few keystrokes, so
+# they are counted apart from searches.
+_SEARCH_BUCKET = "search"
+_SUGGEST_BUCKET = "suggest"
+_LIMITED_ENDPOINTS = {
+    ("POST", "/api/places/nearby"): _SEARCH_BUCKET,
+    ("POST", "/api/quest/store"): _SEARCH_BUCKET,
+    ("GET", "/api/places/autocomplete"): _SUGGEST_BUCKET,
+    ("GET", "/api/places/autocomplete/location"): _SUGGEST_BUCKET,
+}
 
 
 class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
-    """Apply per-client rate limiting to quota- and disk-spending POSTs."""
+    """Apply per-client rate limiting to quota- and disk-spending endpoints."""
 
     async def dispatch(self, request: Request, call_next) -> Response:
         settings = get_settings()
         if not settings.rate_limit_enabled or settings.rate_limit_per_minute <= 0:
             return await call_next(request)
-        if request.method != "POST" or request.url.path not in _LIMITED_POST_PATHS:
+        bucket = _LIMITED_ENDPOINTS.get((request.method, request.url.path))
+        if bucket is None:
+            return await call_next(request)
+        max_rpm = (
+            settings.suggest_rate_limit_per_minute
+            if bucket == _SUGGEST_BUCKET
+            else settings.rate_limit_per_minute
+        )
+        if max_rpm <= 0:
             return await call_next(request)
 
         forwarded = request.headers.get("x-forwarded-for")
@@ -59,7 +77,7 @@ class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
         else:
             client_id = request.client.host if request.client else "unknown"
 
-        limiter = _get_limiter(settings.rate_limit_per_minute)
+        limiter = _get_limiter(bucket, max_rpm)
         if not limiter.is_allowed(client_id):
             return JSONResponse(
                 status_code=429,

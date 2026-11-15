@@ -246,6 +246,42 @@ verified in a real browser before push.
     alongside the existing `directions_opened`. Not covered: the static
     `/guides` pages and the map pins.
 
+14. **Location suggestions (Nov 2026).** The "Where?" fields on the home
+    sheet and on build-your-own now offer a dropdown of matching places as
+    you type (`components/LocationInput.tsx`).
+    - Backend: `GET /api/places/autocomplete?q=&session=` (Google Places
+      Autocomplete (New), biased to Hyderabad within 50 km and limited to
+      India — `SUGGEST_BIAS_LAT/LNG`, `SUGGEST_REGION_CODE`) and
+      `GET /api/places/autocomplete/location?place_id=&session=` (Place
+      Details, `location` field only). The key stays server-side.
+    - Picking a suggestion reuses the 📍 hand-off: the request carries
+      `lat,lng` as `location` and the readable name as `location_label`.
+      Typing without picking still sends plain text, as before.
+    - Cost: each search uses one session token, so the keystroke requests
+      are free and the pick is one Place Details Essentials call. Typing
+      and not picking is billed per request. Both have a monthly free
+      allowance (10,000 on Google's global price list; the India list says
+      70,000) — check which list the billing account is on.
+    - Suggestions have their own rate limit (120/min per client,
+      `SUGGEST_RATE_LIMIT_PER_MINUTE`) so typing cannot use up the one for
+      searches. Nothing is cached: Google's terms do not allow it.
+    - The dropdown carries the "Google Maps" attribution Google requires.
+      If the endpoint fails the field is an ordinary text box.
+    - Not covered: the legacy `/plan` page.
+
+15. **First-visit tour (Nov 2026).** `components/WelcomeTour.tsx`,
+    flags in `lib/onboarding.ts` (localStorage `moodyeat:tour_seen`,
+    `moodyeat:quest_tips_seen`).
+    - Home: a small "New here?" card appears 1.5 s after a first visit. It
+      never blocks the page; the four-card tour opens only if tapped. Not
+      shown to anyone whose browser already holds a quest, and not again
+      after it is dismissed, finished, or a quest is generated.
+    - "How it works" in the footer (`/?tour=1`) reopens it any time.
+    - Quest page: a one-line tip above the stops explains the icon-only
+      swap and reorder buttons, until dismissed. Not on read-only previews.
+    - Analytics: `tour_opened` (source: nudge | link), `tour_closed` (step,
+      completed), `tour_nudge_dismissed`.
+
 Also merged during this period (by the owner, not this engagement):
 **`51645a2`** — dark editorial share-card redesign PR + `/api/quest-og`
 crawler preview function.

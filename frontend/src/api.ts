@@ -161,6 +161,43 @@ export async function searchNearbyPlaces(payload: {
   return res.json()
 }
 
+/** One row of the location dropdown: "Banjara Hills" / "Hyderabad, Telangana, India". */
+export type LocationSuggestion = {
+  place_id: string
+  main_text: string
+  secondary_text: string
+}
+
+/** Places matching what has been typed so far. `session` groups the
+ * keystrokes of one search for billing (see fetchSuggestionLocation). */
+export async function fetchLocationSuggestions(
+  text: string,
+  session: string,
+  signal?: AbortSignal,
+): Promise<LocationSuggestion[]> {
+  const params = new URLSearchParams({ q: text, session })
+  const res = await fetch(`${getApiBase()}/api/places/autocomplete?${params}`, {
+    signal,
+  })
+  if (!res.ok) throw new Error('Suggestions unavailable.')
+  const data = (await res.json()) as { suggestions?: LocationSuggestion[] }
+  return data.suggestions ?? []
+}
+
+/** Coordinates of a picked suggestion. Sending the same `session` the
+ * suggestions were fetched with closes that search for billing. */
+export async function fetchSuggestionLocation(
+  placeId: string,
+  session: string,
+): Promise<{ lat: number; lng: number }> {
+  const params = new URLSearchParams({ place_id: placeId, session })
+  const res = await fetch(
+    `${getApiBase()}/api/places/autocomplete/location?${params}`,
+  )
+  if (!res.ok) throw new Error('Location unavailable.')
+  return res.json()
+}
+
 export async function fetchPlaceBlurbs(payload: {
   mood: string
   budget: string

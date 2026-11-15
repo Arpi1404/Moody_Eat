@@ -15,7 +15,13 @@ from services.places_exceptions import (
     ProviderQuotaError,
     ProviderTimeoutError,
 )
-from services.places_provider import PlaceHours, PlacesProvider, RawPlace, ResolvedLocation
+from services.places_provider import (
+    PlaceHours,
+    PlacesProvider,
+    PlaceSuggestion,
+    RawPlace,
+    ResolvedLocation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +30,18 @@ _NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 _DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 _NEARBY_URL_NEW = "https://places.googleapis.com/v1/places:searchNearby"
 _DETAILS_URL_NEW = "https://places.googleapis.com/v1/places/{place_id}"
+_AUTOCOMPLETE_URL_NEW = "https://places.googleapis.com/v1/places:autocomplete"
+_AUTOCOMPLETE_FIELD_MASK = ",".join(
+    (
+        "suggestions.placePrediction.placeId",
+        "suggestions.placePrediction.text.text",
+        "suggestions.placePrediction.structuredFormat.mainText.text",
+        "suggestions.placePrediction.structuredFormat.secondaryText.text",
+    )
+)
+# Google caps the bias circle at 50 km.
+_SUGGEST_BIAS_RADIUS_M = 50_000.0
+_MAX_SUGGESTIONS = 5
 
 # Every response field costs money: this mask keeps searchNearby in the cheapest
 # SKU that still includes price data (Enterprise). Atmosphere fields such as
@@ -287,6 +305,89 @@ class GooglePlacesProvider(PlacesProvider):
         lng = float(loc["lng"])
         name = first.get("formatted_address") or query.strip()
         return ResolvedLocation(name=name, lat=lat, lng=lng)
+
+    async def suggest_locations(
+        self,
+        text: str,
+        *,
+        session_token: str | None = None,
+    ) -> list[PlaceSuggestion]:
+        """Places matching what the user has typed so far, best match first.
+
+        `session_token` ties the keystrokes of one search together. When that
+        search ends with `suggestion_location` under the same token, Google
+        bills the whole session as one Place Details call and the keystroke
+        requests are free; without that call each request is billed alone.
+        """
+        payload: dict[str, Any] = {
+            "input": text,
+            "languageCode": "en",
+            "includedRegionCodes": [self._settings.suggest_region_code],
+            "locationBias": {
+                "circle": {
+                    "center": {
+                        "latitude": self._settings.suggest_bias_lat,
+                        "longitude": self._settings.suggest_bias_lng,
+                    },
+                    "radius": _SUGGEST_BIAS_RADIUS_M,
+                }
+            },
+        }
+        if session_token:
+            payload["sessionToken"] = session_token
+        data = await self._post_json_new(
+            _AUTOCOMPLETE_URL_NEW, payload, _AUTOCOMPLETE_FIELD_MASK
+        )
+        suggestions: list[PlaceSuggestion] = []
+        for item in data.get("suggestions") or []:
+            prediction = item.get("placePrediction") or {}
+            place_id = prediction.get("placeId")
+            full_text = (prediction.get("text") or {}).get("text") or ""
+            structured = prediction.get("structuredFormat") or {}
+            main = (structured.get("mainText") or {}).get("text") or full_text
+            secondary = (structured.get("secondaryText") or {}).get("text") or ""
+            if place_id and main:
+                suggestions.append(
+                    PlaceSuggestion(
+                        place_id=place_id, main_text=main, secondary_text=secondary
+                    )
+                )
+        return suggestions[:_MAX_SUGGESTIONS]
+
+    async def suggestion_location(
+        self,
+        place_id: str,
+        *,
+        session_token: str | None = None,
+    ) -> tuple[float, float]:
+        """Coordinates of a picked suggestion; also closes its billing session.
+
+        Asks for `location` only, which keeps the call on the cheapest Place
+        Details tier.
+        """
+        url = _DETAILS_URL_NEW.format(place_id=place_id)
+        headers = {"X-Goog-Api-Key": self._api_key, "X-Goog-FieldMask": "location"}
+        params = {"sessionToken": session_token} if session_token else None
+        try:
+            async with self._client() as client:
+                r = await client.get(url, headers=headers, params=params)
+        except httpx.TimeoutException as exc:
+            raise ProviderTimeoutError("Upstream request timed out.") from exc
+        except httpx.HTTPError as exc:
+            raise PlacesProviderError("Upstream HTTP error.") from exc
+        if r.status_code == 404:
+            raise LocationNotFoundError("Unknown place.", provider_status="NOT_FOUND")
+        if r.status_code >= 400:
+            try:
+                body = r.json()
+            except ValueError:
+                body = None
+            raise _map_new_api_http_error(r.status_code, body)
+        location = r.json().get("location") or {}
+        try:
+            return float(location["latitude"]), float(location["longitude"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise LocationNotFoundError("Place has no coordinates.") from exc
 
     async def nearby_by_type(
         self,

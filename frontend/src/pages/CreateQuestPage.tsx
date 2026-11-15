@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { searchNearbyPlaces, type PlaceItem } from '../api'
+import { LocationInput } from '../components/LocationInput'
 import { PlaceLink } from '../components/PlaceLink'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
@@ -56,6 +57,13 @@ export function CreateQuestPage() {
   const [occasion, setOccasion] = useState<Occasion>('friends')
   const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
   const [location, setLocation] = useState('')
+  // Set while the field holds a picked suggestion: places are searched around
+  // its coordinates and the field's text is its label. Typing clears it.
+  const [picked, setPicked] = useState<{
+    lat: number
+    lng: number
+    label: string
+  } | null>(null)
   const [geoLoading, setGeoLoading] = useState(false)
   const [activeType, setActiveType] = useState<string | null>(null)
   const [results, setResults] = useState<PlaceItem[]>([])
@@ -77,7 +85,9 @@ export function CreateQuestPage() {
       setSearchError(null)
       try {
         const res = await searchNearbyPlaces({
-          query: location.trim(),
+          query: picked
+            ? `${picked.lat.toFixed(5)},${picked.lng.toFixed(5)}`
+            : location.trim(),
           categories: [type],
           radius_meters: 3000,
           limit: 12,
@@ -96,7 +106,7 @@ export function CreateQuestPage() {
         setSearching(false)
       }
     },
-    [location, searching],
+    [location, picked, searching],
   )
 
   const useMyLocation = () => {
@@ -105,6 +115,7 @@ export function CreateQuestPage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocation(`${pos.coords.latitude.toFixed(5)},${pos.coords.longitude.toFixed(5)}`)
+        setPicked(null)
         setGeoLoading(false)
       },
       () => {
@@ -141,7 +152,9 @@ export function CreateQuestPage() {
       places: selected,
       occasion,
       dayPart,
-      area: resolvedArea || location.trim(),
+      // A coordinate search resolves to a street address; the picked label
+      // ("Banjara Hills, Hyderabad") is the better name for the quest.
+      area: picked?.label || resolvedArea || location.trim(),
       createdBy: creatorName.trim() || undefined,
     })
     track('custom_quest_created', {
@@ -209,12 +222,16 @@ export function CreateQuestPage() {
           <div>
             <span className="sheet-field-label">Where?</span>
             <div className="cq-location-row">
-              <input
+              <LocationInput
                 className="cq-location-input"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(text) => {
+                  setLocation(text)
+                  setPicked(null)
+                }}
+                onResolve={setPicked}
                 placeholder="City, neighbourhood, or area"
-                aria-label="Location"
+                ariaLabel="Location"
               />
               <button
                 type="button"

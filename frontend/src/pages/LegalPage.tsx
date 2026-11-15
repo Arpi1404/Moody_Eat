@@ -44,6 +44,12 @@ export function PrivacyPage() {
           you.
         </li>
         <li>
+          <strong>Location suggestions.</strong> As you type in the location
+          field, what you have typed so far is sent to our server, and on to
+          Google, to suggest matching places. It is not stored or linked to
+          you.
+        </li>
+        <li>
           <strong>Location access.</strong> If you tap "Use my current
           location", your coordinates are used to look up the name of your
           area (via OpenStreetMap Nominatim) and, rounded to about 100 metres,

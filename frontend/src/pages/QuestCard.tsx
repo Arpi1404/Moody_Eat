@@ -7,6 +7,7 @@ import { PlaceLink } from '../components/PlaceLink'
 import { EmptyState } from '../components/states'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
+import { markQuestTipsSeen, questTipsSeen } from '../lib/onboarding'
 import {
   addMinutes,
   durationMinutes,
@@ -345,6 +346,8 @@ export function QuestCard({
   readOnly?: boolean
 }) {
   const [activeStopIndex, setActiveStopIndex] = useState<number | null>(null)
+  // One-time pointer to the icon-only controls; gone for good once dismissed.
+  const [tipsDismissed, setTipsDismissed] = useState(() => questTipsSeen())
   const [alternatives, setAlternatives] = useState<StopAlternative[]>([])
   const [selectedAlternative, setSelectedAlternative] =
     useState<StopAlternative | null>(null)
@@ -467,6 +470,29 @@ export function QuestCard({
             ))}
             <FitBounds positions={positions} />
           </MapContainer>
+        </div>
+      )}
+
+      {!readOnly && !tipsDismissed && displayQuest.stops.length > 0 && (
+        <div className="qp-tips" role="note">
+          <span className="qp-tips-icon" aria-hidden>
+            💡
+          </span>
+          <p className="qp-tips-text">
+            <strong>Make it yours.</strong> ⇄ swaps a stop, ↑ ↓ change the
+            order, and tapping a place opens it on Google Maps.
+          </p>
+          <button
+            type="button"
+            className="qp-tips-close"
+            aria-label="Dismiss tips"
+            onClick={() => {
+              markQuestTipsSeen()
+              setTipsDismissed(true)
+            }}
+          >
+            ✕
+          </button>
         </div>
       )}
 

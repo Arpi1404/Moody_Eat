@@ -14,6 +14,15 @@ class ResolvedLocation:
 
 
 @dataclass(frozen=True)
+class PlaceSuggestion:
+    """One row of the location dropdown: "Banjara Hills" / "Hyderabad, Telangana"."""
+
+    place_id: str
+    main_text: str
+    secondary_text: str = ""
+
+
+@dataclass(frozen=True)
 class RawPlace:
     """Normalized row from any places provider before distance ranking."""
 

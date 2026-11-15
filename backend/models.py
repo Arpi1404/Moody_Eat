@@ -94,6 +94,23 @@ class NearbyPlacesResponse(BaseModel):
     count: int
 
 
+class LocationSuggestion(BaseModel):
+    place_id: str
+    # "Banjara Hills"
+    main_text: str
+    # "Hyderabad, Telangana, India"
+    secondary_text: str = ""
+
+
+class LocationSuggestionsResponse(BaseModel):
+    suggestions: list[LocationSuggestion]
+
+
+class SuggestionLocation(BaseModel):
+    lat: float
+    lng: float
+
+
 class PlaceBlurbIn(BaseModel):
     provider_id: str
     name: str
