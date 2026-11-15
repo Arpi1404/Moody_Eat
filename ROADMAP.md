@@ -10,12 +10,12 @@ _Last updated: July 2026. Companion doc to the QA/fix work of July 7–9._
 
 **What makes it different:** you don't assemble a plan — you get one. Real places, real ratings, walking times, one link to share with the group. Protect this in every feature decision: anything that turns the builder into homework dilutes the pitch.
 
-**North-star metric: shares per completed quest.** Supporting funnel (already instrumented via Plausible `track()` events): visit → `quest_created` → `quest_saved` → `quest_started` → `quest_completed` → `quest_shared`.
+**North-star metric: shares per completed quest.** Supporting funnel (already instrumented via Umami `track()` events): visit → `quest_created` → `quest_saved` → `quest_started` → `quest_completed` → `quest_shared`.
 
 ## Launch gates (all must be true before spending effort on reach)
 
 - [ ] `moodyeat.in` purchased, added to Vercel, HTTPS live
-- [ ] Plausible site registered under the domain in `index.html`'s `data-domain` (currently `moodyeat.app` — update when domain lands) and events visibly arriving
+- [ ] Umami website ID set in `index.html` (done Nov 2026, replacing Plausible) and events visibly arriving in the Umami dashboard
 - [ ] OpenCode API key rotated (fragments were logged pre-July-7)
 - [ ] @moody_eat bio: site link + one-line pitch; first "how it works" post or highlight
 - [ ] Directions buttons + 6 swap alternatives deployed without issues
@@ -47,7 +47,7 @@ The product produces its own content: story cards and curated quests.
 - Personal network first. The share link IS the product demo — previews now show the quest title and stops.
 
 ### Weekly review ritual (15 min)
-Plausible funnel + IG insights. Ask one question: **are completed quests being shared?**
+Umami funnel + IG insights. Ask one question: **are completed quests being shared?**
 - Shares/completion < 10% → fix the share moment (card, CTA placement), don't buy more reach.
 - Visits high but `quest_created` low → landing page/builder friction.
 - Created high but `quest_started` low → plans aren't credible enough (place quality, duration honesty).

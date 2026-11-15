@@ -26,7 +26,7 @@ function LegalShell({
 
 export function PrivacyPage() {
   return (
-    <LegalShell title="Privacy" updated="July 2026">
+    <LegalShell title="Privacy" updated="November 2026">
       <h2>The short version</h2>
       <p>
         MoodyEat has no accounts and collects no personal information. Your
@@ -52,7 +52,7 @@ export function PrivacyPage() {
           works fine — just type an area instead.
         </li>
         <li>
-          <strong>Analytics.</strong> We use Plausible, a cookie-free
+          <strong>Analytics.</strong> We use Umami, a cookie-free
           analytics tool that records aggregate page views and events (like
           "quest created") without identifying you.
         </li>

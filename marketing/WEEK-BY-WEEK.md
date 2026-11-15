@@ -5,13 +5,13 @@ writing, scheduling, and sending links. No camera-facing content required.
 Written 15 July 2026. Companion files: `captions.md`, `reddit-post.md`,
 `influencer-dm.md`._
 
-**The one rule:** judge yourself on Plausible (`visits → quest_created →
+**The one rule:** judge yourself on Umami (`visits → quest_created →
 quest_shared`) and share-link views — never on follower count.
 
 **Weekly rhythm (repeat every week, ~2–3 hours total):**
 - One 60–90 min "content sitting": queue the week's posts in Meta Business
   Suite (business.facebook.com — free scheduler, works for IG).
-- One 15-min Plausible review (Sunday): are completed quests being shared?
+- One 15-min Umami review (Sunday): are completed quests being shared?
 - Reply to every comment/DM within 24h (usually minutes of typing).
 
 ---
@@ -69,7 +69,7 @@ Goal: borrowed audiences.
 
 Goal: stop guessing, start repeating.
 
-1. Open IG insights + Plausible side by side. Rank every post/reel by
+1. Open IG insights + Umami side by side. Rank every post/reel by
    *link clicks* (not likes). Make 3 more of whatever won.
 2. **UGC flywheel:** anyone who shares a story card and tags you gets
    reshared to your story same-day. Make it feel guaranteed.
@@ -88,7 +88,7 @@ Goal: stop guessing, start repeating.
 
 ## Week 6 — Review honestly
 
-Sit down with Plausible + the quest-store view counts and answer the
+Sit down with Umami + the quest-store view counts and answer the
 ROADMAP's questions:
 
 - **Shares per completed quest ≥ 10%?** If lower → the share moment needs

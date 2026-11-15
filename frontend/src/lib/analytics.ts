@@ -1,8 +1,8 @@
 // Single-point analytics wrapper.
 //
-// Provider: Plausible (script in index.html). Chosen over Umami for zero-cookie,
-// no-consent-banner defaults and a one-line drop-in script. Swap providers by
-// rewriting only the body of `track()` — call sites stay the same.
+// Provider: Umami Cloud (script in index.html): cookie-free, so no consent
+// banner, and custom events are on its free plan. Swap providers by rewriting
+// only the body of `track()` — call sites stay the same.
 //
 // Constraints baked in:
 //   * Respects Do Not Track — returns early.
@@ -15,10 +15,9 @@ export type EventProps = Record<string, Primitive>
 
 declare global {
   interface Window {
-    plausible?: (
-      event: string,
-      options?: { props?: EventProps; callback?: () => void },
-    ) => void
+    umami?: {
+      track: (event: string, data?: EventProps) => void
+    }
     doNotTrack?: string
   }
   interface Navigator {
@@ -48,6 +47,6 @@ export function track(event: string, props?: EventProps): void {
   }
 
   if (typeof window === 'undefined') return
-  if (typeof window.plausible !== 'function') return
-  window.plausible(event, props ? { props } : undefined)
+  // Undefined when the script is blocked (ad blockers) or failed to load.
+  window.umami?.track(event, props)
 }

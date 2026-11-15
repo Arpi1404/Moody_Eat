@@ -16,7 +16,7 @@ map, and a shareable link/story card. Users can also hand-assemble a quest
 at `/create`. India-only, IG-native audience, no signup.
 
 **North-star metric:** shares per completed quest (see `ROADMAP.md`).
-Instrumented via Plausible.
+Instrumented via Umami.
 
 ### Stack & deploys
 | Layer | Tech | Deploy |
@@ -25,7 +25,7 @@ Instrumented via Plausible.
 | Backend | FastAPI + Pydantic v2 + httpx (`python:3.13-slim` image) | **Cloud Run**, service `moodyeat-api` (asia-south1) → moodyeat-api-tm4cqfantq-el.a.run.app. **Deployed by hand — pushing `main` does not update it** (see Deploying) |
 | Places data | Google Places API (New) `places:searchNearby` + legacy Details for hours/photos | key in the Cloud Run service env |
 | Weather | Open-Meteo (free, keyless) | — |
-| Analytics | Plausible (`frontend/src/lib/analytics.ts`) | — |
+| Analytics | Umami Cloud, free plan (`frontend/src/lib/analytics.ts`; script tag in `frontend/index.html`) | — |
 | Errors | Sentry SDK installed, **opt-in**: activates only when `SENTRY_DSN` env is set on the Cloud Run service (not set as of 14 Nov 2026) | — |
 
 ### Deploying
@@ -113,7 +113,7 @@ verified in a real browser before push.
 
 2. **`c38e9e8` — Track 1–3 batch.** Stop-count selector; reorder stops with
    client-side schedule recompute; 👍/👎 plan feedback (`quest_feedback`
-   Plausible event, one vote per quest via localStorage); Sentry opt-in;
+   analytics event, one vote per quest via localStorage); Sentry opt-in;
    hours-unknown places became a *last resort* instead of a hard reject;
    both long-standing ESLint errors fixed (lint is clean — keep it that way).
 
@@ -172,7 +172,7 @@ verified in a real browser before push.
    keep working. `/api/quest-og` fetches stored quests to render real
    per-quest previews (title + stop route) for `/q/*` crawler hits
    (vercel.json rewrite added). New route `/q/:shortId` in the SPA;
-   `shared_quest_opened` Plausible event on open.
+   `shared_quest_opened` analytics event on open.
 
 10. **Creator-named quests + pure-veg filter (Tier 1 #2 and #3).**
     `Quest.created_by` (optional, ≤60 chars): a "Made by" field on `/create`
@@ -217,17 +217,33 @@ verified in a real browser before push.
     Also noticed: `deps.py` builds a new `NearbyPlacesService` per request,
     so the 10-minute places cache never survives across requests.
 
+12. **Analytics moved from Plausible to Umami Cloud (Nov 2026).** The
+    Plausible trial ended; Umami's free plan includes custom events. Only
+    the script tag in `frontend/index.html` and the body of `track()`
+    changed, so event names and properties are the same as before. The
+    script tag sets three things on purpose:
+    - `data-domains` — runs only on `moodyeat.in` / `www.moodyeat.in`, so
+      localhost and Vercel preview deployments record nothing.
+    - `data-exclude-search` and `data-exclude-hash` — Umami records the
+      full URL by default. Fallback share links carry the quest title in
+      `?st=` and the whole quest in `#q=`, and `/results?q=` carries the
+      typed area, so both are left out. The cost: `utm_*` tags on links
+      are not recorded either; referrers still are.
+    There is no pre-load queue (Plausible had one). The Umami script sits
+    ahead of the app bundle in `index.html` and both are deferred, so it is
+    defined first; if it is blocked, `track()` is a no-op.
+
 Also merged during this period (by the owner, not this engagement):
 **`51645a2`** — dark editorial share-card redesign PR + `/api/quest-og`
 crawler preview function.
 
-### Analytics events added (Plausible)
+### Analytics events added
 `quest_generated` (occasion, budget, day_part, stops_requested, stop_count),
 `quest_reshuffled`, `quest_feedback` (vote), `custom_quest_created`,
 `build_own_tapped`, `stops_reordered`, `quest_shared` (share_method now
 includes `whatsapp`), `shared_quest_opened` (short_id — recipient opened a
 /q/ link; server-side `views` in the quest store counts the same thing
-without needing Plausible), `custom_quest_created` also carries
+without needing the analytics provider), `custom_quest_created` also carries
 `has_creator_name`. Pre-existing funnel
 events unchanged.
 
