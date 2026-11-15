@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getApiBase } from '../api'
+import { PlaceLink } from '../components/PlaceLink'
 import type { Stop, StopAlternative } from '../types/quest'
 
 function formatDistanceDelta(meters: number): string {
@@ -120,50 +121,64 @@ export function SwapSheet({
             {alternatives.map((alternative) => {
               const active =
                 selected?.place.provider_id === alternative.place.provider_id
+              // The card is a wrapper, not a button, so the Google Maps link
+              // can sit inside it: a link nested in a button is invalid HTML.
               return (
-                <button
-                  type="button"
+                <div
                   key={alternative.place.provider_id}
                   className={`swap-alt-card${active ? ' swap-alt-card--active' : ''}`}
-                  onClick={() => onPreview(alternative)}
                 >
-                  <AlternativePhoto
-                    placeId={alternative.place.provider_id}
-                    name={alternative.place.name}
-                  />
-                  <span className="swap-alt-body">
-                    <span className="swap-alt-name">
-                      {alternative.place.name}
-                    </span>
-                    <span className="swap-alt-vibe">
-                      {alternative.why_this_place}
-                    </span>
-                    <span className="swap-delta-row">
-                      <span
-                        className={`swap-delta-badge${alternative.delta.time_change_minutes > 0 ? ' swap-delta-badge--negative' : alternative.delta.time_change_minutes < 0 ? ' swap-delta-badge--positive' : ''}`}
-                      >
-                        {formatMinuteDelta(
-                          alternative.delta.time_change_minutes,
-                        )}
+                  <button
+                    type="button"
+                    className="swap-alt-select"
+                    aria-pressed={active}
+                    onClick={() => onPreview(alternative)}
+                  >
+                    <AlternativePhoto
+                      placeId={alternative.place.provider_id}
+                      name={alternative.place.name}
+                    />
+                    <span className="swap-alt-body">
+                      <span className="swap-alt-name">
+                        {alternative.place.name}
                       </span>
-                      {formatMoneyDelta(alternative.delta.cost_change) !==
-                        null && (
+                      <span className="swap-alt-vibe">
+                        {alternative.why_this_place}
+                      </span>
+                      <span className="swap-delta-row">
                         <span
-                          className={`swap-delta-badge${alternative.delta.cost_change > 0 ? ' swap-delta-badge--negative' : ' swap-delta-badge--positive'}`}
+                          className={`swap-delta-badge${alternative.delta.time_change_minutes > 0 ? ' swap-delta-badge--negative' : alternative.delta.time_change_minutes < 0 ? ' swap-delta-badge--positive' : ''}`}
                         >
-                          {formatMoneyDelta(alternative.delta.cost_change)}
+                          {formatMinuteDelta(
+                            alternative.delta.time_change_minutes,
+                          )}
                         </span>
-                      )}
-                      <span
-                        className={`swap-delta-badge${alternative.delta.distance_change_meters > 0 ? ' swap-delta-badge--negative' : alternative.delta.distance_change_meters < 0 ? ' swap-delta-badge--positive' : ''}`}
-                      >
-                        {formatDistanceDelta(
-                          alternative.delta.distance_change_meters,
+                        {formatMoneyDelta(alternative.delta.cost_change) !==
+                          null && (
+                          <span
+                            className={`swap-delta-badge${alternative.delta.cost_change > 0 ? ' swap-delta-badge--negative' : ' swap-delta-badge--positive'}`}
+                          >
+                            {formatMoneyDelta(alternative.delta.cost_change)}
+                          </span>
                         )}
+                        <span
+                          className={`swap-delta-badge${alternative.delta.distance_change_meters > 0 ? ' swap-delta-badge--negative' : alternative.delta.distance_change_meters < 0 ? ' swap-delta-badge--positive' : ''}`}
+                        >
+                          {formatDistanceDelta(
+                            alternative.delta.distance_change_meters,
+                          )}
+                        </span>
                       </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <PlaceLink
+                    place={alternative.place}
+                    surface="swap"
+                    className="swap-alt-link"
+                  >
+                    View on Google Maps
+                  </PlaceLink>
+                </div>
               )
             })}
           </div>

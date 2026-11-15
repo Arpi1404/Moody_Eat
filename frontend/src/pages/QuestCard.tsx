@@ -3,6 +3,7 @@ import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet
 import L from 'leaflet'
 import { fetchStopAlternatives, getApiBase } from '../api'
 import type { Quest, Stop, StopAlternative } from '../types/quest'
+import { PlaceLink } from '../components/PlaceLink'
 import { EmptyState } from '../components/states'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
@@ -129,10 +130,11 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   return null
 }
 
-function StopPhoto({ placeId, name }: { placeId: string; name: string }) {
+function StopPhoto({ place }: { place: Stop['place'] }) {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(
     'loading',
   )
+  const placeId = place.provider_id
   const src = `${getApiBase()}/api/places/photo?place_id=${encodeURIComponent(placeId)}&max_width=600`
 
   if (status === 'error' || !placeId) {
@@ -149,13 +151,20 @@ function StopPhoto({ placeId, name }: { placeId: string; name: string }) {
     <div
       className={`qp-stop-hero${status === 'loading' ? ' qp-stop-hero--loading' : ''}`}
     >
-      <img
-        className="qp-stop-photo"
-        src={src}
-        alt={name}
-        onLoad={() => setStatus('loaded')}
-        onError={() => setStatus('error')}
-      />
+      <PlaceLink
+        place={place}
+        surface="quest"
+        className="qp-stop-photo-link"
+        decorative
+      >
+        <img
+          className="qp-stop-photo"
+          src={src}
+          alt={place.name}
+          onLoad={() => setStatus('loaded')}
+          onError={() => setStatus('error')}
+        />
+      </PlaceLink>
     </div>
   )
 }
@@ -211,7 +220,7 @@ function StopCard({
     <li
       className={`qp-stop-card${previewing ? ' qp-stop-card--preview' : ''}`}
     >
-      <StopPhoto placeId={stop.place.provider_id} name={stop.place.name} />
+      <StopPhoto place={stop.place} />
       {active && (
         <label className="qp-stop-check">
           <input
@@ -260,7 +269,9 @@ function StopCard({
           {index + 1}
         </span>
         <div className="qp-stop-content">
-          <p className="qp-stop-name">{stop.place.name}</p>
+          <p className="qp-stop-name">
+            <PlaceLink place={stop.place} surface="quest" />
+          </p>
           {stop.place.rating != null && (
             <p className="qp-stop-rating">
               ★ {stop.place.rating.toFixed(1)}

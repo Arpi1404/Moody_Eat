@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { searchNearbyPlaces, type PlaceItem } from '../api'
+import { PlaceLink } from '../components/PlaceLink'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
 import { buildCustomQuest } from '../lib/questBuild'
@@ -276,7 +277,9 @@ export function CreateQuestPage() {
               {selected.map((place, i) => (
                 <li key={place.provider_id} className="cq-selected-item">
                   <span className="cq-selected-index" aria-hidden>{i + 1}</span>
-                  <span className="cq-selected-name">{place.name}</span>
+                  <span className="cq-selected-name">
+                    <PlaceLink place={place} surface="create" />
+                  </span>
                   <span className="cq-selected-actions">
                     <button
                       type="button"
@@ -323,7 +326,9 @@ export function CreateQuestPage() {
                 return (
                   <li key={place.provider_id} className="cq-result-card">
                     <div className="cq-result-info">
-                      <p className="cq-result-name">{place.name}</p>
+                      <p className="cq-result-name">
+                        <PlaceLink place={place} surface="create" />
+                      </p>
                       <p className="cq-result-meta">
                         {place.rating != null && (
                           <>★ {place.rating.toFixed(1)}

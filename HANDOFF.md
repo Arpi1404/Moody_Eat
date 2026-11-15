@@ -233,6 +233,19 @@ verified in a real browser before push.
     ahead of the app bundle in `index.html` and both are deferred, so it is
     defined first; if it is blocked, `track()` is a no-op.
 
+13. **Places open on Google Maps (Nov 2026).** Tester feedback: there was
+    no way to look a suggested place up. Place names are now links to the
+    place's Google Maps page (`components/PlaceLink.tsx`, URL built in
+    `lib/placeLinks.ts` from the place id — no backend change, no extra
+    API cost). Covered: quest stop cards (name and photo), swap-sheet
+    alternatives ("View on Google Maps"), build-your-own search results and
+    chosen stops, and the legacy `/results` list. Swap cards changed from a
+    `<button>` to a wrapper holding a select button plus the link, because
+    a link inside a button is invalid HTML. New analytics event
+    `place_opened` (place_id, surface: quest | swap | create | results),
+    alongside the existing `directions_opened`. Not covered: the static
+    `/guides` pages and the map pins.
+
 Also merged during this period (by the owner, not this engagement):
 **`51645a2`** — dark editorial share-card redesign PR + `/api/quest-og`
 crawler preview function.

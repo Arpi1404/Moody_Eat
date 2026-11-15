@@ -6,6 +6,7 @@ import {
   type NearbyPlacesResponse,
   type PlaceItem,
 } from '../api'
+import { PlaceLink } from '../components/PlaceLink'
 import {
   BUDGETS,
   filtersToSearchParams,
@@ -322,7 +323,7 @@ function PlaceNearbyCard({
   return (
     <PlaceGenericCard
       index={index}
-      name={place.name}
+      place={place}
       distanceLabel={distanceLabel}
       blurb={blurb}
       blurbPending={blurbPending}
@@ -335,7 +336,7 @@ function PlaceNearbyCard({
 
 function PlaceGenericCard({
   index,
-  name,
+  place,
   distanceLabel,
   blurb,
   blurbPending,
@@ -344,7 +345,7 @@ function PlaceGenericCard({
   ratingsTotal,
 }: {
   index: number
-  name: string
+  place: PlaceItem
   distanceLabel: string
   blurb: string
   blurbPending: boolean
@@ -372,7 +373,9 @@ function PlaceGenericCard({
         </div>
         <div className="place-card-content">
           <div className="place-title-row">
-            <span className="cafe-name place-name">{name}</span>
+            <span className="cafe-name place-name">
+              <PlaceLink place={place} surface="results" />
+            </span>
           </div>
           <div className="place-meta place-meta--row place-meta--top">
             {rating != null ? (

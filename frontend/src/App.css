@@ -3092,6 +3092,12 @@ a.explore-edit-filters {
   50% { opacity: 0.6; }
 }
 
+.qp-stop-photo-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .qp-stop-photo {
   width: 100%;
   height: 100%;
@@ -3431,15 +3437,14 @@ a.explore-edit-filters {
 .swap-alt-card {
   width: 100%;
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 6px;
   padding: 12px;
   border-radius: 16px;
   border: 1.5px solid var(--border);
   background: var(--surface);
   color: var(--text-h);
   text-align: left;
-  cursor: pointer;
   box-shadow: var(--shadow-card);
   transition:
     border-color 0.14s ease,
@@ -3457,6 +3462,46 @@ a.explore-edit-filters {
   border-color: var(--accent);
   background: var(--accent-bg);
   box-shadow: 0 6px 18px rgba(199, 82, 42, 0.16);
+}
+
+/* The tappable part of the card that previews the alternative. */
+.swap-alt-select {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.swap-alt-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* Sits under the text column: 64px photo + 14px gap. */
+.swap-alt-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  margin-left: 78px;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.swap-alt-link:hover,
+.swap-alt-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .swap-alt-photo {
@@ -6090,4 +6135,38 @@ a.explore-edit-filters {
 .qp-stop-directions:hover {
   border-color: var(--accent);
   background: var(--accent-bg);
+}
+
+/* A place name that opens the place on Google Maps (PlaceLink). The name
+   keeps the look of its surroundings; the arrow marks it as a link. */
+.place-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.place-link:hover,
+.place-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.place-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.place-link-tail {
+  white-space: nowrap;
+}
+
+.place-link-icon {
+  flex-shrink: 0;
+  margin-left: 5px;
+  color: var(--accent);
+  vertical-align: baseline;
+}
+
+.swap-alt-link .place-link-icon {
+  margin-left: 0;
 }
