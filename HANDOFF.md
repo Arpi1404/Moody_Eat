@@ -353,10 +353,14 @@ events unchanged.
 
 ## 3. Current state & known quirks (verify, don't assume)
 
-- **Production is healthy** (last verified 14 Nov 2026, at the API level
-  on Cloud Run revision `moodyeat-api-00002-fqw`: a device-location quest
-  request, the curated list, a share-store lookup, and CORS from
-  www.moodyeat.in. The live site was not walked through in a browser).
+- **Production is healthy** (last verified 20 Nov 2026, at the API level
+  on Cloud Run revision `moodyeat-api-00004-sm7`, deployed that day with
+  the multi-city backend: curated lists for all three cities and their
+  other names, a curated quest by id, a generated quest, location
+  suggestions leaning to a position, a place photo, a share-store lookup,
+  and CORS from www.moodyeat.in. The frontend for it ships when
+  Arpi1404/Moody_Eat#5 merges. Previous revision, for a rollback:
+  `moodyeat-api-00003-xr7`).
 - **Local dev works again** (verified 14 Nov 2026): the Google key in
   `backend/.env` returns Places data. Start the API from `backend/` with
   `.venv/bin/python -m uvicorn main:app --port 8000` — the venv's own
