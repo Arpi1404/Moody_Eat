@@ -80,7 +80,7 @@ export function PrivacyPage() {
 
       <h2>Questions</h2>
       <p>
-        Reach us on Instagram — we're a small team in Hyderabad and we read
+        Reach us on Instagram — we're a small team and we read
         everything.
       </p>
     </LegalShell>

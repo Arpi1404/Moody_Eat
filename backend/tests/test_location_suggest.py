@@ -37,7 +37,7 @@ def _provider() -> GooglePlacesProvider:
 # ── Provider: request sent to Google, and how its answer is read ──
 
 
-async def test_suggest_request_is_biased_scoped_and_carries_the_session(monkeypatch):
+async def test_suggest_request_is_biased_to_the_user_and_carries_the_session(monkeypatch):
     provider = _provider()
     sent: dict = {}
 
@@ -46,15 +46,16 @@ async def test_suggest_request_is_biased_scoped_and_carries_the_session(monkeypa
         return {"suggestions": []}
 
     monkeypatch.setattr(provider, "_post_json_new", fake_post)
-    await provider.suggest_locations("banj", session_token=SESSION)
+    await provider.suggest_locations("banj", session_token=SESSION, bias=(12.97, 77.59))
 
     assert sent["url"].endswith("/v1/places:autocomplete")
     payload = sent["payload"]
     assert payload["input"] == "banj"
     assert payload["sessionToken"] == SESSION
-    assert payload["includedRegionCodes"] == ["in"]
+    # Not tied to a country unless SUGGEST_REGION_CODE says so.
+    assert "includedRegionCodes" not in payload
     circle = payload["locationBias"]["circle"]
-    assert circle["center"] == {"latitude": 17.385, "longitude": 78.4867}
+    assert circle["center"] == {"latitude": 12.97, "longitude": 77.59}
     assert 0 < circle["radius"] <= 50_000
     # Only the four fields the dropdown shows are requested.
     assert set(sent["field_mask"].split(",")) == {
@@ -76,6 +77,34 @@ async def test_suggest_without_session_sends_no_token(monkeypatch):
     monkeypatch.setattr(provider, "_post_json_new", fake_post)
     assert await provider.suggest_locations("banj") == []
     assert "sessionToken" not in sent["payload"]
+
+
+async def test_suggest_without_a_position_is_not_biased_anywhere(monkeypatch):
+    provider = _provider()
+    sent: dict = {}
+
+    async def fake_post(url, payload, field_mask):
+        sent.update(payload=payload)
+        return {}
+
+    monkeypatch.setattr(provider, "_post_json_new", fake_post)
+    await provider.suggest_locations("banj")
+    assert sent["payload"] == {"input": "banj", "languageCode": "en"}
+
+
+async def test_suggest_can_be_limited_to_one_country(monkeypatch):
+    provider = GooglePlacesProvider(
+        Settings(GOOGLE_PLACES_API_KEY="test-key", SUGGEST_REGION_CODE="in")
+    )
+    sent: dict = {}
+
+    async def fake_post(url, payload, field_mask):
+        sent.update(payload=payload)
+        return {}
+
+    monkeypatch.setattr(provider, "_post_json_new", fake_post)
+    await provider.suggest_locations("banj")
+    assert sent["payload"]["includedRegionCodes"] == ["in"]
 
 
 async def test_suggest_reads_predictions_and_skips_unusable_rows(monkeypatch):
@@ -119,10 +148,12 @@ class FakeSuggestProvider:
     def __init__(self, *, error: Exception | None = None) -> None:
         self.error = error
         self.suggest_calls: list[tuple[str, str | None]] = []
+        self.biases: list[tuple[float, float] | None] = []
         self.location_calls: list[tuple[str, str | None]] = []
 
-    async def suggest_locations(self, text, *, session_token=None):
+    async def suggest_locations(self, text, *, session_token=None, bias=None):
         self.suggest_calls.append((text, session_token))
+        self.biases.append(bias)
         if self.error:
             raise self.error
         return [PlaceSuggestion(PLACE_ID, "Banjara Hills", "Hyderabad, Telangana, India")]
@@ -168,6 +199,34 @@ def test_autocomplete_returns_suggestions():
         ]
     }
     assert provider.suggest_calls == [("banj", SESSION)]
+    assert provider.biases == [None]
+
+
+def test_autocomplete_passes_the_users_rough_position_on():
+    provider = FakeSuggestProvider()
+    with _client(provider) as client:
+        res = client.get(
+            "/api/places/autocomplete", params={"q": "ban", "lat": "12.9", "lng": "77.6"}
+        )
+    assert res.status_code == 200
+    assert provider.biases == [(12.9, 77.6)]
+
+
+@pytest.mark.parametrize("params", [{"lat": "12.9"}, {"lng": "77.6"}])
+def test_autocomplete_ignores_half_a_position(params):
+    provider = FakeSuggestProvider()
+    with _client(provider) as client:
+        res = client.get("/api/places/autocomplete", params={"q": "ban", **params})
+    assert res.status_code == 200
+    assert provider.biases == [None]
+
+
+def test_autocomplete_rejects_coordinates_off_the_map():
+    with _client(FakeSuggestProvider()) as client:
+        res = client.get(
+            "/api/places/autocomplete", params={"q": "ban", "lat": "120", "lng": "77.6"}
+        )
+    assert res.status_code == 422
 
 
 @pytest.mark.parametrize("q", ["", "b", "  b  "])

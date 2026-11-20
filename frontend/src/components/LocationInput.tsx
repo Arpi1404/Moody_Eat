@@ -11,6 +11,7 @@ import {
   fetchSuggestionLocation,
   type LocationSuggestion,
 } from '../api'
+import { suggestionBias } from '../lib/cities'
 
 const MIN_CHARS = 2
 const DEBOUNCE_MS = 250
@@ -132,6 +133,7 @@ export function LocationInput({
           query,
           sessionRef.current,
           controller.signal,
+          suggestionBias(),
         )
         if (controller.signal.aborted) return
         setSuggestions(found)

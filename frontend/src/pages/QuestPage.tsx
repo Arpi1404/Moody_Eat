@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import type { Quest, QuestGenerationRequest } from '../types/quest'
 import type { JournalEntry } from '../types/journal'
-import { fetchStoredQuest, generateQuest } from '../api'
+import { fetchCuratedQuest, fetchStoredQuest, generateQuest } from '../api'
 import { useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
 import { ErrorState, LoadingState } from '../components/states'
@@ -289,6 +289,12 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           }
         }
 
+        if (!nextQuest && preview && id) {
+          // A curated quest opened from a link on a device that never loaded
+          // it from the home page: the server still has it.
+          nextQuest = await fetchCuratedQuest(id).catch(() => null)
+        }
+
         if (!nextQuest) {
           throw new Error('Quest not found — it may have expired.')
         }
@@ -320,7 +326,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     return () => {
       cancelled = true
     }
-  }, [id, shortId, state])
+  }, [id, shortId, state, preview])
 
   useEffect(() => {
     if (!quest) return

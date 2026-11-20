@@ -1,8 +1,8 @@
 import type { CostEstimate } from '../types/quest'
 
 // One budget vocabulary everywhere: the builder pills say Cheap / Mid /
-// Splurge, so every chip does too — with ₹ marks, since MoodyEat is
-// India-only.
+// Splurge, so every chip does too — with ₹ marks, the currency of the
+// cities we curate for.
 const BUDGET_LABELS: Record<CostEstimate, string> = {
   cheap: '₹ Cheap',
   mid: '₹₹ Mid',

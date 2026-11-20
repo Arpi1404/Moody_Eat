@@ -1549,24 +1549,18 @@ a.explore-edit-filters {
   background: rgba(31, 26, 20, 0.03);
 }
 
-.home-city-pill {
+.home-hero-note {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   margin-top: 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 6px 14px 6px 10px;
+  padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
   box-shadow: var(--shadow-card);
-}
-
-.home-city-pill-flag {
-  font-size: 15px;
-  line-height: 1;
 }
 
 .home-section-header {
@@ -1777,6 +1771,112 @@ a.explore-edit-filters {
 @media (min-width: 768px) {
   .curated-quest-card {
     flex: 0 0 320px;
+  }
+}
+
+/* City toggle: which city's hand-made quests to show */
+.curated-header {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 14px;
+}
+
+.city-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.city-toggle-btn {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.city-toggle-btn:hover:not(.city-toggle-btn--active) {
+  color: var(--text-h);
+  background: rgba(31, 26, 20, 0.05);
+}
+
+.city-toggle-btn--active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.city-toggle-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .city-toggle {
+    display: flex;
+    width: 100%;
+  }
+  .city-toggle-btn {
+    flex: 1;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+}
+
+.curated-elsewhere {
+  margin: -6px 0 18px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.curated-elsewhere button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.curated-elsewhere button:hover {
+  text-decoration: underline;
+}
+
+/* Six quests fit on a wide screen, so show them all: a 3×2 grid, nothing
+   hidden behind a scroll. Narrower screens keep the swipe row. */
+@media (min-width: 900px) {
+  .curated-quests-outer {
+    margin-inline: 0;
+  }
+  .curated-quests-outer::after,
+  .curated-quests-outer .curated-nav {
+    display: none;
+  }
+  .curated-quests-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    overflow: visible;
+    padding: 4px 0 0;
+    scroll-snap-type: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-toggle-btn {
+    transition: none;
   }
 }
 

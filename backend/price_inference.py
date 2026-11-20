@@ -1,4 +1,4 @@
-"""Price signals for places: Google data first, Hyderabad heuristics as fallback.
+"""Price signals for places: Google data first, heuristics as fallback.
 
 Resolution order (strongest signal wins):
 1. Google `priceLevel`        -> source "google_price_level"
@@ -20,7 +20,7 @@ PRICE_SOURCE_HEURISTIC = "heuristic"
 PRICE_SOURCE_UNKNOWN = "unknown"
 
 # Per-person spend bands (INR) representative of each Google price level in
-# Hyderabad. Used to render an estimate when only a level (no range) is known.
+# Indian metros. Used to render an estimate when only a level (no range) is known.
 PRICE_LEVEL_BANDS_INR: dict[int, tuple[int, int]] = {
     0: (0, 0),
     1: (100, 350),

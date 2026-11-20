@@ -4,9 +4,9 @@ _Last updated: July 2026. Companion doc to the QA/fix work of July 7–9._
 
 ## Positioning
 
-**One-liner:** Tell us the mood, we'll plan your evening in Hyderabad — 2–4 stops, mapped and timed.
+**One-liner:** Tell us the mood, we'll plan your evening — 2–4 stops, mapped and timed. (Sell the quests, not a city or country.)
 
-**Audience:** Hyderabad, 18–30, IG-native. Couples planning dates, friend groups tired of "where should we go?" threads, solo explorers.
+**Audience:** 18–30, IG-native — wherever they are, with hand-made quests in Hyderabad, Bangalore and Gurgaon. Couples planning dates, friend groups tired of "where should we go?" threads, solo explorers.
 
 **What makes it different:** you don't assemble a plan — you get one. Real places, real ratings, walking times, one link to share with the group. Protect this in every feature decision: anything that turns the builder into homework dilutes the pitch.
 
@@ -72,8 +72,8 @@ Replaces 800-char `#q=` URLs with `moodyeat.in/q/abc123`, enables view counts on
 ### 5. Prerendered curated-quest landing pages (SEO)  *(~3–4 days)*
 "Date night Banjara Hills", "things to do in Hyderabad today" — thin competition, high intent. Needs the curated quests rendered as static HTML at build time (vite-ssg or a small prerender script) so Google sees content, not an empty SPA shell.
 
-### 6. Second city — gate, not a date
-Expand (Bangalore first) only when Hyderabad shows: ≥100 weekly quest creations, ≥25% of creators returning within 30 days. Curated content is the moat and doesn't copy-paste; premature expansion just dilutes quality.
+### 6. More cities — three live (Nov 2026)
+Hyderabad, Bangalore and Gurgaon each have six hand-made quests, and quests can be built anywhere. Add a fourth only when per-city demand shows up in analytics. Original gate, lifted by the owner: expand only when Hyderabad shows ≥100 weekly quest creations, ≥25% of creators returning within 30 days. Curated content is the moat and doesn't copy-paste; premature expansion just dilutes quality.
 
 ### 7. Accounts / cross-device sync — last
 The mobile Profile tab stays "coming soon" until people actually ask to move quests between devices. localStorage is fine at this scale, and no signup is a feature while growing.

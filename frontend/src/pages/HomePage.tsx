@@ -7,6 +7,18 @@ import { EmptyState, ErrorState, LoadingState } from '../components/states'
 import { TourSheet, WelcomeNudge } from '../components/WelcomeTour'
 import { track } from '../lib/analytics'
 import { budgetLabel } from '../lib/budget'
+import {
+  CURATED_CITIES,
+  DEFAULT_CITY,
+  type CityKey,
+  cityName,
+  nearestCity,
+  parseCityKey,
+  rememberPosition,
+  roughPosition,
+  saveCity,
+  savedCity,
+} from '../lib/cities'
 import { hasQuestHistory, markTourSeen, tourSeen } from '../lib/onboarding'
 import { getRecentPlaceIds, recordQuestPlaces } from '../lib/questHistory'
 import '../App.css'
@@ -105,8 +117,6 @@ const PEOPLE_BY_OCCASION: Record<OccasionKey, number> = {
 // ── Geolocation helpers ───────────────────────────────────────────────────────
 
 type ReverseGeocode = {
-  /** City-level name — what curated quests are keyed on. */
-  city: string | null
   /** Neighbourhood-level name for the location field, e.g. "Gachibowli, Hyderabad". */
   label: string | null
 }
@@ -129,27 +139,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocode>
   const area: string | null =
     a.suburb ?? a.neighbourhood ?? a.town ?? a.village ?? null
   const label = area && city && area !== city ? `${area}, ${city}` : (area ?? city)
-  return { city, label }
-}
-
-function getCurrentPosition(): Promise<GeolocationPosition> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation not supported'))
-      return
-    }
-    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8_000 })
-  })
-}
-
-async function detectCity(): Promise<string> {
-  const pos = await getCurrentPosition()
-  const { city } = await reverseGeocode(pos.coords.latitude, pos.coords.longitude)
-  const name = city?.trim()
-  if (!name) {
-    throw new Error('City not detected')
-  }
-  return name
+  return { label }
 }
 
 function wait(ms: number): Promise<void> {
@@ -255,14 +245,24 @@ export function HomePage() {
   const [submitSlow, setSubmitSlow] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [curatedQuests, setCuratedQuests] = useState<Quest[]>([])
-  const [curatedCity, setCuratedCity] = useState('Hyderabad')
+  // null until we know which city to show (a moment, on a first visit).
+  const [curatedCity, setCuratedCity] = useState<CityKey | null>(null)
   const [curatedLoading, setCuratedLoading] = useState(true)
   const [curatedError, setCuratedError] = useState<string | null>(null)
+  // True once we know the visitor is not near any curated city.
+  const [awayFromCities, setAwayFromCities] = useState(false)
+  // /?city=bangalore opens on that city. Read once, at mount: the param is
+  // cleared from the address bar straight after.
+  const [linkedCity] = useState(() =>
+    parseCityKey(new URLSearchParams(window.location.search).get('city')),
+  )
 
   const sheetRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const submitSlowTimer = useRef<number | null>(null)
   const curatedScrollRef = useRef<HTMLDivElement>(null)
+  const curatedCache = useRef(new Map<CityKey, Quest[]>())
+  const curatedRequest = useRef(0)
 
   const scrollCurated = useCallback((direction: 'prev' | 'next') => {
     const el = curatedScrollRef.current
@@ -274,6 +274,70 @@ export function HomePage() {
       behavior: 'smooth',
     })
   }, [])
+
+  /** Show one city's hand-made quests. Cities already fetched switch
+   * instantly; a slower earlier request never overwrites a newer one. */
+  const showCity = useCallback(async (city: CityKey) => {
+    const request = ++curatedRequest.current
+    setCuratedCity(city)
+    setCuratedError(null)
+
+    const cached = curatedCache.current.get(city)
+    if (cached) {
+      setCuratedQuests(cached)
+      setCuratedLoading(false)
+      return
+    }
+
+    setCuratedLoading(true)
+    try {
+      const [quests] = await Promise.all([fetchCuratedQuests(city), wait(200)])
+      curatedCache.current.set(city, quests)
+      if (request === curatedRequest.current) setCuratedQuests(quests)
+    } catch (err) {
+      if (request === curatedRequest.current) {
+        setCuratedQuests([])
+        setCuratedError(
+          err instanceof Error ? err.message : 'Could not load curated quests.',
+        )
+      }
+    } finally {
+      if (request === curatedRequest.current) setCuratedLoading(false)
+    }
+  }, [])
+
+  // Which city first? A ?city= link, then the visitor's own earlier pick,
+  // then wherever they roughly are — worked out without a location prompt.
+  useEffect(() => {
+    let cancelled = false
+    const preset = linkedCity ?? savedCity()
+    if (preset) {
+      track('curated_city_shown', { city: preset, source: linkedCity ? 'link' : 'saved' })
+      void showCity(preset)
+    }
+    void roughPosition().then((pos) => {
+      if (cancelled) return
+      const near = pos ? nearestCity(pos) : null
+      setAwayFromCities(pos !== null && near === null)
+      if (preset) return
+      const city = near ?? DEFAULT_CITY
+      track('curated_city_shown', { city, source: near ? pos!.source : 'default' })
+      void showCity(city)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [showCity, linkedCity])
+
+  const chooseCity = useCallback(
+    (city: CityKey) => {
+      if (city === curatedCity) return
+      saveCity(city)
+      track('curated_city_changed', { city })
+      void showCity(city)
+    },
+    [curatedCity, showCity],
+  )
 
   const tryGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -294,6 +358,12 @@ export function HomePage() {
         setLocation(label ?? GEO_FALLBACK_LABEL)
         setGeoCoords({ lat, lng, source: 'device' })
         setGeoLoading(false)
+        // A real position beats the IP guess the page opened with: follow it,
+        // unless they have picked a city themselves.
+        rememberPosition({ lat, lng }, 'device')
+        const near = nearestCity({ lat, lng })
+        setAwayFromCities(near === null)
+        if (near && !savedCity()) void showCity(near)
       },
       () => {
         setGeoLoading(false)
@@ -301,36 +371,7 @@ export function HomePage() {
       },
       { timeout: 8_000 },
     )
-  }, [])
-
-  const loadCuratedQuests = useCallback(async () => {
-    setCuratedLoading(true)
-    setCuratedError(null)
-    let city = 'Hyderabad'
-
-    try {
-      city = await detectCity()
-    } catch {
-      city = 'Hyderabad'
-    }
-    setCuratedCity(city)
-
-    try {
-      const [quests] = await Promise.all([fetchCuratedQuests(city), wait(200)])
-      setCuratedQuests(quests)
-    } catch (err) {
-      setCuratedQuests([])
-      setCuratedError(
-        err instanceof Error ? err.message : 'Could not load curated quests.',
-      )
-    } finally {
-      setCuratedLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void loadCuratedQuests()
-  }, [loadCuratedQuests])
+  }, [showCity])
 
   useEffect(() => {
     return () => {
@@ -359,6 +400,14 @@ export function HomePage() {
     }, 1500)
     return () => window.clearTimeout(timer)
   }, [])
+
+  // The ?city= param has done its job once the page has opened on it.
+  useEffect(() => {
+    if (!searchParams.has('city')) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('city')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   // "How it works" in the footer links to /?tour=1.
   useEffect(() => {
@@ -509,11 +558,14 @@ export function HomePage() {
 
   const openCuratedQuest = useCallback(
     (quest: Quest) => {
-      track('curated_quest_tapped', { quest_id: quest.id })
+      track('curated_quest_tapped', {
+        quest_id: quest.id,
+        city: curatedCity ?? DEFAULT_CITY,
+      })
       sessionStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
       navigate(`/quest/preview/${quest.id}`, { state: { quest } })
     },
-    [navigate],
+    [navigate, curatedCity],
   )
 
   const activeData = OCCASIONS.find((o) => o.key === activeOccasion) ?? null
@@ -530,7 +582,7 @@ export function HomePage() {
         <header className="home-hero">
           <span className="home-eyebrow">
             <span className="home-eyebrow-dot" aria-hidden />
-            Now live in Hyderabad
+            Fresh quests, made to order
           </span>
           <h1 className="home-hero-title">
             Tell us the mood.<br />
@@ -552,9 +604,8 @@ export function HomePage() {
               Browse quests
             </button>
           </div>
-          <span className="home-city-pill">
-            <span className="home-city-pill-flag" aria-hidden>🇮🇳</span>
-            Hyderabad · more cities coming soon
+          <span className="home-hero-note">
+            Free · no sign-up · ready in seconds
           </span>
         </header>
 
@@ -597,22 +648,43 @@ export function HomePage() {
           id="curated-quests"
           data-fade
         >
-          <div className="home-section-header">
+          <div className="home-section-header curated-header">
             <h2 className="home-section-title">We made these for you</h2>
+            <div className="city-toggle" role="group" aria-label="City">
+              {CURATED_CITIES.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  className={`city-toggle-btn${curatedCity === c.key ? ' city-toggle-btn--active' : ''}`}
+                  aria-pressed={curatedCity === c.key}
+                  onClick={() => chooseCity(c.key)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
           </div>
+          {awayFromCities && (
+            <p className="curated-elsewhere">
+              Not in one of these cities?{' '}
+              <button type="button" onClick={() => openSheet('date')}>
+                We'll build a quest wherever you are <span aria-hidden>→</span>
+              </button>
+            </p>
+          )}
           {curatedLoading ? (
             <LoadingState message="Loading curated quests..." />
           ) : curatedError ? (
             <ErrorState
               title="Could not load pre-made quests"
               description="Check your connection and try again."
-              onRetry={loadCuratedQuests}
+              onRetry={() => void showCity(curatedCity ?? DEFAULT_CITY)}
             />
           ) : curatedQuests.length === 0 ? (
             <EmptyState
               icon="🧭"
               title="No pre-made quests here yet"
-              description={`We do not have curated quests for ${curatedCity} yet. You can still make one from any occasion above.`}
+              description="You can still make one from any occasion above."
             />
           ) : (
             <div className="curated-quests-outer">
@@ -651,7 +723,7 @@ export function HomePage() {
               <div
                 ref={curatedScrollRef}
                 className="curated-quests-row"
-                aria-label="Curated quests"
+                aria-label={`Curated quests in ${cityName(curatedCity ?? DEFAULT_CITY)}`}
               >
                 {curatedQuests.map((quest) => (
                   <button

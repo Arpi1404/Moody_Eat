@@ -7,7 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from curated_quests import CURATED_QUESTS
+from curated_quests import CURATED_CITIES, find_city, find_quest
 from deps import get_nearby_places_service, get_places_provider
 from models import (
     ALLOWED_NEARBY_TYPES,
@@ -74,16 +74,26 @@ def _minutes_between(start: time, end: time) -> int:
 
 @router.get("/api/quests/curated", response_model=list[Quest])
 async def get_curated_quests(city: str = Query(min_length=1)) -> list[Quest]:
-    key = city.strip().lower()
-    if key not in CURATED_QUESTS:
+    """The six hand-made quests for one curated city (key or alias)."""
+    found = find_city(city)
+    if found is None:
         raise HTTPException(
             status_code=404,
             detail={
                 "message": f"No curated quests for '{city}'.",
-                "available_cities": list(CURATED_QUESTS.keys()),
+                "available_cities": [c.key for c in CURATED_CITIES],
             },
         )
-    return CURATED_QUESTS[key]
+    return found.quests
+
+
+@router.get("/api/quests/curated/{quest_id}", response_model=Quest)
+async def get_curated_quest(quest_id: uuid.UUID) -> Quest:
+    """One curated quest by id, so its link opens on any device."""
+    quest = find_quest(quest_id)
+    if quest is None:
+        raise HTTPException(status_code=404, detail={"message": "Curated quest not found."})
+    return quest
 
 
 @router.post("/api/quest/generate", response_model=Quest)
@@ -330,14 +340,21 @@ def _provider_http_error(exc: PlacesProviderError) -> HTTPException:
 async def autocomplete_locations(
     q: str = Query(max_length=120),
     session: str | None = Query(default=None, pattern=_SESSION_TOKEN_PATTERN),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
     provider: GooglePlacesProvider = Depends(get_places_provider),
 ) -> LocationSuggestionsResponse:
-    """Suggestions for the "Where?" field as the user types."""
+    """Suggestions for the "Where?" field as the user types.
+
+    `lat`/`lng` are a rough idea of where the user is; places near there are
+    offered first. Without them the suggestions are not tied to any area.
+    """
     text = q.strip()
     if len(text) < 2:
         return LocationSuggestionsResponse(suggestions=[])
+    bias = (lat, lng) if lat is not None and lng is not None else None
     try:
-        found = await provider.suggest_locations(text, session_token=session)
+        found = await provider.suggest_locations(text, session_token=session, bias=bias)
     except PlacesProviderError as exc:
         raise _provider_http_error(exc) from exc
     return LocationSuggestionsResponse(

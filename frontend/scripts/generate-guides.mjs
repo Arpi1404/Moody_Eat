@@ -1,11 +1,15 @@
 // Build-time SEO pages: renders the curated quests as static HTML under
-// dist/guides/, plus a hub page, sitemap.xml, and robots.txt. Runs via the
-// `postbuild` npm hook, so `npm run build` produces them automatically.
+// dist/guides/, plus sitemap.xml and robots.txt. Runs via the `postbuild`
+// npm hook, so `npm run build` produces them automatically.
+//
+//   /guides/                  every city, every quest
+//   /guides/<city>/           one city's quests, by occasion
+//   /guides/<city>/<slug>/    one quest
 //
 // Data source is scripts/curated-snapshot.json — a checked-in copy so builds
 // are deterministic and never depend on the backend being up. Refresh it
-// after editing backend/curated_quests.py:
-//   node -e "fetch('https://moodyeat-production-f1b5.up.railway.app/api/quests/curated?city=Hyderabad').then(r=>r.json()).then(q=>require('fs').writeFileSync('./scripts/curated-snapshot.json',JSON.stringify(q,null,2)))"
+// after editing anything under backend/curated/:
+//   cd backend && python -m scripts.export_curated
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -14,7 +18,6 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST = join(__dirname, '..', 'dist')
 const BASE_URL = 'https://www.moodyeat.in'
-const CITY = 'Hyderabad'
 
 const OCCASION_LABEL = {
   date: 'Date night',
@@ -23,7 +26,25 @@ const OCCASION_LABEL = {
   family: 'Family outing',
 }
 
-const quests = JSON.parse(
+// Guides used to live at /guides/<slug>/, Hyderabad only. Each old address
+// forwards to where that quest is now — or to the Hyderabad page when the
+// quest was retired. Values are paths under /guides/.
+const LEGACY_REDIRECTS = {
+  'charminar-to-chai-old-city-wander': 'hyderabad/charminar-to-chai-old-city-wander',
+  'jubilee-hills-slow-burn': 'hyderabad/jubilee-hills-slow-burn',
+  'hitec-city-game-night': 'hyderabad/hitec-city-game-night',
+  'paradise-promenade-repeat': 'hyderabad/paradise-promenade-repeat',
+  'banjara-quiet-hours': 'hyderabad/banjara-quiet-hours',
+  'golconda-sunset-tolichowki-dinner': 'hyderabad/golconda-afternoon-tolichowki-dinner',
+  'banjara-hills-after-dark': 'hyderabad',
+  'jubilee-hills-bar-loop': 'hyderabad',
+  'salar-jung-slow-looking': 'hyderabad',
+  'gachibowli-green-hours': 'hyderabad',
+  'necklace-road-picnic': 'hyderabad',
+  'hitec-family-weekend': 'hyderabad',
+}
+
+const snapshot = JSON.parse(
   readFileSync(join(__dirname, 'curated-snapshot.json'), 'utf8'),
 )
 
@@ -51,6 +72,12 @@ function formatTime(hhmm) {
   return m === 0 ? `${hour}${ampm}` : `${hour}:${String(m).padStart(2, '0')}${ampm}`
 }
 
+function listCities(names) {
+  return names.length < 2
+    ? names.join('')
+    : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+}
+
 const SHARED_CSS = `
   :root { color-scheme: light; }
   * { box-sizing: border-box; margin: 0; }
@@ -61,6 +88,8 @@ const SHARED_CSS = `
   header.site span { color: #c7522a; }
   .eyebrow { text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; color: #c7522a; margin: 28px 0 6px; font-weight: 700; }
   h1 { font-size: 30px; line-height: 1.2; color: #1f1a14; margin-bottom: 12px; }
+  h2.city { font-size: 24px; line-height: 1.2; color: #1f1a14; margin: 40px 0 0; }
+  h2.city a { color: inherit; text-decoration: none; }
   .lede { font-size: 17px; margin-bottom: 24px; }
   .stop { background: #fff; border: 1px solid #e8dfd0; border-radius: 14px; padding: 18px 20px; margin: 14px 0; }
   .stop h2 { font-size: 19px; color: #1f1a14; }
@@ -71,6 +100,7 @@ const SHARED_CSS = `
   .cta.secondary { background: transparent; color: #c7522a; border: 1.5px solid #c7522a; }
   .more { margin-top: 36px; border-top: 1px solid #e8dfd0; padding-top: 20px; }
   .more li { margin: 6px 0; }
+  .cities { font-size: 15px; margin: 4px 0 8px; }
   footer { margin-top: 40px; font-size: 13px; color: #8a7c66; }
   .card { display: block; background: #fff; border: 1px solid #e8dfd0; border-radius: 14px; padding: 16px 18px; margin: 12px 0; text-decoration: none; }
   .card strong { color: #1f1a14; font-size: 17px; }
@@ -97,16 +127,24 @@ function pageShell({ title, description, canonical, body }) {
 <body><div class="wrap">
 <header class="site"><a href="/">Moody<span>Eat</span></a></header>
 ${body}
-<footer>MoodyEat plans your evening out in ${CITY} — free, no signup. <a href="/">Build a quest</a> · <a href="/guides/">All guides</a></footer>
+<footer>MoodyEat plans your evening out — free, no signup. <a href="/">Build a quest</a> · <a href="/guides/">All guides</a></footer>
 </div></body>
 </html>`
 }
 
-function guidePage(quest, slug, others) {
+function questCard(entry) {
+  return `<a class="card" href="${entry.path}">
+<strong>${esc(entry.quest.title)}</strong>
+<span>${entry.quest.stops.map((s) => esc(s.place.name)).join(' → ')}</span>
+</a>`
+}
+
+function guidePage(entry, others) {
+  const { quest, city } = entry
   const occasion = OCCASION_LABEL[quest.occasion] ?? quest.occasion
   const stopNames = quest.stops.map((s) => s.place.name)
   const description =
-    `${occasion} plan in ${CITY}: ${stopNames.join(' → ')}. ` +
+    `${occasion} plan in ${city.name}: ${stopNames.join(' → ')}. ` +
     `Timings, why each spot, and a shareable map — planned in 30 seconds on MoodyEat.`
 
   const stopsHtml = quest.stops
@@ -124,17 +162,16 @@ function guidePage(quest, slug, others) {
     .join('\n')
 
   const othersHtml = others
-    .slice(0, 4)
     .map(
       (o) =>
-        `<li><a href="/guides/${o.slug}/">${esc(o.quest.title)}</a> — ${OCCASION_LABEL[o.quest.occasion] ?? o.quest.occasion}</li>`,
+        `<li><a href="${o.path}">${esc(o.quest.title)}</a> — ${OCCASION_LABEL[o.quest.occasion] ?? o.quest.occasion}</li>`,
     )
     .join('\n')
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: `${quest.title} — ${occasion} in ${CITY}`,
+    name: `${quest.title} — ${occasion} in ${city.name}`,
     description,
     itemListElement: quest.stops.map((s, i) => ({
       '@type': 'ListItem',
@@ -145,27 +182,27 @@ function guidePage(quest, slug, others) {
   }
 
   const body = `
-<p class="eyebrow">${esc(occasion)} · ${CITY}</p>
+<p class="eyebrow">${esc(occasion)} · <a href="/guides/${city.key}/">${esc(city.name)}</a></p>
 <h1>${esc(quest.title)}</h1>
 <p class="lede">${esc(quest.narrative)}</p>
 ${stopsHtml}
-<a class="cta" href="/">Plan your own evening in 30 seconds →</a>
+<a class="cta" href="/?city=${city.key}">Plan your own evening in 30 seconds →</a>
 <a class="cta secondary" href="/create">Or build it stop by stop</a>
 <section class="more">
-<p class="eyebrow">More ${CITY} plans</p>
+<p class="eyebrow">More ${esc(city.name)} plans</p>
 <ul>${othersHtml}</ul>
 </section>
 <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`
 
   return pageShell({
-    title: `${quest.title} — ${occasion} in ${CITY} | MoodyEat`,
+    title: `${quest.title} — ${occasion} in ${city.name} | MoodyEat`,
     description,
-    canonical: `${BASE_URL}/guides/${slug}/`,
+    canonical: `${BASE_URL}${entry.path}`,
     body,
   })
 }
 
-function hubPage(entries) {
+function cityHubPage(city, entries, otherCities) {
   const byOccasion = {}
   for (const e of entries) {
     ;(byOccasion[e.quest.occasion] ??= []).push(e)
@@ -174,52 +211,110 @@ function hubPage(entries) {
     .map(
       ([occ, list]) => `
 <p class="eyebrow">${esc(OCCASION_LABEL[occ] ?? occ)}</p>
-${list
-  .map(
-    (e) => `<a class="card" href="/guides/${e.slug}/">
-<strong>${esc(e.quest.title)}</strong>
-<span>${e.quest.stops.map((s) => esc(s.place.name)).join(' → ')}</span>
-</a>`,
-  )
-  .join('\n')}`,
+${list.map(questCard).join('\n')}`,
     )
     .join('\n')
 
-  const description = `Hand-planned evenings out in ${CITY}: date nights, friends hangouts, solo days, and family outings — with timings, real places, and maps.`
+  const elsewhere = otherCities
+    .map((c) => `<a href="/guides/${c.key}/">${esc(c.name)}</a>`)
+    .join(' · ')
+
+  const description = `Hand-planned evenings out in ${city.name}: date nights, friends hangouts, solo days, and family outings — with timings, real places, and maps.`
   const body = `
-<h1>${CITY} evening plans, ready to go</h1>
+<h1>${esc(city.name)} evening plans, ready to go</h1>
 <p class="lede">${description}</p>
+${sections}
+<a class="cta" href="/?city=${city.key}">Plan a custom evening in 30 seconds →</a>
+<p class="cities">Also: ${elsewhere}</p>`
+
+  return pageShell({
+    title: `Things to do in ${city.name}: ready-made evening plans | MoodyEat`,
+    description,
+    canonical: `${BASE_URL}/guides/${city.key}/`,
+    body,
+  })
+}
+
+function hubPage(cities) {
+  const names = listCities(cities.map((c) => c.city.name))
+  const sections = cities
+    .map(
+      ({ city, entries }) => `
+<h2 class="city"><a href="/guides/${city.key}/">${esc(city.name)}</a></h2>
+${entries.map(questCard).join('\n')}`,
+    )
+    .join('\n')
+
+  const description = `Hand-planned evenings out in ${names}: date nights, friends hangouts, solo days, and family outings — with timings, real places, and maps.`
+  const body = `
+<h1>Evening plans, ready to go</h1>
+<p class="lede">${description} Somewhere else? MoodyEat builds a plan around wherever you are.</p>
 ${sections}
 <a class="cta" href="/">Plan a custom evening in 30 seconds →</a>`
 
   return pageShell({
-    title: `Things to do in ${CITY}: ready-made evening plans | MoodyEat`,
+    title: `Ready-made evening plans in ${names} | MoodyEat`,
     description,
     canonical: `${BASE_URL}/guides/`,
     body,
   })
 }
 
-// ── Generate ──────────────────────────────────────────────────────────────────
-
-const entries = quests.map((quest) => ({ quest, slug: slugify(quest.title) }))
-
-for (const entry of entries) {
-  const others = entries.filter((e) => e.slug !== entry.slug)
-  const dir = join(DIST, 'guides', entry.slug)
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, 'index.html'), guidePage(entry.quest, entry.slug, others))
+function redirectPage(target) {
+  // A static stand-in for a 301: search engines follow an instant refresh,
+  // and the canonical tells them which address to keep.
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>This guide has moved | MoodyEat</title>
+<link rel="canonical" href="${BASE_URL}${target}">
+<meta http-equiv="refresh" content="0; url=${target}">
+</head>
+<body><p>This guide has moved: <a href="${target}">${target}</a></p></body>
+</html>`
 }
 
-mkdirSync(join(DIST, 'guides'), { recursive: true })
-writeFileSync(join(DIST, 'guides', 'index.html'), hubPage(entries))
+function writePage(path, html) {
+  const dir = join(DIST, ...path.split('/').filter(Boolean))
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, 'index.html'), html)
+}
 
-const urls = [
-  `${BASE_URL}/`,
-  `${BASE_URL}/create`,
-  `${BASE_URL}/guides/`,
-  ...entries.map((e) => `${BASE_URL}/guides/${e.slug}/`),
-]
+// ── Generate ──────────────────────────────────────────────────────────────────
+
+const cities = snapshot.cities.map((city) => ({
+  city,
+  entries: city.quests.map((quest) => {
+    const slug = slugify(quest.title)
+    return { quest, city, slug, path: `/guides/${city.key}/${slug}/` }
+  }),
+}))
+
+const written = new Set(['/guides/'])
+
+for (const { city, entries } of cities) {
+  for (const entry of entries) {
+    writePage(entry.path, guidePage(entry, entries.filter((e) => e !== entry)))
+    written.add(entry.path)
+  }
+  const others = cities.map((c) => c.city).filter((c) => c.key !== city.key)
+  writePage(`/guides/${city.key}/`, cityHubPage(city, entries, others))
+  written.add(`/guides/${city.key}/`)
+}
+
+writePage('/guides/', hubPage(cities))
+
+for (const [oldSlug, target] of Object.entries(LEGACY_REDIRECTS)) {
+  const to = `/guides/${target}/`
+  if (!written.has(to)) {
+    // A quest was renamed or removed: point the old address somewhere real.
+    throw new Error(`LEGACY_REDIRECTS: "${oldSlug}" forwards to ${to}, which is not a page.`)
+  }
+  writePage(`/guides/${oldSlug}/`, redirectPage(to))
+}
+
+const urls = [`${BASE_URL}/`, `${BASE_URL}/create`, ...[...written].map((p) => `${BASE_URL}${p}`)]
 writeFileSync(
   join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>
@@ -237,4 +332,8 @@ Sitemap: ${BASE_URL}/sitemap.xml
 `,
 )
 
-console.log(`guides: ${entries.length} pages + hub, sitemap.xml, robots.txt`)
+const guideCount = cities.reduce((n, c) => n + c.entries.length, 0)
+console.log(
+  `guides: ${guideCount} pages across ${cities.length} cities + hubs, ` +
+    `${Object.keys(LEGACY_REDIRECTS).length} redirects, sitemap.xml, robots.txt`,
+)
