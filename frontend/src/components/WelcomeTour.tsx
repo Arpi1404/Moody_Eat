@@ -2,22 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 
 const STEPS = [
   {
-    emoji: '🧭',
     title: 'Pick a mood, get a plan',
     body: 'Choose an occasion and an area. We line up a few stops with timings, travel between them and a rough budget.',
   },
   {
-    emoji: '🔀',
     title: 'Make it yours',
     body: 'Swap any stop, change the order, or shuffle the whole plan. Tap a place to see it on Google Maps.',
   },
   {
-    emoji: '✅',
     title: 'Take it out',
-    body: 'Press Start and tick off stops as you go. Keep the night in your journal, with a photo if you like.',
+    body: 'Press Start and tick off stops as you go. Keep the outing in your journal, with a photo if you like.',
   },
   {
-    emoji: '💌',
     title: 'Bring people along',
     body: 'Send the plan as a link or a share card. Know your spots already? Build a quest of your own.',
   },
@@ -34,9 +30,6 @@ export function WelcomeNudge({
 }) {
   return (
     <aside className="tour-nudge" aria-label="New here?">
-      <span className="tour-nudge-wave" aria-hidden>
-        👋
-      </span>
       <p className="tour-nudge-text">
         <strong>New here?</strong> Take the 20{'\u2011'}second tour.
       </p>
@@ -106,8 +99,8 @@ export function TourSheet({
           How it works · {step + 1} of {STEPS.length}
         </p>
         <div className="tour-step" aria-live="polite">
-          <span className="tour-step-emoji" aria-hidden>
-            {current.emoji}
+          <span className="tour-step-num" aria-hidden>
+            {step + 1}
           </span>
           <h2 id="tour-title" className="tour-step-title">
             {current.title}

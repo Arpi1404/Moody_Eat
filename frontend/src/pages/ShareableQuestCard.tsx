@@ -1,14 +1,10 @@
 import { forwardRef, useEffect, useState } from 'react'
 import { getApiBase } from '../api'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
+import { OCCASION_LABELS as SHARED_OCCASION_LABELS } from '../lib/occasions'
 import type { Quest, Stop, StopCategory } from '../types/quest'
 
-const OCCASION_LABELS: Record<string, string> = {
-  date: 'Date night',
-  friends: 'Friends',
-  solo: 'Solo',
-  family: 'Family',
-}
+const OCCASION_LABELS: Record<string, string> = SHARED_OCCASION_LABELS
 
 const OCCASION_EMOJI: Record<string, string> = {
   date: '🕯️',
