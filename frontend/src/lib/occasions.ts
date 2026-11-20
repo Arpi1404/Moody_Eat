@@ -6,8 +6,9 @@ import type { Occasion } from '../types/quest'
 // time of day it is — a date can be a breakfast.
 //
 // Each has one photograph, shown faintly behind its tile so the words stay
-// the subject. All four are from Unsplash (free licence, no attribution
-// required); credits are in public/occasions/CREDITS.md.
+// the subject. The files are in public/occasions/ (640 px wide WebP, about
+// 160 KB for all four), from Unsplash; sources and photographers are in
+// public/occasions/CREDITS.md.
 
 export type OccasionKey = Occasion
 
@@ -16,29 +17,30 @@ export const OCCASIONS = [
     key: 'date',
     label: 'Date',
     desc: 'Just the two of you',
-    photo: 'https://images.unsplash.com/photo-1635956541203-4625130f761f?auto=format&fit=crop&w=800&q=70',
-    // Where the subject sits, so a crop never loses it.
-    focus: '38% 62%',
+    photo: '/occasions/date.webp',
+    // Which part of the picture a crop keeps. Here: the two cups on the
+    // left, not the third on the right.
+    focus: '0% 62%',
   },
   {
     key: 'friends',
     label: 'Friends',
     desc: "The gang's all here",
-    photo: 'https://images.unsplash.com/photo-1654912912322-b0b98a92011d?auto=format&fit=crop&w=800&q=70',
+    photo: '/occasions/friends.webp',
     focus: '50% 40%',
   },
   {
     key: 'solo',
     label: 'Solo',
     desc: 'Just you, on purpose',
-    photo: 'https://images.unsplash.com/photo-1474366521946-c3d4b507abf2?auto=format&fit=crop&w=800&q=70',
+    photo: '/occasions/solo.webp',
     focus: '50% 45%',
   },
   {
     key: 'family',
     label: 'Family',
     desc: 'All of you, fed and happy',
-    photo: 'https://images.unsplash.com/photo-1665989215795-f67f4723087d?auto=format&fit=crop&w=800&q=70',
+    photo: '/occasions/family.webp',
     focus: '50% 50%',
   },
 ] as const satisfies readonly {
