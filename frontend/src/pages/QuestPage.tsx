@@ -7,9 +7,12 @@ import type { JournalEntry } from '../types/journal'
 import { fetchCuratedQuest, fetchStoredQuest, generateQuest } from '../api'
 import { useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
+import { useQuestHints } from '../hooks/useQuestHints'
+import { CoachMark } from '../components/CoachMark'
 import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
+import { QUEST_HINTS, QUEST_HINTS_REPLAY_ORDER } from '../lib/onboarding'
 import { recordQuestPlaces } from '../lib/questHistory'
 import { makeQuestShareUrl, readQuestFromLocationHash } from '../lib/questShare'
 import { shareCardFontEmbedCss } from '../lib/shareFonts'
@@ -237,6 +240,11 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   } | null>(null)
   const [createdBanner, setCreatedBanner] = useState(false)
   const [shuffling, setShuffling] = useState(false)
+  const [swapSheetOpen, setSwapSheetOpen] = useState(false)
+  // Set once a memory is saved: the moment to point at Share.
+  const [sharePrompt, setSharePrompt] = useState(false)
+  // Set by "What can I do here?": the hints are being shown on request.
+  const [replaying, setReplaying] = useState(false)
   const [feedbackVote, setFeedbackVote] = useState<'up' | 'down' | null>(null)
   const [iosShareImage, setIosShareImage] = useState<IosShareImage>({
     status: 'idle',
@@ -388,6 +396,23 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     [],
   )
 
+  // Curated previews are read-only until saved.
+  const readOnly = preview && !savedToCollection
+  const stopCount = quest?.stops.length ?? 0
+  const canEdit = stopCount > 0 && !readOnly && !active
+  const { hint, dismissHint, hintUsed, replayHints } = useQuestHints(
+    {
+      share: sharePrompt || replaying,
+      checkoff: active && stopCount > 0,
+      swap: canEdit,
+      reorder: canEdit && stopCount > 1,
+      shuffle: canEdit && !preview && Boolean(state?.request),
+    },
+    // One thing at a time: hints wait for sheets and toasts to clear.
+    questLoading || swapSheetOpen || journalOpen || shareMenuOpen || toast != null,
+    replaying ? QUEST_HINTS_REPLAY_ORDER : QUEST_HINTS,
+  )
+
   if (questLoading) {
     return (
       <main className="qp-page">
@@ -476,6 +501,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
 
   const handleShuffle = async () => {
     if (!generationRequest || shuffling) return
+    hintUsed('shuffle')
     setShuffling(true)
     try {
       const nextQuest = await generateQuest({
@@ -545,6 +571,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   const handleShare = () => {
+    hintUsed('share')
     if (sharing) return
     setShareMenuOpen(true)
     if (iosDevice) {
@@ -742,6 +769,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     setActiveQuestId(null)
     setCompletedStopIndexes([])
     setJournalOpen(false)
+    setSharePrompt(true)
     showToast('Memory saved.', {
       actionLabel: 'Go to memory →',
       onAction: () => navigate('/journal'),
@@ -796,15 +824,27 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
             )}
             <span className="qp-chip qp-chip--occasion">{quest.occasion}</span>
             {generationRequest && !preview && (
-              <button
-                type="button"
-                className="qp-chip qp-chip--shuffle"
-                onClick={handleShuffle}
-                disabled={shuffling}
-                title="Get a different mix of stops for the same plan"
-              >
-                {shuffling ? 'Shuffling…' : '🎲 Shuffle stops'}
-              </button>
+              <span className="qp-shuffle-anchor">
+                <button
+                  type="button"
+                  className="qp-chip qp-chip--shuffle"
+                  onClick={handleShuffle}
+                  disabled={shuffling}
+                  title="Get a different mix of stops for the same plan"
+                >
+                  {shuffling ? 'Shuffling…' : '🎲 Shuffle stops'}
+                </button>
+                {hint === 'shuffle' && (
+                  <CoachMark
+                    placement="below"
+                    title="Want a fresh mix?"
+                    onDismiss={() => dismissHint('shuffle')}
+                    reveal={replaying}
+                  >
+                    Shuffle redraws every stop for the same plan.
+                  </CoachMark>
+                )}
+              </span>
             )}
           </div>
         </header>
@@ -852,7 +892,27 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           completedStopIndexes={completedStopIndexes}
           onToggleStopComplete={handleToggleStopComplete}
           onMarkDone={() => setJournalOpen(true)}
-          readOnly={preview && !savedToCollection}
+          readOnly={readOnly}
+          onLockedSwap={() =>
+            showToast('Save this quest to swap stops.', {
+              actionLabel: 'Save',
+              onAction: handleSave,
+              durationMs: 5000,
+            })
+          }
+          onSwapSheetChange={setSwapSheetOpen}
+          hint={hint}
+          onHintDismiss={dismissHint}
+          onHintUsed={hintUsed}
+          onReplayHints={
+            readOnly
+              ? undefined
+              : () => {
+                  setReplaying(true)
+                  replayHints()
+                }
+          }
+          revealHints={replaying}
         />
 
         <div className="qp-feedback" role="group" aria-label="Plan feedback">
@@ -911,6 +971,16 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
               '↑ Share'
             )}
           </button>
+          {/* Hangs off the bar itself: Share is its middle button. */}
+          {hint === 'share' && (
+            <CoachMark
+              placement="above"
+              title="Worth passing on?"
+              onDismiss={() => dismissHint('share')}
+            >
+              Share sends this plan as a link or a story card.
+            </CoachMark>
+          )}
           <button
             type="button"
             className={`qp-action-btn qp-action-btn--start${active ? ' qp-action-btn--started' : ''}`}

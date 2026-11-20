@@ -3,11 +3,12 @@ import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet
 import L from 'leaflet'
 import { fetchStopAlternatives, getApiBase } from '../api'
 import type { Quest, Stop, StopAlternative } from '../types/quest'
+import { CoachMark } from '../components/CoachMark'
 import { PlaceLink } from '../components/PlaceLink'
 import { EmptyState } from '../components/states'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
-import { markQuestTipsSeen, questTipsSeen } from '../lib/onboarding'
+import type { QuestHint } from '../lib/onboarding'
 import {
   addMinutes,
   durationMinutes,
@@ -201,6 +202,9 @@ function StopCard({
   checked = false,
   onCheck,
   readOnly = false,
+  hint = null,
+  onHintDismiss,
+  revealHint = false,
 }: {
   stop: Stop
   index: number
@@ -212,6 +216,11 @@ function StopCard({
   checked?: boolean
   onCheck?: () => void
   readOnly?: boolean
+  /** The one-time hint to show on this card, if any. */
+  hint?: QuestHint | null
+  onHintDismiss?: (hint: QuestHint) => void
+  /** Scroll to the hint when it appears (a replay the person asked for). */
+  revealHint?: boolean
 }) {
   const priceEstimate = formatInrEstimate(
     stop.est_cost_per_person_min_inr,
@@ -233,36 +242,71 @@ function StopCard({
           <span aria-hidden />
         </label>
       )}
-      <button
-        type="button"
-        className="qp-stop-swap-btn"
-        aria-label={`Swap stop ${index + 1}`}
-        disabled={readOnly}
-        title={readOnly ? 'Swap available after you save this quest' : undefined}
-        onClick={readOnly ? undefined : onSwap}
-      >
-        <SwapIcon />
-      </button>
+      {active && hint === 'checkoff' && (
+        <div className="qp-stop-check-anchor">
+          <CoachMark
+            placement="below-start"
+            title="You're off."
+            onDismiss={() => onHintDismiss?.('checkoff')}
+            reveal={revealHint}
+          >
+            Tick each stop as you visit it.
+          </CoachMark>
+        </div>
+      )}
+      <div className="qp-stop-swap">
+        {hint === 'swap' && (
+          <CoachMark
+            placement="left"
+            title="Not feeling this one?"
+            onDismiss={() => onHintDismiss?.('swap')}
+            reveal={revealHint}
+          >
+            Swap it for a different spot.
+          </CoachMark>
+        )}
+        <button
+          type="button"
+          className={`qp-stop-swap-btn${readOnly ? ' qp-stop-swap-btn--locked' : ''}`}
+          aria-label={`Swap stop ${index + 1}`}
+          onClick={onSwap}
+        >
+          <SwapIcon />
+          <span>Swap</span>
+        </button>
+      </div>
       {!readOnly && (onMoveUp || onMoveDown) && (
-        <div className="qp-stop-move" aria-hidden={false}>
-          <button
-            type="button"
-            className="qp-stop-move-btn"
-            aria-label={`Move stop ${index + 1} earlier`}
-            disabled={!onMoveUp}
-            onClick={onMoveUp}
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            className="qp-stop-move-btn"
-            aria-label={`Move stop ${index + 1} later`}
-            disabled={!onMoveDown}
-            onClick={onMoveDown}
-          >
-            ↓
-          </button>
+        <div className="qp-stop-move">
+          {hint === 'reorder' && (
+            <CoachMark
+              placement="left"
+              title="Change the order."
+              onDismiss={() => onHintDismiss?.('reorder')}
+              reveal={revealHint}
+            >
+              The arrows move a stop earlier or later.
+            </CoachMark>
+          )}
+          <div className="qp-stop-move-btns">
+            <button
+              type="button"
+              className="qp-stop-move-btn"
+              aria-label={`Move stop ${index + 1} earlier`}
+              disabled={!onMoveUp}
+              onClick={onMoveUp}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              className="qp-stop-move-btn"
+              aria-label={`Move stop ${index + 1} later`}
+              disabled={!onMoveDown}
+              onClick={onMoveDown}
+            >
+              ↓
+            </button>
+          </div>
         </div>
       )}
       <div className="qp-stop-body">
@@ -336,6 +380,13 @@ export function QuestCard({
   onToggleStopComplete,
   onMarkDone,
   readOnly = false,
+  onLockedSwap,
+  onSwapSheetChange,
+  hint = null,
+  onHintDismiss,
+  onHintUsed,
+  onReplayHints,
+  revealHints = false,
 }: {
   quest: Quest
   onQuestChange: (quest: Quest) => void
@@ -344,10 +395,21 @@ export function QuestCard({
   onToggleStopComplete?: (index: number) => void
   onMarkDone?: () => void
   readOnly?: boolean
+  /** Swap tapped on a read-only quest: the page says how to unlock it. */
+  onLockedSwap?: () => void
+  /** Told whenever the swap sheet opens or closes. Must be a stable function. */
+  onSwapSheetChange?: (open: boolean) => void
+  /** The one-time hint to show on the first stop, if any. */
+  hint?: QuestHint | null
+  onHintDismiss?: (hint: QuestHint) => void
+  /** A control with a hint was used, whether or not the hint was showing. */
+  onHintUsed?: (hint: QuestHint) => void
+  /** When given, a "What can I do here?" link above the stops calls it. */
+  onReplayHints?: () => void
+  /** Scroll to each hint as it appears (during a replay). */
+  revealHints?: boolean
 }) {
   const [activeStopIndex, setActiveStopIndex] = useState<number | null>(null)
-  // One-time pointer to the icon-only controls; gone for good once dismissed.
-  const [tipsDismissed, setTipsDismissed] = useState(() => questTipsSeen())
   const [alternatives, setAlternatives] = useState<StopAlternative[]>([])
   const [selectedAlternative, setSelectedAlternative] =
     useState<StopAlternative | null>(null)
@@ -358,6 +420,11 @@ export function QuestCard({
     if (activeStopIndex == null || selectedAlternative == null) return null
     return rescheduleWithAlternative(quest, activeStopIndex, selectedAlternative)
   }, [activeStopIndex, quest, selectedAlternative])
+
+  const swapSheetOpen = activeStopIndex != null
+  useEffect(() => {
+    onSwapSheetChange?.(swapSheetOpen)
+  }, [onSwapSheetChange, swapSheetOpen])
 
   const displayQuest = previewQuest ?? quest
   const completedStops = useMemo(
@@ -384,6 +451,7 @@ export function QuestCard({
 
   const openSwapSheet = useCallback(
     (index: number) => {
+      onHintUsed?.('swap')
       const requestId = ++swapRequestId.current
       setActiveStopIndex(index)
       setAlternatives([])
@@ -407,7 +475,7 @@ export function QuestCard({
           setLoadingAlternatives(false)
         })
     },
-    [quest],
+    [onHintUsed, quest],
   )
 
   const confirmSwap = useCallback(() => {
@@ -421,10 +489,11 @@ export function QuestCard({
     (from: number, to: number) => {
       const next = reorderStops(quest, from, to)
       if (next === quest) return
+      onHintUsed?.('reorder')
       track('stops_reordered', { from_index: from, to_index: to })
       onQuestChange(next)
     },
-    [onQuestChange, quest],
+    [onHintUsed, onQuestChange, quest],
   )
 
   return (
@@ -473,25 +542,13 @@ export function QuestCard({
         </div>
       )}
 
-      {!readOnly && !tipsDismissed && displayQuest.stops.length > 0 && (
-        <div className="qp-tips" role="note">
-          <span className="qp-tips-icon" aria-hidden>
-            💡
-          </span>
-          <p className="qp-tips-text">
-            <strong>Make it yours.</strong> ⇄ swaps a stop, ↑ ↓ change the
-            order, and tapping a place opens it on Google Maps.
-          </p>
-          <button
-            type="button"
-            className="qp-tips-close"
-            aria-label="Dismiss tips"
-            onClick={() => {
-              markQuestTipsSeen()
-              setTipsDismissed(true)
-            }}
-          >
-            ✕
+      {onReplayHints && displayQuest.stops.length > 0 && (
+        <div className="qp-help">
+          <button type="button" className="qp-help-link" onClick={onReplayHints}>
+            <span className="qp-help-icon" aria-hidden>
+              ?
+            </span>
+            What can I do here?
           </button>
         </div>
       )}
@@ -504,7 +561,7 @@ export function QuestCard({
               stop={stop}
               index={i}
               previewing={activeStopIndex === i && selectedAlternative != null}
-              onSwap={() => openSwapSheet(i)}
+              onSwap={() => (readOnly ? onLockedSwap?.() : openSwapSheet(i))}
               onMoveUp={i > 0 ? () => moveStop(i, i - 1) : undefined}
               onMoveDown={
                 i < displayQuest.stops.length - 1
@@ -513,8 +570,14 @@ export function QuestCard({
               }
               active={active}
               checked={completedStops.has(i)}
-              onCheck={() => onToggleStopComplete?.(i)}
+              onCheck={() => {
+                onHintUsed?.('checkoff')
+                onToggleStopComplete?.(i)
+              }}
               readOnly={readOnly}
+              hint={i === 0 ? hint : null}
+              onHintDismiss={onHintDismiss}
+              revealHint={revealHints}
             />
           ))}
         </ol>

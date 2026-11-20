@@ -2328,7 +2328,7 @@ a.explore-edit-filters {
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
-/* ── First-visit tour (WelcomeTour) and quest tips ── */
+/* ── First-visit tour (WelcomeTour) ── */
 
 .tour-nudge {
   position: fixed;
@@ -2440,23 +2440,7 @@ a.explore-edit-filters {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Tall enough for the longest card, so the buttons do not jump. */
-  min-height: 188px;
-}
-
-.tour-step-num {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  margin: 10px 0 14px;
-  border-radius: 999px;
-  background: var(--accent-bg);
-  color: var(--accent);
-  font-family: var(--display);
-  font-size: 26px;
-  font-weight: 600;
-  line-height: 1;
+  margin: 14px 0 22px;
 }
 
 .tour-step-title {
@@ -2477,28 +2461,6 @@ a.explore-edit-filters {
   color: var(--text);
 }
 
-.tour-dots {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 16px;
-}
-
-.tour-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--border);
-  transition:
-    width 0.18s ease,
-    background 0.18s ease;
-}
-
-.tour-dot--active {
-  width: 18px;
-  background: var(--accent);
-}
-
 .tour-secondary {
   width: 100%;
   min-height: 44px;
@@ -2516,57 +2478,154 @@ a.explore-edit-filters {
   color: var(--accent);
 }
 
-.qp-tips {
+/* ── Coach marks: one-time pointers attached to a control (CoachMark) ── */
+
+.coach {
+  --coach-shift: 0px;
+  position: absolute;
+  z-index: 3;
+  width: max-content;
+  max-width: min(220px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.coach-bubble {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
-  margin: 0 0 16px;
-  padding: 10px 6px 10px 14px;
+  gap: 6px;
+  padding: 10px 12px;
   border-radius: 14px;
-  border: 1px solid var(--accent-border);
-  background: var(--accent-bg);
+  background: var(--text-h);
+  color: var(--bg);
   text-align: left;
+  box-shadow:
+    0 2px 6px rgba(31, 26, 20, 0.12),
+    0 12px 28px rgba(31, 26, 20, 0.24);
+  pointer-events: auto;
+  animation: coach-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
-.qp-tips-icon {
-  flex-shrink: 0;
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.qp-tips-text {
-  flex: 1;
-  min-width: 0;
+.coach-text {
   margin: 0;
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--text);
+  font-weight: 400;
+  line-height: 1.45;
+  color: inherit;
 }
 
-.qp-tips-text strong {
-  color: var(--text-h);
+.coach-text strong {
   font-weight: 600;
+  color: #fff;
 }
 
-.qp-tips-close {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  margin-top: -4px;
-  border-radius: 999px;
+.coach-dismiss {
+  margin: 0 0 0 -4px;
+  padding: 4px;
   border: 0;
   background: none;
-  color: var(--text);
+  font-family: inherit;
   font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent-gold);
   cursor: pointer;
 }
 
-.qp-tips-close:hover {
-  color: var(--accent);
+.coach-dismiss:hover,
+.coach-dismiss:focus-visible {
+  text-decoration: underline;
+}
+
+.coach-arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--text-h);
+  transform: rotate(45deg);
+  animation: coach-fade 0.28s ease both;
+}
+
+/* To the left of the control, arrow pointing right at it. The two sit in a
+   flex row, so on a narrow card the bubble gives up width and wraps its text
+   instead of running off the side. */
+.coach--left {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.coach--left .coach-arrow {
+  top: var(--coach-arrow, 15px);
+  right: -4px;
+}
+
+/* Under the control, lined up with its left edge. */
+.coach--below-start {
+  top: calc(100% + 12px);
+  left: 0;
+}
+
+.coach--below-start .coach-arrow {
+  top: -4px;
+  left: var(--coach-arrow, 17px);
+}
+
+/* Centred under or over the control; --coach-shift keeps it on screen. */
+.coach--below,
+.coach--above {
+  left: 50%;
+  transform: translateX(calc(-50% + var(--coach-shift)));
+}
+
+.coach--below {
+  top: calc(100% + 12px);
+}
+
+.coach--above {
+  bottom: calc(100% + 12px);
+}
+
+.coach--below .coach-arrow,
+.coach--above .coach-arrow {
+  left: calc(50% - 5px - var(--coach-shift));
+}
+
+.coach--below .coach-arrow {
+  top: -4px;
+}
+
+.coach--above .coach-arrow {
+  bottom: -4px;
+}
+
+@keyframes coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes coach-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tour-nudge {
+  .tour-nudge,
+  .coach-bubble,
+  .coach-arrow {
     animation: none;
   }
 }
@@ -3301,6 +3360,11 @@ a.explore-edit-filters {
   background: rgba(199, 82, 42, 0.18);
 }
 
+.qp-shuffle-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
 .qp-chip--shuffle {
   cursor: pointer;
   font-weight: 600;
@@ -3418,6 +3482,47 @@ a.explore-edit-filters {
     0 0 0 2px rgba(255, 255, 255, 0.15);
 }
 
+/* "What can I do here?": a quiet link above the stops that replays the hints.
+   Pulled up into the gap under the map. */
+
+.qp-help {
+  display: flex;
+  justify-content: flex-end;
+  margin: -18px 0 6px;
+}
+
+.qp-help-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.qp-help-link:hover,
+.qp-help-link:focus-visible {
+  color: var(--accent);
+}
+
+.qp-help-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* Stop list */
 
 .qp-stops {
@@ -3500,6 +3605,17 @@ a.explore-edit-filters {
   transform: rotate(-45deg);
 }
 
+/* Sits exactly over the checkbox so its coach mark can hang below it. */
+.qp-stop-check-anchor {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  pointer-events: none;
+}
+
 .qp-stop-card--preview {
   border-color: rgba(199, 82, 42, 0.55);
   animation: qp-stop-preview 0.34s ease;
@@ -3564,20 +3680,44 @@ a.explore-edit-filters {
   color: var(--text);
 }
 
-.qp-stop-swap-btn {
+/* Controls on the photo: a labelled Swap pill with the reorder arrows under
+   it. Each sits at the right-hand end of a row as wide as the card, and its
+   coach mark takes the space to its left. The rows let taps through to the
+   photo; only the controls and the bubble catch them. */
+
+.qp-stop-swap,
+.qp-stop-move {
   position: absolute;
-  top: 12px;
+  left: 12px;
   right: 12px;
   z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.qp-stop-swap {
+  top: 12px;
+}
+
+.qp-stop-swap-btn {
+  flex-shrink: 0;
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
+  gap: 6px;
   height: 40px;
+  padding: 0 14px 0 12px;
   border-radius: 999px;
   border: 1px solid rgba(31, 26, 20, 0.08);
   background: var(--surface);
   color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
   box-shadow:
     0 1px 2px rgba(31, 26, 20, 0.08),
@@ -3598,25 +3738,35 @@ a.explore-edit-filters {
   box-shadow: 0 6px 18px rgba(199, 82, 42, 0.28);
 }
 
-.qp-stop-swap-btn:disabled {
-  opacity: 0.55;
-  cursor: help;
+/* Read-only quest: still tappable, and the tap says how to unlock it. */
+.qp-stop-swap-btn--locked,
+.qp-stop-swap-btn--locked:hover {
   transform: none;
+  border-color: rgba(31, 26, 20, 0.08);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow:
+    0 1px 2px rgba(31, 26, 20, 0.08),
+    0 4px 14px rgba(31, 26, 20, 0.18);
 }
 
 /* Reorder (move up/down) buttons — stacked under the swap button */
 
 .qp-stop-move {
-  position: absolute;
+  /* Arrow of its coach mark: between the two 32px buttons. */
+  --coach-arrow: 30px;
   top: 60px;
-  right: 12px;
-  z-index: 2;
+}
+
+.qp-stop-move-btns {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .qp-stop-move-btn {
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4092,8 +4242,18 @@ a.explore-edit-filters {
   margin-inline: auto;
 }
 
+/* The Share coach mark is centred on the bar, over its middle button. The
+   bar's top padding already separates it from the button. */
+.qp-bottom-bar > .coach--above {
+  bottom: calc(100% - 2px);
+}
+
 .qp-action-btn {
   flex: 1;
+  /* A label never breaks onto a second line. The three buttons stay equal
+     until one label needs more room; that button then takes it from the
+     other two. */
+  white-space: nowrap;
   border-radius: 999px;
   border: 1.5px solid var(--border);
   background: var(--surface);
@@ -6214,6 +6374,11 @@ a.explore-edit-filters {
   display: inline-flex;
   align-items: center;
   gap: 14px;
+  /* Centred with left: 50%, the toast would otherwise shrink to half the
+     screen and stack a longer message one word per line. */
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   padding: 8px 8px 8px 18px;
   border-radius: 999px;
 }
