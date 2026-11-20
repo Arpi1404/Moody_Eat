@@ -5,16 +5,12 @@ import { EmptyState, LoadingState } from '../components/states'
 import type { JournalEntry } from '../types/journal'
 import type { Quest } from '../types/quest'
 import { JournalSheet } from './JournalSheet'
+import { OCCASION_LABELS as SHARED_OCCASION_LABELS } from '../lib/occasions'
 import '../App.css'
 
 const RATING_LABELS = ['Rough', 'Meh', 'Nice', 'Loved it', 'Unforgettable']
 
-const OCCASION_LABELS: Record<string, string> = {
-  date: 'Date Night',
-  friends: 'Friends',
-  solo: 'Solo Time',
-  family: 'Family',
-}
+const OCCASION_LABELS: Record<string, string> = SHARED_OCCASION_LABELS
 
 function readQuest(questId: string): Quest | null {
   try {

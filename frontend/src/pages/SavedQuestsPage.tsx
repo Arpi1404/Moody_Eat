@@ -5,6 +5,7 @@ import { useSavedQuests, type SavedQuest } from '../hooks/useSavedQuests'
 import { EmptyState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel } from '../lib/budget'
+import { OCCASION_LABELS as SHARED_OCCASION_LABELS } from '../lib/occasions'
 import '../App.css'
 
 const OCCASION_ICONS: Record<string, string> = {
@@ -14,12 +15,7 @@ const OCCASION_ICONS: Record<string, string> = {
   family: '🧆',
 }
 
-const OCCASION_LABELS: Record<string, string> = {
-  date: 'Date Night',
-  friends: 'Friends',
-  solo: 'Solo Time',
-  family: 'Family',
-}
+const OCCASION_LABELS: Record<string, string> = SHARED_OCCASION_LABELS
 
 function formatTotalDuration(minutes: number | undefined): string | null {
   if (!minutes || !Number.isFinite(minutes)) return null

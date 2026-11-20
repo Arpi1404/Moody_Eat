@@ -384,6 +384,10 @@
   }
 }
 
+.state-icon:empty {
+  display: none;
+}
+
 .state-icon {
   display: inline-flex;
   align-items: center;
@@ -1912,15 +1916,10 @@ a.explore-edit-filters {
   display: block;
 }
 
-.curated-quest-image--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.curated-quest-image--fallback span {
-  font-size: 40px;
-  opacity: 0.55;
+/* No photo of the place: the occasion's own picture, toned down. */
+.curated-quest-image--fallback img {
+  opacity: 0.7;
+  filter: saturate(0.8);
 }
 
 .curated-quest-occasion-badge {
@@ -1929,21 +1928,16 @@ a.explore-edit-filters {
   left: 12px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px 4px 6px;
+  padding: 4px 10px;
   font-size: 12px;
-  font-weight: 500;
-  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-h);
   background: rgba(251, 247, 242, 0.92);
   border: 1px solid rgba(232, 223, 211, 0.6);
   border-radius: 999px;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-}
-
-.curated-quest-occasion-badge-emoji {
-  font-size: 14px;
-  line-height: 1;
 }
 
 .curated-quest-body {
@@ -2037,17 +2031,26 @@ a.explore-edit-filters {
 
 /* ── Occasion tiles ────────────────────────────────────────────────────── */
 
+/* Occasion tiles. Each carries one photograph, shown faintly and blended
+   into the tile's own tint, so the word stays the subject and the picture
+   only sets the mood. */
 .occasion-tile {
+  --tile-tint: var(--surface);
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 22px 20px 22px;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 204px;
+  padding: 18px;
   border-radius: var(--radius-card);
-  border: 1px solid transparent;
+  border: 1px solid rgba(31, 26, 20, 0.06);
+  background: var(--tile-tint);
+  color: var(--text-h);
+  font-family: var(--sans);
   cursor: pointer;
   text-align: left;
-  min-height: 156px;
   user-select: none;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -2057,93 +2060,92 @@ a.explore-edit-filters {
     box-shadow 0.22s ease;
 }
 
+.occasion-tile--date    { --tile-tint: var(--tint-date); }
+.occasion-tile--friends { --tile-tint: var(--tint-friends); }
+.occasion-tile--solo    { --tile-tint: var(--tint-solo); }
+.occasion-tile--family  { --tile-tint: var(--tint-family); }
+
+.occasion-tile-photo {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  filter: saturate(0.8);
+  transform: scale(1.02);
+  transition:
+    opacity 0.35s ease,
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* A wash of the tint rising from the bottom keeps the words on clean
+   colour whatever the photograph does behind them. */
 .occasion-tile::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: inherit;
-  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  z-index: -1;
+  background: linear-gradient(
+    to top,
+    var(--tile-tint) 0%,
+    color-mix(in srgb, var(--tile-tint) 88%, transparent) 34%,
+    transparent 80%
+  );
   pointer-events: none;
 }
 
 .occasion-tile:hover {
-  transform: translateY(-3px) scale(1.012);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-hover);
 }
 
+.occasion-tile:hover .occasion-tile-photo {
+  opacity: 0.68;
+  transform: scale(1.07);
+}
+
 .occasion-tile:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
   transition-duration: 0.08s;
 }
 
-.occasion-tile--date    { background: var(--tint-date); }
-.occasion-tile--friends { background: var(--tint-friends); }
-.occasion-tile--solo    { background: var(--tint-solo); }
-.occasion-tile--family  { background: var(--tint-family); }
-
-.occasion-tile-chip {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  line-height: 1;
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
-}
-
-.occasion-tile--date    .occasion-tile-chip { background: var(--tint-date-strong); }
-.occasion-tile--friends .occasion-tile-chip { background: var(--tint-friends-strong); }
-.occasion-tile--solo    .occasion-tile-chip { background: var(--tint-solo-strong); }
-.occasion-tile--family  .occasion-tile-chip { background: var(--tint-family-strong); }
-
-/* keep legacy class as alias so nothing breaks */
-.occasion-tile-emoji {
-  font-size: 28px;
-  line-height: 1;
-  position: relative;
-  z-index: 1;
+.occasion-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .occasion-tile-title {
-  margin: 0;
+  display: block;
   font-family: var(--display);
-  font-size: 18px;
+  font-size: clamp(22px, 2.3vw, 26px);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
   color: var(--text-h);
-  line-height: 1.2;
-  position: relative;
-  z-index: 1;
 }
 
 .occasion-tile-desc {
-  margin: 6px 0 0;
+  display: block;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--text);
-  position: relative;
-  z-index: 1;
 }
 
 .occasion-tile-arrow {
-  margin-top: auto;
-  align-self: flex-start;
-  width: 32px;
-  height: 32px;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(31, 26, 20, 0.06);
   color: var(--text-h);
-  position: relative;
-  z-index: 1;
   transition:
     background 0.18s ease,
     color 0.18s ease,
@@ -2155,7 +2157,22 @@ a.explore-edit-filters {
   background: var(--accent);
   color: #fff;
   border-color: transparent;
-  transform: translateX(2px);
+  transform: translate(1px, -1px);
+}
+
+@media (max-width: 719px) {
+  .occasion-tile {
+    min-height: 140px;
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .occasion-tile,
+  .occasion-tile-photo,
+  .occasion-tile-arrow {
+    transition: none;
+  }
 }
 
 /* ── Bottom sheet ─────────────────────────────────────────────────────────── */
@@ -2253,21 +2270,15 @@ a.explore-edit-filters {
 .sheet-occasion-badge {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 16px 8px 10px;
+  padding: 7px 16px;
   border-radius: 999px;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
   font-family: var(--display);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-h);
   margin-bottom: 24px;
-}
-
-.sheet-occasion-badge-emoji {
-  font-size: 18px;
-  line-height: 1;
 }
 
 .sheet-fields {
@@ -2353,12 +2364,6 @@ a.explore-edit-filters {
   }
 }
 
-.tour-nudge-wave {
-  flex-shrink: 0;
-  font-size: 20px;
-  line-height: 1;
-}
-
 .tour-nudge-text {
   flex: 1;
   min-width: 0;
@@ -2439,15 +2444,18 @@ a.explore-edit-filters {
   min-height: 188px;
 }
 
-.tour-step-emoji {
+.tour-step-num {
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   margin: 10px 0 14px;
   border-radius: 999px;
   background: var(--accent-bg);
-  font-size: 30px;
+  color: var(--accent);
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -2680,8 +2688,21 @@ a.explore-edit-filters {
 }
 
 .sheet-geo-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.6;
   cursor: default;
+}
+
+.sheet-geo-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: sheet-geo-spin 0.7s linear infinite;
+}
+
+@keyframes sheet-geo-spin {
+  to { transform: rotate(360deg); }
 }
 
 .sheet-geo-status {
@@ -3111,17 +3132,6 @@ a.explore-edit-filters {
 
   .home-grid {
     gap: 10px;
-  }
-
-  .occasion-tile {
-    min-height: 156px;
-    padding: 18px 16px 18px;
-  }
-
-  .occasion-tile-chip {
-    width: 44px;
-    height: 44px;
-    font-size: 24px;
   }
 
   .sheet {

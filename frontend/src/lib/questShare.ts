@@ -1,4 +1,5 @@
 import type { Quest } from '../types/quest'
+import { OCCASION_LABELS } from './occasions'
 import { storeQuestForShare } from '../api'
 
 // Share links are short server-stored URLs (/q/<shortId>): the backend keeps
@@ -73,12 +74,9 @@ export async function readQuestFromLocationHash(): Promise<Quest | null> {
   return decodeQuestFromUrl(hash.slice(FRAGMENT_PREFIX.length))
 }
 
-const OCCASION_SHARE_LABELS: Record<string, string> = {
-  date: 'Date night',
-  friends: 'Friends hangout',
-  solo: 'Solo time',
-  family: 'Family outing',
-}
+// Link previews read "Date · 3 stops · 4h" — the same one-word names the
+// app uses everywhere else.
+const OCCASION_SHARE_LABELS: Record<string, string> = OCCASION_LABELS
 
 function shareDescription(quest: Quest): string {
   const hours = quest.total_duration_minutes / 60

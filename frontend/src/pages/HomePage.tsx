@@ -8,6 +8,12 @@ import { TourSheet, WelcomeNudge } from '../components/WelcomeTour'
 import { track } from '../lib/analytics'
 import { budgetLabel } from '../lib/budget'
 import {
+  OCCASIONS,
+  OCCASION_LABELS,
+  type OccasionKey,
+  occasionPhoto,
+} from '../lib/occasions'
+import {
   CURATED_CITIES,
   DEFAULT_CITY,
   type CityKey,
@@ -24,49 +30,6 @@ import { getRecentPlaceIds, recordQuestPlaces } from '../lib/questHistory'
 import '../App.css'
 
 // ── Static data ───────────────────────────────────────────────────────────────
-
-const OCCASIONS = [
-  {
-    key: 'date',
-    emoji: '🕯️',
-    title: 'Date Night',
-    desc: 'For nights worth remembering',
-  },
-  {
-    key: 'friends',
-    emoji: '🥂',
-    title: 'Friends Hangout',
-    desc: "The gang's all here",
-  },
-  {
-    key: 'solo',
-    emoji: '🍵',
-    title: 'Solo Time',
-    desc: 'Just you, on purpose',
-  },
-  {
-    key: 'family',
-    emoji: '🧆',
-    title: 'Family Outing',
-    desc: 'All of you, fed and happy',
-  },
-] as const
-
-type OccasionKey = (typeof OCCASIONS)[number]['key']
-
-const OCCASION_ICONS: Record<OccasionKey, string> = {
-  date: '🕯️',
-  friends: '🥂',
-  solo: '🍵',
-  family: '🧆',
-}
-
-const OCCASION_LABELS: Record<OccasionKey, string> = {
-  date: 'Date Night',
-  friends: 'Friends',
-  solo: 'Solo Time',
-  family: 'Family',
-}
 
 const OCCASION_TINTS: Record<OccasionKey, string> = {
   date: 'rgba(199, 82, 42, 0.10)',
@@ -167,17 +130,15 @@ function CuratedQuestImage({ quest }: { quest: Quest }) {
 
   const badge = (
     <span className="curated-quest-occasion-badge">
-      <span className="curated-quest-occasion-badge-emoji" aria-hidden>
-        {OCCASION_ICONS[quest.occasion]}
-      </span>
       {OCCASION_LABELS[quest.occasion]}
     </span>
   )
 
   if (!src || failed) {
+    // No photo of the place itself: fall back to the occasion's own picture.
     return (
       <div className="curated-quest-image curated-quest-image--fallback">
-        <span aria-hidden>{OCCASION_ICONS[quest.occasion]}</span>
+        <img src={occasionPhoto(quest.occasion)} alt="" />
         {badge}
       </div>
     )
@@ -582,15 +543,16 @@ export function HomePage() {
         <header className="home-hero">
           <span className="home-eyebrow">
             <span className="home-eyebrow-dot" aria-hidden />
-            Fresh quests, made to order
+            Turn any outing into a quest
           </span>
           <h1 className="home-hero-title">
             Tell us the mood.<br />
             <em>We'll handle the plans.</em>
           </h1>
           <p className="home-hero-sub">
-            Pick your vibe and we'll build a curated 2–3 stop quest for your
-            night out — food, drinks, and the right room to end up in.
+            Pick an occasion and we'll put together a quest: a few good
+            places in the right order, mapped and timed — morning, afternoon
+            or night.
           </p>
           <div className="home-cta-row">
             <button
@@ -621,15 +583,29 @@ export function HomePage() {
                 className={`occasion-tile occasion-tile--${o.key}`}
                 onClick={() => openSheet(o.key)}
                 aria-haspopup="dialog"
-                aria-label={`${o.title}: ${o.desc}`}
+                aria-label={`${o.label}: ${o.desc}`}
               >
-                <span className="occasion-tile-chip" aria-hidden>
-                  {o.emoji}
+                <span
+                  className="occasion-tile-photo"
+                  style={{
+                    backgroundImage: `url(${o.photo})`,
+                    backgroundPosition: o.focus,
+                  }}
+                  aria-hidden
+                />
+                <span className="occasion-tile-arrow" aria-hidden>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M7 17 17 7M9 7h8v8"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </span>
-                <div>
-                  <p className="occasion-tile-title">{o.title}</p>
-                  <p className="occasion-tile-desc">{o.desc}</p>
-                </div>
+                <span className="occasion-tile-title">{o.label}</span>
+                <span className="occasion-tile-desc">{o.desc}</span>
               </button>
             ))}
           </div>
@@ -638,7 +614,7 @@ export function HomePage() {
             className="home-build-own"
             onClick={() => track('build_own_tapped')}
           >
-            <span aria-hidden>🛠️</span> Know your spots? Build your own quest
+            Know your spots? Build your own quest
             <span aria-hidden> →</span>
           </Link>
         </section>
@@ -682,7 +658,7 @@ export function HomePage() {
             />
           ) : curatedQuests.length === 0 ? (
             <EmptyState
-              icon="🧭"
+              icon=""
               title="No pre-made quests here yet"
               description="You can still make one from any occasion above."
             />
@@ -767,7 +743,7 @@ export function HomePage() {
             ref={sheetRef}
             role="dialog"
             aria-modal="true"
-            aria-label={`Plan a ${activeData.title}`}
+            aria-label={`Plan a quest: ${activeData.label}`}
             className="sheet"
           >
             <div className="sheet-handle" aria-hidden />
@@ -794,10 +770,7 @@ export function HomePage() {
                 borderColor: 'transparent',
               }}
             >
-              <span className="sheet-occasion-badge-emoji" aria-hidden>
-                {activeData.emoji}
-              </span>
-              {activeData.title}
+              {activeData.label}
             </div>
 
             <form className="sheet-fields" onSubmit={handleSubmit}>
@@ -813,8 +786,7 @@ export function HomePage() {
                       aria-pressed={activeOccasion === o.key}
                       onClick={() => setActiveOccasion(o.key)}
                     >
-                      <span aria-hidden style={{ marginRight: 6 }}>{o.emoji}</span>
-                      {o.title}
+                      {o.label}
                     </button>
                   ))}
                 </div>
@@ -851,7 +823,19 @@ export function HomePage() {
                     disabled={geoLoading}
                     onClick={tryGeolocation}
                   >
-                    {geoLoading ? '⏳' : '📍'}
+                    {geoLoading ? (
+                      <span className="sheet-geo-spinner" aria-hidden />
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <path
+                          d="M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinejoin="round"
+                        />
+                        <circle cx="12" cy="10.5" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+                      </svg>
+                    )}
                   </button>
                 </div>
                 {geoError && (
