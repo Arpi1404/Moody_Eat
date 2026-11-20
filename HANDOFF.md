@@ -281,16 +281,36 @@ verified in a real browser before push.
 
 15. **First-visit tour (Nov 2026).** `components/WelcomeTour.tsx`,
     flags in `lib/onboarding.ts` (localStorage `moodyeat:tour_seen`,
-    `moodyeat:quest_tips_seen`).
+    `moodyeat:hint_<name>_seen`).
     - Home: a small "New here?" card appears 1.5 s after a first visit. It
-      never blocks the page; the four-card tour opens only if tapped. Not
-      shown to anyone whose browser already holds a quest, and not again
-      after it is dismissed, finished, or a quest is generated.
+      never blocks the page; the "How it works" sheet opens only if
+      tapped. Not shown to anyone whose browser already holds a quest, and
+      not again after it is dismissed, finished, or a quest is generated.
+    - The sheet is one card on purpose: pick an occasion and an area, get
+      a plan, with a "See an example quest" button. It was four cards
+      covering every feature, which nobody retained; what a quest lets you
+      do is now taught on the quest page instead (below).
     - "How it works" in the footer (`/?tour=1`) reopens it any time.
-    - Quest page: a one-line tip above the stops explains the icon-only
-      swap and reorder buttons, until dismissed. Not on read-only previews.
-    - Analytics: `tour_opened` (source: nudge | link), `tour_closed` (step,
-      completed), `tour_nudge_dismissed`.
+    - Quest page: Swap is a labelled pill on each stop's photo. On a
+      read-only preview it stays tappable and a toast offers to save the
+      quest, which unlocks it.
+    - Quest page hints (`components/CoachMark.tsx`,
+      `hooks/useQuestHints.ts`): one-time bubbles attached to the control
+      they explain, one at a time, each gone for good once dismissed or
+      once the control is used. Swap, then reorder, then shuffle while
+      planning; ticking off stops after Start; Share after a memory is
+      saved. They wait for sheets and toasts to clear, and the editing
+      ones do not show on read-only previews.
+    - "What can I do here?" above the stops forgets every hint and walks
+      through the ones that apply right now, top of the page to bottom,
+      scrolling to each. Not on read-only previews, where there is
+      nothing to edit. A hint that turns up on its own never scrolls the
+      page; only this replay does.
+    - Analytics: `tour_opened` (source: nudge | link), `tour_closed`
+      (completed; `step` was dropped with the extra cards),
+      `tour_nudge_dismissed`, `hint_shown`, `hint_dismissed`
+      ("Got it"), `hint_followed` (the control was used while its hint was
+      showing), each with `hint`; `hints_replayed` for the link.
 
 16. **Three curated cities, quests anywhere (Nov 2026).** The site no
     longer presents itself as Hyderabad-only.

@@ -200,7 +200,8 @@ export function HomePage() {
   const [stopCount, setStopCount] = useState(3)
   // null = follow the occasion's default start time
   const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
-  // First-visit tour: 'nudge' is the small "New here?" card, 'open' the tour.
+  // First visit: 'nudge' is the small "New here?" card, 'open' the one-card
+  // "How it works" sheet it leads to.
   const [tour, setTour] = useState<'hidden' | 'nudge' | 'open'>('hidden')
   const [submitting, setSubmitting] = useState(false)
   const [submitSlow, setSubmitSlow] = useState(false)
@@ -380,14 +381,11 @@ export function HomePage() {
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
 
-  const closeTour = useCallback(
-    (result: { step: number; completed: boolean }) => {
-      markTourSeen()
-      track('tour_closed', { step: result.step + 1, completed: result.completed })
-      setTour('hidden')
-    },
-    [],
-  )
+  const closeTour = useCallback((completed: boolean) => {
+    markTourSeen()
+    track('tour_closed', { completed })
+    setTour('hidden')
+  }, [])
 
   // Fade sections in as they enter the viewport
   useEffect(() => {
@@ -976,7 +974,7 @@ export function HomePage() {
           onExample={
             curatedQuests.length > 0
               ? () => {
-                  closeTour({ step: 3, completed: true })
+                  closeTour(true)
                   openCuratedQuest(curatedQuests[0])
                 }
               : undefined

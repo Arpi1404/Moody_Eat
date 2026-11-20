@@ -1,26 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-
-const STEPS = [
-  {
-    title: 'Pick a mood, get a plan',
-    body: 'Choose an occasion and an area. We line up a few stops with timings, travel between them and a rough budget.',
-  },
-  {
-    title: 'Make it yours',
-    body: 'Swap any stop, change the order, or shuffle the whole plan. Tap a place to see it on Google Maps.',
-  },
-  {
-    title: 'Take it out',
-    body: 'Press Start and tick off stops as you go. Keep the outing in your journal, with a photo if you like.',
-  },
-  {
-    title: 'Bring people along',
-    body: 'Send the plan as a link or a share card. Know your spots already? Build a quest of your own.',
-  },
-] as const
+import { useEffect, useRef } from 'react'
 
 /** The small "New here?" card a first-time visitor sees on the home page.
- * It never blocks the page: the tour only opens if they ask for it. */
+ * It never blocks the page: the explainer only opens if they ask for it. */
 export function WelcomeNudge({
   onOpen,
   onDismiss,
@@ -31,7 +12,7 @@ export function WelcomeNudge({
   return (
     <aside className="tour-nudge" aria-label="New here?">
       <p className="tour-nudge-text">
-        <strong>New here?</strong> Take the 20{'\u2011'}second tour.
+        <strong>New here?</strong> See how it works.
       </p>
       <button type="button" className="tour-nudge-open" onClick={onOpen}>
         Show me
@@ -48,29 +29,29 @@ export function WelcomeNudge({
   )
 }
 
-/** The tour itself: four short cards, skippable at every step.
+/** "How it works": one card that says what to do first.
  *
- * `onClose` reports how far the visitor got. `onExample`, when given, adds a
- * "See an example" button to the last card. */
+ * It stops there on purpose. Everything a quest lets you do afterwards is
+ * taught on the quest page, next to the control (see CoachMark).
+ *
+ * `onClose` reports whether the visitor read it through ("Got it") or backed
+ * out. `onExample`, when given, adds a "See an example quest" button. */
 export function TourSheet({
   onClose,
   onExample,
 }: {
-  onClose: (result: { step: number; completed: boolean }) => void
+  onClose: (completed: boolean) => void
   onExample?: () => void
 }) {
-  const [step, setStep] = useState(0)
   const primaryRef = useRef<HTMLButtonElement>(null)
-  const isLast = step === STEPS.length - 1
-  const current = STEPS[step]
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose({ step, completed: false })
+      if (event.key === 'Escape') onClose(false)
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose, step])
+  }, [onClose])
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -85,8 +66,8 @@ export function TourSheet({
       <button
         type="button"
         className="swap-sheet-overlay"
-        aria-label="Close the tour"
-        onClick={() => onClose({ step, completed: false })}
+        aria-label="Close"
+        onClick={() => onClose(false)}
       />
       <section
         className="swap-sheet tour-sheet"
@@ -95,48 +76,26 @@ export function TourSheet({
         aria-labelledby="tour-title"
       >
         <div className="swap-sheet-handle" aria-hidden />
-        <p className="swap-sheet-eyebrow">
-          How it works · {step + 1} of {STEPS.length}
-        </p>
-        <div className="tour-step" aria-live="polite">
-          <span className="tour-step-num" aria-hidden>
-            {step + 1}
-          </span>
+        <p className="swap-sheet-eyebrow">How it works</p>
+        <div className="tour-step">
           <h2 id="tour-title" className="tour-step-title">
-            {current.title}
+            Pick a mood, get a plan
           </h2>
-          <p className="tour-step-body">{current.body}</p>
-        </div>
-        <div className="tour-dots" aria-hidden>
-          {STEPS.map((s, i) => (
-            <span
-              key={s.title}
-              className={`tour-dot${i === step ? ' tour-dot--active' : ''}`}
-            />
-          ))}
+          <p className="tour-step-body">
+            Choose an occasion and an area. We line up a few stops with
+            timings, travel between them and a rough budget. Any stop you
+            don't fancy, you can change.
+          </p>
         </div>
         <button
           ref={primaryRef}
           type="button"
           className="swap-confirm-btn tour-primary"
-          onClick={() =>
-            isLast
-              ? onClose({ step, completed: true })
-              : setStep((index) => index + 1)
-          }
+          onClick={() => onClose(true)}
         >
-          {isLast ? 'Got it' : 'Next'}
+          Got it
         </button>
-        {!isLast && (
-          <button
-            type="button"
-            className="tour-secondary"
-            onClick={() => onClose({ step, completed: false })}
-          >
-            Skip
-          </button>
-        )}
-        {isLast && onExample && (
+        {onExample && (
           <button type="button" className="tour-secondary" onClick={onExample}>
             See an example quest
           </button>
