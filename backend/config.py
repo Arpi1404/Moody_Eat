@@ -32,12 +32,11 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = Field(default=60, ge=0, validation_alias="PLACES_RATE_LIMIT_PER_MINUTE")
     rate_limit_enabled: bool = Field(default=True, validation_alias="PLACES_RATE_LIMIT_ENABLED")
 
-    # Location suggestions (the dropdown under the "Where?" field). They lean
-    # towards this point — Hyderabad — within 50 km and stay inside the
-    # country, so "Ban" offers Banjara Hills before Bangkok.
-    suggest_bias_lat: float = Field(default=17.385, validation_alias="SUGGEST_BIAS_LAT")
-    suggest_bias_lng: float = Field(default=78.4867, validation_alias="SUGGEST_BIAS_LNG")
-    suggest_region_code: str = Field(default="in", validation_alias="SUGGEST_REGION_CODE")
+    # Location suggestions (the dropdown under the "Where?" field) lean towards
+    # wherever the user is — the frontend sends a rough position with each
+    # request. Set a country code here (e.g. "in") to also keep suggestions
+    # inside one country; empty means anywhere.
+    suggest_region_code: str = Field(default="", validation_alias="SUGGEST_REGION_CODE")
     # Typing fires a request every few keystrokes, so suggestions get their
     # own, larger allowance and cannot use up the one for searches.
     suggest_rate_limit_per_minute: int = Field(

@@ -14,7 +14,10 @@ import curatedSnapshot from '../../scripts/curated-snapshot.json'
 // Run the dev server with a backend that can serve /api/places/photo (e.g.
 // the prod proxy) so the cards carry real photos instead of emoji tiles.
 
-const QUESTS = curatedSnapshot as unknown as Quest[]
+// Every city's quests, in snapshot order.
+const QUESTS = (
+  curatedSnapshot as unknown as { cities: { quests: Quest[] }[] }
+).cities.flatMap((city) => city.quests)
 
 const STORY_W = 1080
 const STORY_H = 1920

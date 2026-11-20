@@ -6,7 +6,7 @@ export function Footer() {
     <footer className="site-footer" aria-label="Footer">
       <div className="site-footer-inner">
         <span className="site-footer-copy">
-          © {year} MoodyEat — made with care in Hyderabad.
+          © {year} MoodyEat — made with care.
         </span>
         <nav className="site-footer-links" aria-label="Footer navigation">
           {/* Plain <a>: /guides/ is prerendered static HTML outside the SPA */}

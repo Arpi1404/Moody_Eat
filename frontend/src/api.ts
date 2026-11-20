@@ -84,6 +84,16 @@ export async function fetchCuratedQuests(city: string): Promise<Quest[]> {
   return Array.isArray(data) ? data : []
 }
 
+/** One curated quest by id — lets a curated link open on a device that has
+ * never seen the home page. */
+export async function fetchCuratedQuest(id: string): Promise<Quest> {
+  const res = await fetch(
+    `${getApiBase()}/api/quests/curated/${encodeURIComponent(id)}`,
+  )
+  if (!res.ok) throw new Error('Curated quest not found.')
+  return res.json()
+}
+
 export async function fetchStopAlternatives(
   quest: Quest,
   stopIndex: number,
@@ -169,13 +179,21 @@ export type LocationSuggestion = {
 }
 
 /** Places matching what has been typed so far. `session` groups the
- * keystrokes of one search for billing (see fetchSuggestionLocation). */
+ * keystrokes of one search for billing (see fetchSuggestionLocation).
+ * `near` is a rough position; places around it are offered first. */
 export async function fetchLocationSuggestions(
   text: string,
   session: string,
   signal?: AbortSignal,
+  near?: { lat: number; lng: number } | null,
 ): Promise<LocationSuggestion[]> {
   const params = new URLSearchParams({ q: text, session })
+  if (near) {
+    // One decimal place (about 11 km) is plenty to rank by, and no more
+    // precise than it needs to be.
+    params.set('lat', near.lat.toFixed(1))
+    params.set('lng', near.lng.toFixed(1))
+  }
   const res = await fetch(`${getApiBase()}/api/places/autocomplete?${params}`, {
     signal,
   })

@@ -79,11 +79,21 @@ _hydrate_env_from_dotenv(_BACKEND_DIR / ".env")
 from curated_quests import CURATED_QUESTS  # noqa: E402
 from models import Quest, Stop  # noqa: E402
 
-_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
-_FIND_PLACE_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
+# Places API (New). The legacy Details / Find Place endpoints are not enabled
+# for this project's key.
+_DETAILS_URL = "https://places.googleapis.com/v1/places/{place_id}"
+_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 
-_DETAILS_FIELDS = "place_id,name,business_status,rating,geometry/location"
-_FIND_FIELDS = "place_id,name,business_status,rating,geometry/location"
+_PLACE_FIELDS = (
+    "id",
+    "displayName.text",
+    "formattedAddress",
+    "businessStatus",
+    "rating",
+    "userRatingCount",
+    "location",
+    "types",
+)
 
 _PLACEHOLDER_PREFIX = "pending:"
 _LEGACY_PLACEHOLDER_PREFIX = "curated-"
@@ -123,29 +133,56 @@ def _is_placeholder(provider_id: str) -> bool:
     )
 
 
+def _normalize(place: dict[str, Any]) -> dict[str, Any]:
+    """A Places API (New) place in the flat shape the checks below read."""
+    loc = place.get("location") or {}
+    return {
+        "place_id": place.get("id"),
+        "name": (place.get("displayName") or {}).get("text"),
+        "formatted_address": place.get("formattedAddress"),
+        "business_status": place.get("businessStatus"),
+        "rating": place.get("rating"),
+        "user_ratings_total": place.get("userRatingCount"),
+        "types": place.get("types") or [],
+        "weekday_hours": (place.get("regularOpeningHours") or {}).get("weekdayDescriptions") or [],
+        "geometry": {"location": {"lat": loc.get("latitude"), "lng": loc.get("longitude")}},
+    }
+
+
 async def _details(client: httpx.AsyncClient, place_id: str, api_key: str) -> dict[str, Any]:
+    """`{"status": "OK", "result": {...}}`, or a non-OK status without a result."""
     r = await client.get(
-        _DETAILS_URL,
-        params={"place_id": place_id, "fields": _DETAILS_FIELDS, "key": api_key},
+        _DETAILS_URL.format(place_id=place_id),
+        headers={"X-Goog-Api-Key": api_key, "X-Goog-FieldMask": ",".join(_PLACE_FIELDS)},
     )
+    if r.status_code in (400, 404):
+        # An ID Google no longer knows comes back as either, depending on its shape.
+        return {"status": "NOT_FOUND"}
     r.raise_for_status()
-    return r.json()
+    return {"status": "OK", "result": _normalize(r.json())}
 
 
 async def _find_place(
-    client: httpx.AsyncClient, query: str, api_key: str
+    client: httpx.AsyncClient,
+    query: str,
+    api_key: str,
+    *,
+    extra_fields: tuple[str, ...] = (),
 ) -> dict[str, Any]:
-    r = await client.get(
-        _FIND_PLACE_URL,
-        params={
-            "input": query,
-            "inputtype": "textquery",
-            "fields": _FIND_FIELDS,
-            "key": api_key,
+    """`{"status": "OK", "candidates": [...]}`, best match first."""
+    r = await client.post(
+        _TEXT_SEARCH_URL,
+        headers={
+            "X-Goog-Api-Key": api_key,
+            "X-Goog-FieldMask": ",".join(
+                f"places.{f}" for f in (*_PLACE_FIELDS, *extra_fields)
+            ),
         },
+        json={"textQuery": query, "maxResultCount": 3, "languageCode": "en"},
     )
     r.raise_for_status()
-    return r.json()
+    candidates = [_normalize(p) for p in r.json().get("places") or []]
+    return {"status": "OK" if candidates else "ZERO_RESULTS", "candidates": candidates}
 
 
 async def _verify_stop(
@@ -338,7 +375,7 @@ def main() -> None:
     parser.add_argument(
         "--resolve",
         action="store_true",
-        help="For provider_ids prefixed 'pending:' or 'curated-', use Find Place text search to "
+        help="For provider_ids prefixed 'pending:' or 'curated-', use text search to "
         "discover real Place IDs by name+address.",
     )
     parser.add_argument(

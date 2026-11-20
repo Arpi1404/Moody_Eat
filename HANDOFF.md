@@ -8,12 +8,15 @@ and `README.md` (setup + env vars)._
 
 ## 1. What this product is
 
-**MoodyEat** (https://www.moodyeat.in) plans an evening out in Hyderabad:
+**MoodyEat** (https://www.moodyeat.in) plans an evening out, wherever you are:
 pick an occasion (date / friends / solo / family), a time of day, a budget,
 and 1–4 stops — the engine returns a "quest": real Google Places venues,
 scheduled with travel legs and time blocks, with ₹ per-person estimates, a
 map, and a shareable link/story card. Users can also hand-assemble a quest
-at `/create`. India-only, IG-native audience, no signup.
+at `/create`. Quests can be built anywhere; Hyderabad, Bangalore and
+Gurgaon also have six hand-made quests each. The copy never ties the
+product to a city or country — it sells quests. IG-native audience, no
+signup. (Budgets and price estimates are still in ₹.)
 
 **North-star metric:** shares per completed quest (see `ROADMAP.md`).
 Instrumented via Umami.
@@ -66,7 +69,11 @@ backend/
   quest_store.py            # shared-quest store (short links, view counts): SQLite on /data, or Firestore via QUEST_STORE_BACKEND
   quest_templates.py        # stop-sequence templates per occasion (ordered type fallbacks)
   price_inference.py        # price signal chain + INR band tables
-  curated_quests.py         # 12 hand-authored Hyderabad quests (3 per occasion)
+  curated_quests.py         # city registry: 3 cities x 6 hand-authored quests, lookups by name / quest id
+  curated/<city>.py         # the quests themselves (hyderabad, bangalore, gurgaon) + builders.py
+  scripts/lookup_place.py   # venue name -> ready-to-paste place(...) with real Place ID, rating, hours
+  scripts/verify_curated.py # asks Google: every curated stop still open, 4.0+, pin within 500 m
+  scripts/export_curated.py # writes frontend/scripts/curated-snapshot.json for the guide pages
   models.py                 # Pydantic models incl. QuestGenerationRequest
   routes.py                 # /api/quest/generate, /alternatives, /places/nearby, curated
   services/
@@ -79,17 +86,19 @@ frontend/src/
   pages/CreateQuestPage.tsx # custom quest builder (/create)
   pages/QuestPage.tsx       # quest view: chips, feedback, share sheet (WhatsApp/PNG/link), shuffle
   pages/QuestCard.tsx       # map + stop cards + swap + reorder
+  lib/cities.ts             # the 3 curated cities, nearest-city maths, saved pick, rough visitor position
   lib/questBuild.ts         # SHARED schedule math (mirrors backend travel model) + custom-quest assembly
   lib/questHistory.ts       # recent-places memory for repeat-visitor variety
   lib/budget.ts             # ₹ formatting (incl. "under ₹X" / "Free" clamps)
   lib/questShare.ts         # #q= fragment share encoding (whole Quest object, deflate+base64url)
 frontend/scripts/
-  generate-guides.mjs       # postbuild: static SEO pages under dist/guides/ + sitemap + robots
+  generate-guides.mjs       # postbuild: static SEO pages under dist/guides/<city>/ + sitemap + robots
   curated-snapshot.json     # checked-in data for deterministic guide builds
 marketing/                  # 6-week launch playbook, captions, reddit post, influencer DM
                             # (assets: dev route /dev/marketing-cards renders curated quests
                             #  into IG story/feed PNGs via the share-card component)
 frontend/api/quest-og       # Vercel function: OG preview for crawlers hitting /quest/* (from share-card PR)
+frontend/api/geo            # Vercel function: visitor's rough position from Vercel's IP headers
 ```
 
 ---
@@ -250,8 +259,9 @@ verified in a real browser before push.
     sheet and on build-your-own now offer a dropdown of matching places as
     you type (`components/LocationInput.tsx`).
     - Backend: `GET /api/places/autocomplete?q=&session=` (Google Places
-      Autocomplete (New), biased to Hyderabad within 50 km and limited to
-      India — `SUGGEST_BIAS_LAT/LNG`, `SUGGEST_REGION_CODE`) and
+      Autocomplete (New); since the multi-city change it leans towards
+      the visitor's rough position sent as `&lat=&lng=`, and is not limited
+      to a country unless `SUGGEST_REGION_CODE` is set) and
       `GET /api/places/autocomplete/location?place_id=&session=` (Place
       Details, `location` field only). The key stays server-side.
     - Picking a suggestion reuses the 📍 hand-off: the request carries
@@ -282,6 +292,49 @@ verified in a real browser before push.
     - Analytics: `tour_opened` (source: nudge | link), `tour_closed` (step,
       completed), `tour_nudge_dismissed`.
 
+16. **Three curated cities, quests anywhere (Nov 2026).** The site no
+    longer presents itself as Hyderabad-only.
+    - **Content.** Six quests per city (2 date, 2 friends, 1 solo, 1
+      family) in `backend/curated/{hyderabad,bangalore,gurgaon}.py`.
+      Hyderabad went from 12 to 6 and those six were repaired: the old
+      place IDs had been resolved by a script that no longer worked, and
+      one stop had closed (Farzi Cafe), one pointed at a corporate office
+      (Ironhill), two were street addresses, two were rated 3.8, and
+      several were scheduled outside opening hours. "Golconda Sunset…" is
+      now "Golconda Afternoon…" because the fort shuts at 5. Bangalore and
+      Gurgaon are new; the four old Gurgaon placeholders are gone.
+    - **Checks.** `tests/test_curated_quests.py` (offline: mix, no repeated
+      venue, real `ChIJ…` IDs, stops within 40 km of the centre, schedules
+      that add up) and `scripts/verify_curated.py` (online: open, 4.0+,
+      pin within 500 m). The verifier and the new `lookup_place.py` use
+      Places API (New) — the legacy Details / Find Place endpoints are
+      **not enabled** on this project's key.
+    - **API.** `GET /api/quests/curated?city=` accepts keys and other
+      names (bengaluru, gurugram, secunderabad);
+      `GET /api/quests/curated/{id}` returns one quest so a curated link
+      opens on any device.
+    - **Home page.** City toggle under "We made these for you"
+      (`lib/cities.ts`). First city shown: `/?city=<key>` link → the
+      visitor's saved pick → the curated city within 40 km of their rough
+      position → Hyderabad. Rough position = device location only if the
+      site was already allowed (never a prompt on load), else
+      `/api/geo` (Vercel IP headers; often a city off on mobile data).
+      Delhi and Noida fall to Gurgaon. Visitors known to be elsewhere get
+      a "we'll build a quest wherever you are" line. Six cards show as a
+      3×2 grid from 900 px; narrower screens keep the swipe row.
+    - **Guides.** `/guides/<city>/<slug>/` with a hub per city. The 12 old
+      `/guides/<slug>/` addresses are static redirect stubs
+      (`LEGACY_REDIRECTS` in `generate-guides.mjs`; the build fails if one
+      points at a page that no longer exists).
+    - **Analytics.** `curated_city_shown` (city, source: link | saved |
+      device | ip | default), `curated_city_changed` (city), and
+      `curated_quest_tapped` now carries `city`.
+    - **Not covered.** Budgets and price bands are ₹-only, so a quest
+      built outside India shows no estimate or an INR-shaped one;
+      `/api/geo` does nothing in local dev (use `?city=`); the copy in
+      each quest was written from general knowledge and checked against
+      Google for existence, rating and hours, not walked by a local.
+
 Also merged during this period (by the owner, not this engagement):
 **`51645a2`** — dark editorial share-card redesign PR + `/api/quest-og`
 crawler preview function.
@@ -300,10 +353,14 @@ events unchanged.
 
 ## 3. Current state & known quirks (verify, don't assume)
 
-- **Production is healthy** (last verified 14 Nov 2026, at the API level
-  on Cloud Run revision `moodyeat-api-00002-fqw`: a device-location quest
-  request, the curated list, a share-store lookup, and CORS from
-  www.moodyeat.in. The live site was not walked through in a browser).
+- **Production is healthy** (last verified 20 Nov 2026, at the API level
+  on Cloud Run revision `moodyeat-api-00004-sm7`, deployed that day with
+  the multi-city backend: curated lists for all three cities and their
+  other names, a curated quest by id, a generated quest, location
+  suggestions leaning to a position, a place photo, a share-store lookup,
+  and CORS from www.moodyeat.in. The frontend for it ships when
+  Arpi1404/Moody_Eat#5 merges. Previous revision, for a rollback:
+  `moodyeat-api-00003-xr7`).
 - **Local dev works again** (verified 14 Nov 2026): the Google key in
   `backend/.env` returns Places data. Start the API from `backend/` with
   `.venv/bin/python -m uvicorn main:app --port 8000` — the venv's own
@@ -320,14 +377,18 @@ events unchanged.
   at a higher SKU tier — watch the first weeks. A billing alert is
   recommended (see next steps).
 - **Curated snapshot**: `frontend/scripts/curated-snapshot.json` must be
-  refreshed after editing `backend/curated_quests.py` (command in the
-  script header), or guide pages go stale.
+  refreshed after editing anything under `backend/curated/`
+  (`cd backend && python -m scripts.export_curated`), or guide pages go
+  stale.
+- **Borderline curated ratings**: Hotel Shadab, Nimrah, Paradise
+  (Hyderabad) and Airlines Hotel (Bangalore) sit at exactly 4.0, COMO
+  (Gurgaon) at 4.1 — the first to fail `verify_curated` if they dip.
 - **12 backend test warnings** are just `datetime.utcnow()` deprecation in
   models — known, harmless, fix opportunistically.
 
 ### Commands
 ```
-# backend tests (61)          # frontend
+# backend tests (155)         # frontend
 cd backend                     cd frontend
 venv\Scripts\python -m pytest  npm run build   # also generates dist/guides/
                                npm run lint    # must stay at 0 problems
@@ -360,13 +421,17 @@ venv\Scripts\python -m pytest  npm run build   # also generates dist/guides/
    now merges PRs; nothing gates them today).
 7. **Schedule `backend/scripts/verify_curated.py`** weekly (GitHub Action)
    so closed/degraded curated venues get flagged before users or Google
-   notice.
+   notice. It had silently stopped working (legacy API) and one curated
+   stop had closed by the time anyone looked — worth doing now that there
+   are 55 stops across three cities.
 8. **Google Cloud billing alert** (owner action, ~5 min, no code).
 9. **Uptime monitoring** on the Cloud Run backend (UptimeRobot free tier).
 
 ### Deliberately NOT doing (gates from ROADMAP.md still apply)
-- Second city before Hyderabad shows ≥100 weekly quest creations and ≥25%
-  creator retention. Curated content doesn't copy-paste.
+- A fourth curated city before the three live ones show demand
+  (`curated_city_shown` / `curated_quest_tapped` by city). Curated content
+  doesn't copy-paste. (The original one-city gate was lifted by the owner
+  in Nov 2026.)
 - Accounts/cross-device sync before users ask; localStorage is fine.
 - Paid ads before the share loop proves out organically.
 - Stop-type composition UI (works against the one-tap pitch).

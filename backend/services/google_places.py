@@ -311,28 +311,30 @@ class GooglePlacesProvider(PlacesProvider):
         text: str,
         *,
         session_token: str | None = None,
+        bias: tuple[float, float] | None = None,
     ) -> list[PlaceSuggestion]:
         """Places matching what the user has typed so far, best match first.
+
+        `bias` is a rough (lat, lng) for the user: places within 50 km of it
+        rank first, so "Ban" offers Banjara Hills in Hyderabad and
+        Banashankari in Bangalore. It only reorders — anywhere can still match.
 
         `session_token` ties the keystrokes of one search together. When that
         search ends with `suggestion_location` under the same token, Google
         bills the whole session as one Place Details call and the keystroke
         requests are free; without that call each request is billed alone.
         """
-        payload: dict[str, Any] = {
-            "input": text,
-            "languageCode": "en",
-            "includedRegionCodes": [self._settings.suggest_region_code],
-            "locationBias": {
+        payload: dict[str, Any] = {"input": text, "languageCode": "en"}
+        region = self._settings.suggest_region_code.strip()
+        if region:
+            payload["includedRegionCodes"] = [region]
+        if bias is not None:
+            payload["locationBias"] = {
                 "circle": {
-                    "center": {
-                        "latitude": self._settings.suggest_bias_lat,
-                        "longitude": self._settings.suggest_bias_lng,
-                    },
+                    "center": {"latitude": bias[0], "longitude": bias[1]},
                     "radius": _SUGGEST_BIAS_RADIUS_M,
                 }
-            },
-        }
+            }
         if session_token:
             payload["sessionToken"] = session_token
         data = await self._post_json_new(
