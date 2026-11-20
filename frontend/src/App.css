@@ -4270,6 +4270,28 @@ a.explore-edit-filters {
   opacity: 0.58;
 }
 
+/* iOS fallback: the rendered story card, saved with a long-press. */
+.qp-share-preview {
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 4px;
+}
+
+.qp-share-preview-img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: min(52dvh, 460px);
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  /* Keep the iOS long-press menu ("Save to Photos") available. */
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
 /* Journal capture sheet */
 .journal-sheet-overlay {
   position: fixed;

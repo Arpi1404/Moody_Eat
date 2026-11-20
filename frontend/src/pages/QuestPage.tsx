@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { toPng } from 'html-to-image'
+import { toBlob, toPng } from 'html-to-image'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import type { Quest, QuestGenerationRequest } from '../types/quest'
@@ -99,6 +99,53 @@ function downloadPng(dataUrl: string, fileName: string) {
   anchor.remove()
 }
 
+// iPhone/iPad browsers mostly ignore <a download> (in-app browsers drop it,
+// Safari files it under Files → Downloads), so those devices get the native
+// share sheet instead — it has "Save Image" and the Instagram/WhatsApp
+// targets. Every other platform keeps the plain download above.
+function isIosDevice(): boolean {
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return true
+  // iPadOS reports itself as a Mac; a touch-capable "Mac" is an iPad.
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+}
+
+function canShareFile(file: File): boolean {
+  try {
+    return (
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [file] })
+    )
+  } catch {
+    return false
+  }
+}
+
+function shareCardCaptureOptions(fontEmbedCSS: string) {
+  return {
+    backgroundColor: '#1c1310',
+    cacheBust: true,
+    fontEmbedCSS,
+    pixelRatio: 1,
+    skipFonts: true,
+    width: 1080,
+    height: 1920,
+  }
+}
+
+/** What the prepared iOS image was rendered from — a reopened share sheet
+ *  reuses the image unless the title or the stops changed in between. */
+function iosShareImageKey(quest: Quest): string {
+  const stops = quest.stops.map((stop) => stop.place.provider_id ?? stop.place.name)
+  return [quest.id, quest.title, ...stops].join('|')
+}
+
+type IosShareImage =
+  | { status: 'idle' }
+  | { status: 'preparing' }
+  | { status: 'ready'; file: File }
+  | { status: 'error' }
+
 async function copyToClipboard(text: string): Promise<void> {
   if (!navigator.clipboard?.writeText) return
 
@@ -191,7 +238,13 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const [createdBanner, setCreatedBanner] = useState(false)
   const [shuffling, setShuffling] = useState(false)
   const [feedbackVote, setFeedbackVote] = useState<'up' | 'down' | null>(null)
+  const [iosShareImage, setIosShareImage] = useState<IosShareImage>({
+    status: 'idle',
+  })
+  const [sharePreviewUrl, setSharePreviewUrl] = useState<string | null>(null)
   const shareCardRef = useRef<HTMLDivElement | null>(null)
+  const iosShareImageKeyRef = useRef<string | null>(null)
+  const sharePreviewUrlRef = useRef<string | null>(null)
   const toastTimer = useRef<number | null>(null)
   const createdBannerTimer = useRef<number | null>(null)
 
@@ -286,6 +339,8 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       if (toastTimer.current) window.clearTimeout(toastTimer.current)
       if (createdBannerTimer.current)
         window.clearTimeout(createdBannerTimer.current)
+      if (sharePreviewUrlRef.current)
+        URL.revokeObjectURL(sharePreviewUrlRef.current)
     }
   }, [])
 
@@ -438,9 +493,125 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     }
   }
 
+  const iosDevice = isIosDevice()
+
+  const closeSharePreview = () => {
+    if (sharePreviewUrlRef.current) {
+      URL.revokeObjectURL(sharePreviewUrlRef.current)
+      sharePreviewUrlRef.current = null
+    }
+    setSharePreviewUrl(null)
+  }
+
+  // iOS only allows navigator.share() directly inside a tap, and rendering
+  // the card takes a few seconds — so the image is rendered as soon as the
+  // share sheet opens and the button enables once it is ready.
+  const prepareIosShareImage = async () => {
+    const titledQuest = { ...quest, title: title.trim() || quest.title }
+    const key = iosShareImageKey(titledQuest)
+    if (iosShareImageKeyRef.current === key && iosShareImage.status !== 'error') return
+    iosShareImageKeyRef.current = key
+    const isCurrent = () => iosShareImageKeyRef.current === key
+
+    setIosShareImage({ status: 'preparing' })
+    setShowShareCard(true)
+    try {
+      await nextPaint()
+
+      const node = shareCardRef.current
+      if (!node) throw new Error('Share card was not ready.')
+
+      await waitForShareCardAssets(node)
+
+      const fontEmbedCSS = await shareCardFontEmbedCss().catch(() => '')
+      const blob = await toBlob(node, shareCardCaptureOptions(fontEmbedCSS))
+      if (!blob) throw new Error('Share card produced no image.')
+
+      const file = new File([blob], makePngFileName(titledQuest.title), {
+        type: 'image/png',
+      })
+      if (isCurrent()) setIosShareImage({ status: 'ready', file })
+    } catch {
+      if (isCurrent()) setIosShareImage({ status: 'error' })
+    } finally {
+      if (isCurrent()) setShowShareCard(false)
+    }
+  }
+
   const handleShare = () => {
     if (sharing) return
     setShareMenuOpen(true)
+    if (iosDevice) {
+      closeSharePreview()
+      void prepareIosShareImage()
+    }
+  }
+
+  const iosImagePreparing =
+    iosDevice &&
+    (iosShareImage.status === 'preparing' || iosShareImage.status === 'idle')
+
+  const closeShareMenu = () => {
+    setShareMenuOpen(false)
+    closeSharePreview()
+  }
+
+  const openSharePreview = (file: File) => {
+    closeSharePreview()
+    const url = URL.createObjectURL(file)
+    sharePreviewUrlRef.current = url
+    setSharePreviewUrl(url)
+  }
+
+  const handleIosShareImage = async () => {
+    if (iosShareImage.status === 'preparing' || iosShareImage.status === 'idle') return
+
+    const titledQuest = { ...quest, title: title.trim() || quest.title }
+
+    if (iosShareImage.status === 'error') {
+      await copyToClipboard(
+        makeQuestTextSummary(titledQuest, await makeQuestShareUrl(titledQuest)),
+      )
+      track('quest_shared', {
+        quest_id: titledQuest.id,
+        share_method: 'clipboard_fallback',
+      })
+      closeShareMenu()
+      showToast("Couldn't make image — copied details instead.")
+      return
+    }
+
+    const { file } = iosShareImage
+
+    // No file sharing here (some in-app browsers): show the image so it can
+    // be saved with a long-press.
+    if (!canShareFile(file)) {
+      openSharePreview(file)
+      track('share_image_preview_shown', {
+        quest_id: titledQuest.id,
+        reason: 'share_unsupported',
+      })
+      return
+    }
+
+    try {
+      // Must stay the first await: Safari rejects share() once the tap that
+      // triggered it is no longer the current user gesture.
+      await navigator.share({ files: [file] })
+      track('quest_shared', {
+        quest_id: titledQuest.id,
+        share_method: 'native_share',
+      })
+      closeShareMenu()
+    } catch (err) {
+      // The person closed the share sheet — leave the menu as it was.
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      openSharePreview(file)
+      track('share_image_preview_shown', {
+        quest_id: titledQuest.id,
+        reason: 'share_failed',
+      })
+    }
   }
 
   const handleShareWhatsApp = async () => {
@@ -477,6 +648,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   const handleDownloadShareImage = async () => {
+    if (iosDevice) return handleIosShareImage()
     if (sharing) return
 
     const titledQuest = { ...quest, title: title.trim() || quest.title }
@@ -494,15 +666,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
 
       // Fall back to '' (system serif) rather than failing the whole export.
       const fontEmbedCSS = await shareCardFontEmbedCss().catch(() => '')
-      const dataUrl = await toPng(node, {
-        backgroundColor: '#1c1310',
-        cacheBust: true,
-        fontEmbedCSS,
-        pixelRatio: 1,
-        skipFonts: true,
-        width: 1080,
-        height: 1920,
-      })
+      const dataUrl = await toPng(node, shareCardCaptureOptions(fontEmbedCSS))
       const fileName = makePngFileName(titledQuest.title)
       setShowShareCard(false)
 
@@ -765,7 +929,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
               className="qp-share-backdrop"
               aria-label="Close share options"
               onClick={() => {
-                if (!sharing) setShareMenuOpen(false)
+                if (!sharing) closeShareMenu()
               }}
             />
             <section
@@ -777,77 +941,102 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
               <div className="qp-share-sheet-handle" aria-hidden />
               <div className="qp-share-sheet-header">
                 <p className="qp-share-eyebrow">Share quest</p>
-                <h2 id="qp-share-title">Choose what to send</h2>
+                <h2 id="qp-share-title">
+                  {sharePreviewUrl ? 'Save the story card' : 'Choose what to send'}
+                </h2>
                 <p>
-                  Download the story card as a PNG, or copy the quest link to
-                  paste anywhere.
+                  {sharePreviewUrl
+                    ? 'Touch and hold the image, then choose Save to Photos.'
+                    : iosDevice
+                      ? 'Save or share the story card, or copy the quest link to paste anywhere.'
+                      : 'Download the story card as a PNG, or copy the quest link to paste anywhere.'}
                 </p>
               </div>
-              <div className="qp-share-actions">
-                <button
-                  type="button"
-                  className="qp-share-option"
-                  onClick={handleShareWhatsApp}
-                  disabled={sharing}
-                >
-                  <span
-                    className="qp-share-option-icon qp-share-option-icon--wa"
-                    aria-hidden
+              {sharePreviewUrl ? (
+                <div className="qp-share-preview">
+                  <img
+                    className="qp-share-preview-img"
+                    src={sharePreviewUrl}
+                    alt={`Story card for ${title.trim() || quest.title}`}
+                  />
+                </div>
+              ) : (
+                <div className="qp-share-actions">
+                  <button
+                    type="button"
+                    className="qp-share-option"
+                    onClick={handleShareWhatsApp}
+                    disabled={sharing}
                   >
-                    WA
-                  </span>
-                  <span>
-                    <span className="qp-share-option-title">
-                      Share on WhatsApp
+                    <span
+                      className="qp-share-option-icon qp-share-option-icon--wa"
+                      aria-hidden
+                    >
+                      WA
                     </span>
-                    <span className="qp-share-option-subtitle">
-                      Send the plan straight to the group.
+                    <span>
+                      <span className="qp-share-option-title">
+                        Share on WhatsApp
+                      </span>
+                      <span className="qp-share-option-subtitle">
+                        Send the plan straight to the group.
+                      </span>
                     </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="qp-share-option"
-                  onClick={handleDownloadShareImage}
-                  disabled={sharing}
-                >
-                  <span className="qp-share-option-icon" aria-hidden>
-                    PNG
-                  </span>
-                  <span>
-                    <span className="qp-share-option-title">
-                      {sharing ? 'Making PNG...' : 'Download PNG'}
+                  </button>
+                  <button
+                    type="button"
+                    className="qp-share-option"
+                    onClick={handleDownloadShareImage}
+                    disabled={sharing || iosImagePreparing}
+                  >
+                    <span className="qp-share-option-icon" aria-hidden>
+                      PNG
                     </span>
-                    <span className="qp-share-option-subtitle">
-                      Save the Instagram-story card.
+                    <span>
+                      <span className="qp-share-option-title">
+                        {iosDevice
+                          ? iosImagePreparing
+                            ? 'Preparing image...'
+                            : 'Save or share image'
+                          : sharing
+                            ? 'Making PNG...'
+                            : 'Download PNG'}
+                      </span>
+                      <span className="qp-share-option-subtitle">
+                        {iosDevice
+                          ? 'Save to Photos or post the story card.'
+                          : 'Save the Instagram-story card.'}
+                      </span>
                     </span>
-                  </span>
-                  {sharing && <span className="qp-action-spinner" aria-hidden />}
-                </button>
-                <button
-                  type="button"
-                  className="qp-share-option"
-                  onClick={handleCopyShareLink}
-                  disabled={sharing}
-                >
-                  <span className="qp-share-option-icon" aria-hidden>
-                    URL
-                  </span>
-                  <span>
-                    <span className="qp-share-option-title">Copy link</span>
-                    <span className="qp-share-option-subtitle">
-                      Put the quest URL on your clipboard.
+                    {(sharing || iosImagePreparing) && (
+                      <span className="qp-action-spinner" aria-hidden />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="qp-share-option"
+                    onClick={handleCopyShareLink}
+                    disabled={sharing}
+                  >
+                    <span className="qp-share-option-icon" aria-hidden>
+                      URL
                     </span>
-                  </span>
-                </button>
-              </div>
+                    <span>
+                      <span className="qp-share-option-title">Copy link</span>
+                      <span className="qp-share-option-subtitle">
+                        Put the quest URL on your clipboard.
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 className="qp-share-cancel"
-                onClick={() => setShareMenuOpen(false)}
+                onClick={sharePreviewUrl ? closeSharePreview : closeShareMenu}
                 disabled={sharing}
               >
-                Cancel
+                {sharePreviewUrl ? 'Back' : 'Cancel'}
               </button>
             </section>
           </div>
