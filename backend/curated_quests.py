@@ -31,6 +31,11 @@ from models import Quest
 QUESTS_PER_CITY = 6
 
 
+def _curated(quests: list[Quest]) -> list[Quest]:
+    """The city's quests, marked as hand-made rather than generated."""
+    return [quest.model_copy(update={"origin": "curated"}) for quest in quests]
+
+
 @dataclass(frozen=True)
 class CuratedCity:
     key: str
@@ -51,7 +56,7 @@ CURATED_CITIES: tuple[CuratedCity, ...] = (
         lat=17.385,
         lng=78.4867,
         aliases=("secunderabad", "cyberabad"),
-        quests=hyderabad.QUESTS,
+        quests=_curated(hyderabad.QUESTS),
     ),
     CuratedCity(
         key="bangalore",
@@ -59,7 +64,7 @@ CURATED_CITIES: tuple[CuratedCity, ...] = (
         lat=12.9716,
         lng=77.5946,
         aliases=("bengaluru",),
-        quests=bangalore.QUESTS,
+        quests=_curated(bangalore.QUESTS),
     ),
     CuratedCity(
         key="gurgaon",
@@ -67,7 +72,7 @@ CURATED_CITIES: tuple[CuratedCity, ...] = (
         lat=28.4595,
         lng=77.0266,
         aliases=("gurugram",),
-        quests=gurgaon.QUESTS,
+        quests=_curated(gurgaon.QUESTS),
     ),
 )
 

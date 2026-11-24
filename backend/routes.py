@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from datetime import time
 
@@ -11,6 +12,7 @@ from curated_quests import CURATED_CITIES, find_city, find_quest
 from deps import get_nearby_places_service, get_places_provider
 from models import (
     ALLOWED_NEARBY_TYPES,
+    PLACE_ID_PATTERN,
     LocationSuggestion,
     LocationSuggestionsResponse,
     NearbyPlacesRequest,
@@ -25,8 +27,10 @@ from models import (
     StoredQuestCreateResponse,
     StoredQuestStats,
     SuggestionLocation,
+    SwapEvent,
 )
 from quest_store import fetch_quest, store_quest
+from swap_log import record_swap
 from price_inference import CostBand, estimate_cost_band
 from quest_generator import (
     _DWELL,
@@ -42,6 +46,8 @@ from services.nearby_places_service import NearbyPlacesService, map_provider_err
 from services.place_blurbs_service import generate_place_blurbs
 from services.place_photo_service import fetch_place_photo
 from services.places_exceptions import PlacesProviderError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -160,6 +166,38 @@ async def get_shared_quest_stats(
     if stored is None:
         raise HTTPException(status_code=404, detail={"message": "Shared quest not found."})
     return StoredQuestStats(short_id=stored.short_id, views=stored.views, created_at=stored.created_at)
+
+
+# A swap event is a dozen place ids and a few enums: well under 1 KB.
+_MAX_SWAP_LOG_BYTES = 8_000
+
+
+@router.post("/api/quest/swap-log", status_code=204)
+async def log_stop_swap(request: Request) -> Response:
+    """Record that someone replaced one suggested place with another.
+
+    The quest page posts this after a swap is confirmed and never waits on
+    the answer, so nothing here can slow down or break a swap. See
+    swap_log.py for what is stored and why.
+    """
+    body = await request.body()
+    if len(body) > _MAX_SWAP_LOG_BYTES:
+        raise HTTPException(status_code=413, detail={"message": "Swap event is too large."})
+    try:
+        event = SwapEvent.model_validate_json(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail={"message": "Invalid swap event."}) from exc
+
+    try:
+        await run_in_threadpool(record_swap, event)
+    except Exception as exc:
+        # Losing an event is acceptable; a 5xx keeps the loss visible in the
+        # service's request metrics instead of hiding it behind a 204.
+        logger.warning("swap_log_failed err_type=%s", exc.__class__.__name__)
+        raise HTTPException(
+            status_code=503, detail={"message": "Could not record the swap."}
+        ) from exc
+    return Response(status_code=204)
 
 
 @router.post(
@@ -325,7 +363,7 @@ async def nearby_places(
 # Google's own limits: a session token is at most 36 URL-safe characters (a
 # UUID). The place id ends up in an upstream URL path, hence the strict shape.
 _SESSION_TOKEN_PATTERN = r"^[A-Za-z0-9_-]{1,36}$"
-_PLACE_ID_PATTERN = r"^[A-Za-z0-9_-]{10,400}$"
+_PLACE_ID_PATTERN = PLACE_ID_PATTERN
 
 
 def _provider_http_error(exc: PlacesProviderError) -> HTTPException:
