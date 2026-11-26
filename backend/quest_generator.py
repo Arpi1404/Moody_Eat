@@ -31,7 +31,16 @@ from models import (
     StopCategory,
     TravelMode,
 )
-from quest_templates import TEMPLATES, TemplateStop
+from quest_templates import (
+    CAFE,
+    DESSERT,
+    DRINKS,
+    MAX_STOPS,
+    MEAL,
+    PLANS,
+    TREAT,
+    TemplateStop,
+)
 from services.nearby_places_service import NearbyPlacesService
 from services.place_blurbs_service import generate_quest_narrative
 from services.places_exceptions import PlacesProviderError
@@ -41,10 +50,14 @@ from services.weather_service import OUTDOOR_TYPES, rain_expected
 logger = logging.getLogger(__name__)
 
 # ── Travel model ──────────────────────────────────────────────────────────────
+# Mirrored in frontend/src/lib/questBuild.ts: change one, change both.
 
 _WALK_M_PER_MIN: float = 80.0    # ≈ 4.8 km/h
 _DRIVE_M_PER_MIN: float = 350.0  # ≈ 21 km/h in city traffic
-_WALK_THRESHOLD_M: float = 1_400.0  # ≤ 1.4 km → walk; above → drive
+# Distances are straight lines and the walk along real streets is longer, so
+# the limit is kept short: 800 m is ten minutes on paper and nearer fifteen on
+# foot.
+_WALK_THRESHOLD_M: float = 800.0  # ≤ 800 m → walk; above → drive
 
 # ── Dwell time per stop category (minutes) ────────────────────────────────────
 
@@ -64,25 +77,7 @@ _DWELL_STRETCH_CAP: float = 2.0
 # Requests at or above this many hours get a fourth stop, since three stops
 # can't plausibly fill a "6+ hr" outing even at maximum stretch.
 _LONG_QUEST_HOURS: float = 5.5
-
-_LONG_QUEST_EXTRA_STOP: dict[Occasion, TemplateStop] = {
-    Occasion.date: TemplateStop(
-        category=StopCategory.cafe,
-        places_types=("cafe", "bakery"),
-    ),
-    Occasion.friends: TemplateStop(
-        category=StopCategory.activity,
-        places_types=("bowling_alley", "movie_theater", "shopping_mall", "tourist_attraction"),
-    ),
-    Occasion.solo: TemplateStop(
-        category=StopCategory.cafe,
-        places_types=("cafe", "bakery"),
-    ),
-    Occasion.family: TemplateStop(
-        category=StopCategory.activity,
-        places_types=("park", "museum", "tourist_attraction", "shopping_mall"),
-    ),
-}
+_DEFAULT_STOP_COUNT: int = 3
 
 # ── Quest start time per occasion (hour, minute, 24-h) ───────────────────────
 
@@ -108,6 +103,56 @@ def _quest_start(req: QuestGenerationRequest) -> tuple[int, int]:
     if req.day_part is not None:
         return _DAY_PART_START[req.day_part]
     return _START[req.occasion]
+
+
+def _spoken_day_part(req: QuestGenerationRequest) -> DayPart:
+    """What a person would call the start time. Names the quest and its text."""
+    if req.day_part is not None:
+        return req.day_part
+    hour = _START[req.occasion][0]
+    if hour < 12:
+        return DayPart.morning
+    if hour < 17:
+        return DayPart.afternoon
+    if hour < 20:
+        return DayPart.evening
+    return DayPart.night
+
+
+def _plan_day_part(req: QuestGenerationRequest) -> DayPart:
+    """Which order of stops suits the start time.
+
+    The same as the spoken day part except close to dinner: a request with no
+    day part starts at the occasion's own time, and a date at 19:00 is an
+    evening by name but opens with dinner, like a night plan.
+    """
+    if req.day_part is not None:
+        return req.day_part
+    hour, minute = _START[req.occasion]
+    start = hour * 60 + minute
+    if start < 11 * 60 + 30:
+        return DayPart.morning
+    if start < 16 * 60:
+        return DayPart.afternoon
+    if start < 18 * 60 + 45:
+        return DayPart.evening
+    return DayPart.night
+
+
+# ── Meal hours ────────────────────────────────────────────────────────────────
+# A plan that starts before a meal hour does not open with the meal (see
+# quest_templates.PLANS), and the meal is held until the hour below. Nobody
+# eats dinner at 17:30, and a kitchen that opens for dinner at 19:00 is shut
+# until then, which leaves only the all-day chains to choose from.
+_MEAL_NOT_BEFORE: dict[DayPart, tuple[int, int]] = {
+    DayPart.morning: (12, 0),
+    DayPart.evening: (19, 0),
+}
+# The wait is spent at the stop before the meal, which runs this much longer
+# at most. A longer gap than this is left alone and the meal starts early:
+# an hour and a half over one coffee is not a plan either.
+_LINGER_MAX_MIN: int = 30
+_LINGER_STEP_MIN: int = 5
 
 # ── Scoring weights per budget tier ──────────────────────────────────────────
 # Budget now means price fit, not "cheap places should merely be closer".
@@ -137,6 +182,32 @@ _SCORE_WEIGHTS: dict[CostEstimate, dict[str, float]] = {
 
 _UNKNOWN_PRICE_FIT = 0.58
 _UNKNOWN_PRICE_CONFIDENCE = 0.45
+
+# Past a few thousand reviews, more reviews say a place is busy, not that it
+# is better. Uncapped, the most-reviewed chain in an area wins the food stop
+# of every date and solo quest there. Capped for those two occasions, and only
+# where the search is for food or drink: for a park or a sight the count is
+# what tells the city's main park from a pocket park, so it stays.
+_POPULARITY_FULL_AT_REVIEWS: int = 10_000
+_POPULARITY_CAP_REVIEWS: int = 3_000
+_POPULARITY_CAPPED_OCCASIONS = frozenset({Occasion.date, Occasion.solo})
+_FOOD_SEARCH_TYPES = frozenset({"restaurant", "cafe", "bakery", "bar", "night_club"})
+
+
+def _popularity_cap(occasion: Occasion, place_type: str) -> int | None:
+    """The review count beyond which popularity adds nothing, if any."""
+    if occasion in _POPULARITY_CAPPED_OCCASIONS and place_type in _FOOD_SEARCH_TYPES:
+        return _POPULARITY_CAP_REVIEWS
+    return None
+
+
+# The opening stop has no previous stop to be near, so it is judged on how
+# far it is from the spot that was searched. Anywhere within this distance
+# counts the same; beyond it the fit falls away. Without this, a plan that
+# opens with a park opens with the most popular park within 3 km, and every
+# later stop follows it out of the area.
+_FIRST_STOP_ROUTE_FIT: float = 0.66
+_FIRST_STOP_NEAR_M: float = 1_500.0
 
 # How sure we are the price level is right, by where it came from. Heuristic
 # levels (type/name based) should lose to real Google data on close calls.
@@ -210,7 +281,7 @@ _PLACE_OF_WORSHIP_TYPES = frozenset(
     }
 )
 _DATE_NAME_DENYLIST_RE = re.compile(
-    r"\b(?:escape\s+room|mystery\s+escape|lock\s+n\s+escape)\b",
+    r"\b(?:escape\s+rooms?|mystery\s+escape|lock\s+n\s+escape|rage\s+rooms?)\b",
     re.IGNORECASE,
 )
 _VIABILITY_RULES = (
@@ -224,35 +295,75 @@ _VIABILITY_RULES = (
 
 # ── Quest title lookup ────────────────────────────────────────────────────────
 
-_TITLES: dict[Occasion, dict[CostEstimate, str]] = {
+# One title per time of day, in the order morning, afternoon, evening, night.
+# A title that names a time ("An Evening Date") has to be true of the quest it
+# is on; the ones that name none are the same all day.
+_TITLES: dict[Occasion, dict[CostEstimate, tuple[str, str, str, str]]] = {
     Occasion.date: {
-        CostEstimate.cheap:   "A Low-Key Date",
-        CostEstimate.mid:     "An Evening Date",
-        CostEstimate.splurge: "A Night to Remember",
+        CostEstimate.cheap: (
+            "A Low-Key Date", "A Low-Key Date", "A Low-Key Date", "A Low-Key Date",
+        ),
+        CostEstimate.mid: (
+            "A Morning Date", "An Afternoon Date", "An Evening Date", "A Date Night",
+        ),
+        CostEstimate.splurge: (
+            "A Morning to Remember", "An Afternoon to Remember",
+            "An Evening to Remember", "A Night to Remember",
+        ),
     },
     Occasion.friends: {
-        CostEstimate.cheap:   "A Budget Night Out",
-        CostEstimate.mid:     "A Night Out with Friends",
-        CostEstimate.splurge: "A Big Night Out",
+        CostEstimate.cheap: (
+            "A Budget Morning Out", "A Budget Afternoon Out",
+            "A Budget Evening Out", "A Budget Night Out",
+        ),
+        CostEstimate.mid: (
+            "A Morning with Friends", "An Afternoon with Friends",
+            "An Evening with Friends", "A Night Out with Friends",
+        ),
+        CostEstimate.splurge: (
+            "A Big Morning Out", "A Big Afternoon Out",
+            "A Big Evening Out", "A Big Night Out",
+        ),
     },
     Occasion.solo: {
-        CostEstimate.cheap:   "A Solo Wander",
-        CostEstimate.mid:     "A Solo Day Out",
-        CostEstimate.splurge: "A Solo Splurge Day",
+        CostEstimate.cheap: (
+            "A Solo Wander", "A Solo Wander", "A Solo Wander", "A Solo Wander",
+        ),
+        CostEstimate.mid: (
+            "A Solo Day Out", "A Solo Day Out", "A Solo Evening Out", "A Solo Night Out",
+        ),
+        CostEstimate.splurge: (
+            "A Solo Splurge Day", "A Solo Splurge Day",
+            "A Solo Splurge Evening", "A Solo Splurge Night",
+        ),
     },
     Occasion.family: {
-        CostEstimate.cheap:   "A Family Day Out",
-        CostEstimate.mid:     "A Family Outing",
-        CostEstimate.splurge: "A Family Treat Day",
+        CostEstimate.cheap: (
+            "A Family Day Out", "A Family Day Out",
+            "A Family Evening Out", "A Family Night Out",
+        ),
+        CostEstimate.mid: (
+            "A Family Outing", "A Family Outing", "A Family Outing", "A Family Outing",
+        ),
+        CostEstimate.splurge: (
+            "A Family Treat Day", "A Family Treat Day",
+            "A Family Treat Evening", "A Family Treat Night",
+        ),
     },
 }
+_TITLE_ORDER = (DayPart.morning, DayPart.afternoon, DayPart.evening, DayPart.night)
 
 _COORDS_RE = re.compile(r"^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$")
 
 
-def _quest_title(occasion: Occasion, cost: CostEstimate, location: str) -> str:
+def _quest_title(
+    occasion: Occasion,
+    cost: CostEstimate,
+    location: str,
+    day_part: DayPart,
+) -> str:
     """Base title plus the area, so two quests in the Saved list stay distinct."""
-    base = _TITLES[occasion][cost]
+    base = _TITLES[occasion][cost][_TITLE_ORDER.index(day_part)]
     if _COORDS_RE.match(location):
         return base
     area = location.split(",")[0].strip()
@@ -311,10 +422,15 @@ class ScoreBreakdown:
     price_source: str
 
 
-def _quality_score(place: PlaceItem) -> tuple[float, float, float, float]:
+def _quality_score(
+    place: PlaceItem,
+    popularity_cap: int | None = None,
+) -> tuple[float, float, float, float]:
     rating_s = (place.rating or 0.0) / 5.0
-    pop_raw = math.log1p(max(0, place.user_ratings_total or 0))
-    pop_s = min(1.0, pop_raw / math.log1p(10_000))
+    reviews = max(0, place.user_ratings_total or 0)
+    pop_raw = math.log1p(reviews)
+    counted = reviews if popularity_cap is None else min(reviews, popularity_cap)
+    pop_s = min(1.0, math.log1p(counted) / math.log1p(_POPULARITY_FULL_AT_REVIEWS))
 
     if place.rating is None:
         rating_s = 0.35
@@ -333,13 +449,22 @@ def _price_fit_score(place: PlaceItem, cost: CostEstimate) -> tuple[float, float
     return _PRICE_FIT[cost][level], _PRICE_SOURCE_CONFIDENCE[source], source
 
 
+def _first_stop_fit(distance_m: float) -> float:
+    """Route fit for the opening stop, from its distance to the searched spot."""
+    if distance_m <= _FIRST_STOP_NEAR_M:
+        return _FIRST_STOP_ROUTE_FIT
+    # 1.5 km -> 0.66; 3 km -> 0.33; 6 km -> 0.17
+    return _FIRST_STOP_ROUTE_FIT / (1.0 + (distance_m - _FIRST_STOP_NEAR_M) / _FIRST_STOP_NEAR_M)
+
+
 def _route_fit_score(
     place: PlaceItem,
     prev_lat: float | None,
     prev_lng: float | None,
 ) -> float:
     if prev_lat is None or prev_lng is None:
-        return 0.66
+        # distance_meters is measured from the searched location.
+        return _first_stop_fit(place.distance_meters)
 
     d = haversine_m(prev_lat, prev_lng, place.lat, place.lng)
     # 1 km away -> 0.5; 0 m -> 1.0; 5 km -> 0.17
@@ -351,8 +476,10 @@ def _score_breakdown(
     cost: CostEstimate,
     prev_lat: float | None,
     prev_lng: float | None,
+    *,
+    popularity_cap: int | None = None,
 ) -> ScoreBreakdown:
-    quality, rating_s, pop_s, quality_confidence = _quality_score(place)
+    quality, rating_s, pop_s, quality_confidence = _quality_score(place, popularity_cap)
     price_fit, price_confidence, price_source = _price_fit_score(place, cost)
     route_fit = _route_fit_score(place, prev_lat, prev_lng)
     confidence = 0.60 * price_confidence + 0.40 * quality_confidence
@@ -382,8 +509,12 @@ def _score(
     cost: CostEstimate,
     prev_lat: float | None,
     prev_lng: float | None,
+    *,
+    popularity_cap: int | None = None,
 ) -> float:
-    return _score_breakdown(place, cost, prev_lat, prev_lng).total
+    return _score_breakdown(
+        place, cost, prev_lat, prev_lng, popularity_cap=popularity_cap
+    ).total
 
 
 def _pick(
@@ -392,12 +523,17 @@ def _pick(
     prev_lat: float | None,
     prev_lng: float | None,
     used: set[str],
+    *,
+    popularity_cap: int | None = None,
 ) -> PlaceItem | None:
     # Prefer unused places; relax if the pool would be empty
     pool = [p for p in candidates if p.provider_id not in used] or list(candidates)
     if not pool:
         return None
-    return max(pool, key=lambda p: _score(p, cost, prev_lat, prev_lng))
+    return max(
+        pool,
+        key=lambda p: _score(p, cost, prev_lat, prev_lng, popularity_cap=popularity_cap),
+    )
 
 
 def _rank_unused(
@@ -406,9 +542,15 @@ def _rank_unused(
     prev_lat: float | None,
     prev_lng: float | None,
     used: set[str],
+    *,
+    popularity_cap: int | None = None,
 ) -> list[PlaceItem]:
     pool = [p for p in candidates if p.provider_id not in used]
-    return sorted(pool, key=lambda p: _score(p, cost, prev_lat, prev_lng), reverse=True)
+    return sorted(
+        pool,
+        key=lambda p: _score(p, cost, prev_lat, prev_lng, popularity_cap=popularity_cap),
+        reverse=True,
+    )
 
 
 def _variety_shuffle(
@@ -417,11 +559,16 @@ def _variety_shuffle(
     prev_lat: float | None,
     prev_lng: float | None,
     rng: random.Random,
+    *,
+    popularity_cap: int | None = None,
 ) -> list[PlaceItem]:
     """Shuffle only the leading near-tied group of an already-ranked list."""
     if len(ranked) < 2:
         return ranked
-    scores = [_score(p, cost, prev_lat, prev_lng) for p in ranked]
+    scores = [
+        _score(p, cost, prev_lat, prev_lng, popularity_cap=popularity_cap)
+        for p in ranked
+    ]
     cutoff = scores[0] - _VARIETY_SCORE_EPSILON
     group_end = 1
     while group_end < len(ranked) and scores[group_end] >= cutoff:
@@ -568,21 +715,57 @@ def _window_for_slot(
     return hours.opens_today, hours.closes_today
 
 
+def _wait_for_meal_hour(arrive: time, not_before: time | None, max_wait_min: int) -> int:
+    """Minutes to hold a stop so it starts at `not_before`, up to the limit."""
+    if not_before is None or max_wait_min <= 0:
+        return 0
+    gap = _minutes(not_before) - _minutes(arrive)
+    # A negative gap is "already past the hour"; a huge one means the clock
+    # wrapped past midnight, which is past the hour too.
+    if gap <= 0 or gap > 12 * 60:
+        return 0
+    return min(gap, max_wait_min)
+
+
+def _linger_room(place: PlaceItem, start: time, end: time) -> int:
+    """How much longer a visit can run before the place closes, in minutes.
+
+    Capped at _LINGER_MAX_MIN. Unknown hours do not hold a plan back, the same
+    as everywhere else: they count as room to stay.
+    """
+    if place.open_24h_today:
+        return _LINGER_MAX_MIN
+    if _parse_hhmm(place.opens_today) is None or _parse_hhmm(place.closes_today) is None:
+        return _LINGER_MAX_MIN
+    for extra in range(_LINGER_MAX_MIN, 0, -_LINGER_STEP_MIN):
+        if _slot_fits_hours(place, start, _add_min(end, extra)):
+            return extra
+    return 0
+
+
 async def _with_hours(
     place: PlaceItem,
     service: NearbyPlacesService,
     weekday_g: int,
     start: time,
     end: time,
+    hours_memo: dict[str, PlaceHours] | None = None,
 ) -> PlaceItem:
-    try:
-        hours = await service.get_place_hours(place.provider_id, weekday_g)
-    except Exception as exc:
-        logger.warning(
-            "place_hours_lookup_failed err_type=%s",
-            exc.__class__.__name__,
-        )
-        return place
+    # A place can be looked at more than once in a request (both passes over
+    # a stop, or two stops searching the same type). Each lookup is a paid
+    # call, so the answer is kept for the length of the request.
+    hours = hours_memo.get(place.provider_id) if hours_memo is not None else None
+    if hours is None:
+        try:
+            hours = await service.get_place_hours(place.provider_id, weekday_g)
+        except Exception as exc:
+            logger.warning(
+                "place_hours_lookup_failed err_type=%s",
+                exc.__class__.__name__,
+            )
+            return place
+        if hours_memo is not None:
+            hours_memo[place.provider_id] = hours
     opens, closes = _window_for_slot(hours, start, end)
     return place.model_copy(update={
         "opens_today": opens,
@@ -606,14 +789,34 @@ async def _pick_viable_candidate(
     requested_place_type: str,
     rng: random.Random | None = None,
     seen: frozenset[str] = frozenset(),
+    popularity_cap: int | None = None,
+    not_before: time | None = None,
+    max_wait_min: int = 0,
+    strict: bool = False,
+    hours_memo: dict[str, PlaceHours] | None = None,
 ) -> _CandidatePick | None:
+    """The best candidate that can actually be visited at this point in the plan.
+
+    not_before / max_wait_min: hold the stop until a meal hour, by at most
+    this many minutes (see _MEAL_NOT_BEFORE).
+    strict: only a candidate that passes every check counts; the last-resort
+    fallbacks below are not offered. Used for the first pass over a stop's
+    fallback types, so that a clean pick from a later type beats a
+    compromised pick from an earlier one.
+    """
     # Recently-seen places (from the user's past quests) are avoided only
     # while fresh options exist — variety never costs a stop.
-    ranked = _rank_unused(candidates, cost, prev_lat, prev_lng, used | seen)
+    ranked = _rank_unused(
+        candidates, cost, prev_lat, prev_lng, used | seen, popularity_cap=popularity_cap
+    )
     if not ranked and seen:
-        ranked = _rank_unused(candidates, cost, prev_lat, prev_lng, used)
+        ranked = _rank_unused(
+            candidates, cost, prev_lat, prev_lng, used, popularity_cap=popularity_cap
+        )
     if rng is not None:
-        ranked = _variety_shuffle(ranked, cost, prev_lat, prev_lng, rng)
+        ranked = _variety_shuffle(
+            ranked, cost, prev_lat, prev_lng, rng, popularity_cap=popularity_cap
+        )
     drop_counts: Counter[str] = Counter()
     if len(ranked) < len(candidates):
         drop_counts["already_used"] = len(candidates) - len(ranked)
@@ -632,7 +835,9 @@ async def _pick_viable_candidate(
             else None
         )
         travel_minutes = _travel_time(dist_m)[0] if dist_m is not None else 0
-        start = _add_min(cursor, travel_minutes)
+        arrive = _add_min(cursor, travel_minutes)
+        wait_min = _wait_for_meal_hour(arrive, not_before, max_wait_min)
+        start = _add_min(arrive, wait_min)
         end = _add_min(start, _DWELL.get(tmpl.category, 30))
 
         mood_rule = _mood_reject_rule(place, occasion, start)
@@ -645,21 +850,27 @@ async def _pick_viable_candidate(
             and (level := price_signal(place).level) is not None
             and level >= _CHEAP_REJECT_MIN_PRICE_LEVEL
         )
-        if over_budget and over_budget_fallback is not None:
+        # An over-budget place is only ever a fallback, so once one is held
+        # (or none is wanted) its hours are not worth a paid lookup.
+        if over_budget and (strict or over_budget_fallback is not None):
             drop_counts["over_budget"] += 1
             continue
 
-        place_with_hours = await _with_hours(place, service, weekday_g, start, end)
+        place_with_hours = await _with_hours(
+            place, service, weekday_g, start, end, hours_memo
+        )
         hours_rule = _hours_reject_rule(place_with_hours, start, end)
+        candidate = _CandidatePick(
+            place=place_with_hours,
+            dist_from_prev_m=dist_m,
+            start=start,
+            end=end,
+            wait_min=wait_min,
+        )
         if hours_rule == "hours_unknown" and not over_budget:
             drop_counts[hours_rule] += 1
             if unknown_hours_fallback is None:
-                unknown_hours_fallback = _CandidatePick(
-                    place=place_with_hours,
-                    dist_from_prev_m=dist_m,
-                    start=start,
-                    end=end,
-                )
+                unknown_hours_fallback = candidate
             continue
         if hours_rule is not None:
             drop_counts[hours_rule] += 1
@@ -667,32 +878,23 @@ async def _pick_viable_candidate(
 
         if over_budget:
             drop_counts["over_budget"] += 1
-            over_budget_fallback = _CandidatePick(
-                place=place_with_hours,
-                dist_from_prev_m=dist_m,
-                start=start,
-                end=end,
-            )
+            over_budget_fallback = candidate
             continue
 
         logger.info(
             "quest_candidate_viability type=%s category=%s checked=%d selected=true "
-            "price_known=%d/%d drops=%s",
+            "price_known=%d/%d drops=%s strict=%s",
             requested_place_type,
             tmpl.category.value,
             min(len(ranked), _VIABILITY_CHECK_LIMIT),
             price_known,
             len(ranked),
             {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
+            strict,
         )
-        return _CandidatePick(
-            place=place_with_hours,
-            dist_from_prev_m=dist_m,
-            start=start,
-            end=end,
-        )
+        return candidate
 
-    fallback = unknown_hours_fallback or over_budget_fallback
+    fallback = None if strict else (unknown_hours_fallback or over_budget_fallback)
     if fallback is unknown_hours_fallback and fallback is not None:
         selected_label = "hours_unknown_fallback"
     elif fallback is not None:
@@ -701,7 +903,7 @@ async def _pick_viable_candidate(
         selected_label = "false"
     logger.info(
         "quest_candidate_viability type=%s category=%s checked=%d selected=%s "
-        "price_known=%d/%d drops=%s",
+        "price_known=%d/%d drops=%s strict=%s",
         requested_place_type,
         tmpl.category.value,
         min(len(ranked), _VIABILITY_CHECK_LIMIT),
@@ -709,6 +911,7 @@ async def _pick_viable_candidate(
         price_known,
         len(ranked),
         {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
+        strict,
     )
     return fallback
 
@@ -717,6 +920,11 @@ class _Slot(NamedTuple):
     tmpl: TemplateStop
     place: PlaceItem
     dist_from_prev_m: float | None
+    # Minutes spent here: the category's usual dwell, plus any time spent
+    # waiting here for the next stop's meal hour.
+    dwell_min: int
+    start: time
+    end: time
 
 
 class _CandidatePick(NamedTuple):
@@ -724,6 +932,98 @@ class _CandidatePick(NamedTuple):
     dist_from_prev_m: float | None
     start: time
     end: time
+    # Minutes the previous stop has to run longer so this one starts at `start`.
+    wait_min: int = 0
+
+
+async def _fill_stop(
+    tmpl: TemplateStop,
+    place_types: tuple[str, ...],
+    *,
+    req: QuestGenerationRequest,
+    service: NearbyPlacesService,
+    weekday_g: int,
+    cursor: time,
+    prev_lat: float | None,
+    prev_lng: float | None,
+    used: set[str],
+    rng: random.Random | None,
+    seen: frozenset[str],
+    not_before: time | None,
+    max_wait_min: int,
+    hours_memo: dict[str, PlaceHours],
+) -> _CandidatePick | None:
+    """Pick a place for one stop of the plan, or None when nothing can be found.
+
+    First pass, over the stop's whole list of fallback types: only places that
+    are the kind the stop is for (TemplateStop.suits: their primary type
+    belongs to the stop's family) and that pass every check. A search for
+    `bar` returns the pizzeria that serves beer; this is what keeps it from
+    winning the bar stop while a real bar exists anywhere in the list.
+
+    Second pass, only when the first finds nothing: any place carrying the
+    tag, with the usual last-resort fallbacks. A stop is never left empty for
+    the sake of the first pass.
+    """
+    pools: dict[str, list[PlaceItem]] = {}
+
+    async def _pick_from(
+        candidates: list[PlaceItem],
+        place_type: str,
+        strict: bool,
+    ) -> _CandidatePick | None:
+        return await _pick_viable_candidate(
+            candidates,
+            tmpl=tmpl,
+            service=service,
+            weekday_g=weekday_g,
+            occasion=req.occasion,
+            cost=req.cost_estimate,
+            cursor=cursor,
+            prev_lat=prev_lat,
+            prev_lng=prev_lng,
+            used=used,
+            requested_place_type=place_type,
+            rng=rng,
+            seen=seen,
+            popularity_cap=_popularity_cap(req.occasion, place_type),
+            not_before=not_before,
+            max_wait_min=max_wait_min,
+            strict=strict,
+            hours_memo=hours_memo,
+        )
+
+    for place_type in place_types:
+        candidates = await _search_with_expansion(service, req.location, place_type)
+        pools[place_type] = candidates
+        if not candidates:
+            logger.info(
+                "No places at any radius for type=%s — trying next fallback",
+                place_type,
+            )
+            continue
+        fitting = [
+            p for p in candidates if tmpl.suits(p.name, p.primary_type, p.types)
+        ]
+        if not fitting:
+            continue
+        picked = await _pick_from(fitting, place_type, strict=True)
+        if picked is not None:
+            return picked
+
+    for place_type, candidates in pools.items():
+        if not candidates:
+            continue
+        picked = await _pick_from(candidates, place_type, strict=False)
+        if picked is not None:
+            logger.info(
+                "quest_family_fallback role=%s type=%s primary_type=%s",
+                tmpl.role,
+                place_type,
+                picked.place.primary_type,
+            )
+            return picked
+    return None
 
 
 def _schedule(
@@ -747,7 +1047,7 @@ def _schedule(
         else:
             travel_pairs.append(None)
 
-    dwell = [_DWELL.get(s.tmpl.category, 30) for s in slots]
+    dwell = [s.dwell_min for s in slots]
     travel_mins = [tp[0] if tp else 0 for tp in travel_pairs]
 
     # Legacy path: when an explicit duration was requested, scale dwell times
@@ -869,25 +1169,48 @@ async def _search_with_expansion(
     return best_strong
 
 
+# ── Swapping a stop ───────────────────────────────────────────────────────────
+
+def _swap_kind(stop: Stop, place_type: str, occasion: Occasion) -> TemplateStop | None:
+    """The kind of stop being replaced, as far as a stored quest can tell.
+
+    A quest does not record what each stop was for, only its category, so this
+    reads the kind back from that. Used to offer the same kind of place first
+    when a stop is swapped; None means no preference.
+    """
+    if stop.category == StopCategory.restaurant:
+        return MEAL
+    if stop.category == StopCategory.cafe:
+        return CAFE
+    if stop.category == StopCategory.bar:
+        return DRINKS
+    if stop.category == StopCategory.other and place_type in ("bakery", "cafe"):
+        return TREAT if occasion == Occasion.family else DESSERT
+    return None
+
+
 # ── Main orchestration ────────────────────────────────────────────────────────
 
 async def assemble_quest(
     req: QuestGenerationRequest,
     service: NearbyPlacesService,
 ) -> Quest:
-    template = list(TEMPLATES[req.occasion])
     if req.stop_count is not None:
-        # Explicit choice wins. 1-2 keeps the occasion's anchor stop(s);
-        # 4 adds the same extra stop long quests get.
-        if req.stop_count <= 2:
-            template = template[:req.stop_count]
-        elif req.stop_count == 4:
-            template.insert(2, _LONG_QUEST_EXTRA_STOP[req.occasion])
+        wanted = req.stop_count
     elif req.duration_hours is not None and req.duration_hours >= _LONG_QUEST_HOURS:
-        template.insert(2, _LONG_QUEST_EXTRA_STOP[req.occasion])
+        wanted = MAX_STOPS
+    else:
+        wanted = _DEFAULT_STOP_COUNT
+    plan_part = _plan_day_part(req)
+    plan = PLANS[req.occasion][plan_part]
+    template = plan.stops(wanted)
+    meal_hour = _MEAL_NOT_BEFORE.get(plan_part)
+    meal_not_before = time(*meal_hour) if meal_hour is not None else None
+
     used_ids: set[str] = set()
     seen_ids = frozenset(req.exclude_place_ids)
     slots: list[_Slot] = []
+    hours_memo: dict[str, PlaceHours] = {}
     prev_lat: float | None = None
     prev_lng: float | None = None
     sh, sm = _quest_start(req)
@@ -905,8 +1228,9 @@ async def assemble_quest(
         logger.warning("weather_anchor_failed err_type=%s", exc.__class__.__name__)
     outdoor_skipped = False
 
-    for tmpl in template:
-        picked: _CandidatePick | None = None
+    async def _place_stop(tmpl: TemplateStop) -> bool:
+        """Fill one stop at the end of the plan so far. False when nothing fits."""
+        nonlocal prev_lat, prev_lng, cursor, outdoor_skipped
         stop_place_types = tmpl.places_types
         if rain_risk:
             indoor_only = tuple(t for t in stop_place_types if t not in OUTDOOR_TYPES)
@@ -914,52 +1238,71 @@ async def assemble_quest(
             if indoor_only and len(indoor_only) < len(stop_place_types):
                 stop_place_types = indoor_only
                 outdoor_skipped = True
-        for place_type in stop_place_types:
-            candidates = await _search_with_expansion(
-                service, req.location, place_type
-            )
-            if not candidates:
-                logger.info(
-                    "No places at any radius for type=%s — trying next fallback",
-                    place_type,
-                )
-                continue
 
-            picked = await _pick_viable_candidate(
-                candidates,
-                tmpl=tmpl,
-                service=service,
-                weekday_g=weekday_g,
-                occasion=req.occasion,
-                cost=req.cost_estimate,
-                cursor=cursor,
-                prev_lat=prev_lat,
-                prev_lng=prev_lng,
-                used=used_ids,
-                requested_place_type=place_type,
-                rng=rng,
-                seen=seen_ids,
-            )
-            if picked is not None:
-                break
+        # A meal reached before its hour is held back, and the stop before it
+        # runs longer by the same amount: the plan has no gaps, and the
+        # frontend's reschedule (which keeps each stop's dwell) preserves it.
+        not_before: time | None = None
+        max_wait_min = 0
+        if tmpl.role == "meal" and meal_not_before is not None and slots:
+            not_before = meal_not_before
+            max_wait_min = _linger_room(slots[-1].place, slots[-1].start, slots[-1].end)
 
+        picked = await _fill_stop(
+            tmpl,
+            stop_place_types,
+            req=req,
+            service=service,
+            weekday_g=weekday_g,
+            cursor=cursor,
+            prev_lat=prev_lat,
+            prev_lng=prev_lng,
+            used=used_ids,
+            rng=rng,
+            seen=seen_ids,
+            not_before=not_before,
+            max_wait_min=max_wait_min,
+            hours_memo=hours_memo,
+        )
         if picked is None:
             logger.info(
                 "All fallback types exhausted for stop category=%s in %r",
                 tmpl.category,
                 req.location,
             )
-            continue
+            return False
 
+        if picked.wait_min and slots:
+            before = slots[-1]
+            slots[-1] = before._replace(
+                dwell_min=before.dwell_min + picked.wait_min,
+                end=_add_min(before.end, picked.wait_min),
+            )
         place = picked.place
         slots.append(_Slot(
             tmpl=tmpl,
             place=place,
             dist_from_prev_m=picked.dist_from_prev_m,
+            dwell_min=_DWELL.get(tmpl.category, 30),
+            start=picked.start,
+            end=picked.end,
         ))
         used_ids.add(place.provider_id)
         prev_lat, prev_lng = place.lat, place.lng
         cursor = picked.end
+        return True
+
+    for tmpl in template:
+        await _place_stop(tmpl)
+
+    # A stop that could not be filled is made up from the plan's spares (what
+    # a longer version of the same outing would have added), so that ordering
+    # by time of day does not cost a sparse area a stop it used to get.
+    if len(slots) < len(template):
+        for tmpl in plan.spares(wanted):
+            if len(slots) >= len(template):
+                break
+            await _place_stop(tmpl)
 
     where = _display_location(req)
     if not slots:
@@ -993,12 +1336,14 @@ async def assemble_quest(
         }
         for s in stops
     ]
+    day_part = _spoken_day_part(req)
     narrative = await generate_quest_narrative(
         location=where,
         occasion=req.occasion.value,
         cost_estimate=req.cost_estimate.value,
         people=req.people,
         stop_summaries=stop_summaries,
+        day_part=day_part.value,
     )
 
     # Total quest duration: first stop start → last stop end (crossing midnight handled)
@@ -1013,6 +1358,7 @@ async def assemble_quest(
             req.occasion,
             req.cost_estimate,
             (req.location_label or "").strip() or req.location,
+            day_part,
         ),
         occasion=req.occasion,
         stops=stops,

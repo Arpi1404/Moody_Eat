@@ -47,6 +47,8 @@ _MAX_SUGGESTIONS = 5
 # SKU that still includes price data (Enterprise). Atmosphere fields such as
 # servesVegetarianFood or dineIn would bump every search to the
 # Enterprise + Atmosphere SKU. Extend deliberately.
+# primaryType is a Pro-tier field, like types, so it costs nothing extra on a
+# request that is already Enterprise for its rating and price fields.
 _NEARBY_FIELD_MASK_NEW = ",".join(
     (
         "places.id",
@@ -56,6 +58,7 @@ _NEARBY_FIELD_MASK_NEW = ",".join(
         "places.rating",
         "places.userRatingCount",
         "places.types",
+        "places.primaryType",
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
@@ -554,6 +557,7 @@ class GooglePlacesProvider(PlacesProvider):
         rating = item.get("rating")
         user_rating_count = item.get("userRatingCount")
         types = item.get("types")
+        primary_type = item.get("primaryType")
         business_status = item.get("businessStatus")
         p_level = _PRICE_LEVEL_NEW_TO_INT.get(str(item.get("priceLevel") or ""))
         price_range = item.get("priceRange") or {}
@@ -572,6 +576,7 @@ class GooglePlacesProvider(PlacesProvider):
             price_level=p_level,
             price_range_start_inr=start_inr,
             price_range_end_inr=end_inr,
+            primary_type=str(primary_type) if primary_type else None,
         )
 
     @staticmethod
