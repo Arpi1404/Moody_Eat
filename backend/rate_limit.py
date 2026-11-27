@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from collections import defaultdict, deque
 
@@ -46,6 +47,15 @@ def _get_limiter(bucket: str, max_rpm: int) -> _SlidingWindowLimiter:
     return state[1]
 
 
+# Swapping or adding a stop is a paid places search too. These paths carry a
+# quest id and a stop number, so they are matched by shape, not listed below.
+_STOP_SEARCH_PATH = re.compile(r"/api/quest/[^/]+/stop/[^/]+/(?:alternatives|additions)")
+
+
+def _is_stop_search(method: str, path: str) -> bool:
+    return method == "POST" and _STOP_SEARCH_PATH.fullmatch(path) is not None
+
+
 # Endpoints that either spend Google quota or write to disk, and the allowance
 # each one counts against. Location suggestions fire every few keystrokes, so
 # they are counted apart from searches.
@@ -83,7 +93,11 @@ class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
         settings = get_settings()
         if not settings.rate_limit_enabled or settings.rate_limit_per_minute <= 0:
             return await call_next(request)
-        bucket = _LIMITED_ENDPOINTS.get((request.method, request.url.path))
+        bucket = (
+            _SEARCH_BUCKET
+            if _is_stop_search(request.method, request.url.path)
+            else _LIMITED_ENDPOINTS.get((request.method, request.url.path))
+        )
         if bucket is None:
             return await call_next(request)
         max_rpm = _allowance(bucket, settings)

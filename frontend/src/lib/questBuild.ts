@@ -77,18 +77,23 @@ export function travelLeg(
   return { minutes: Math.max(1, Math.round(dist / DRIVE_M_PER_MIN)), mode: 'driving' }
 }
 
-// Recompute every leg from geometry: changing any stop (swap, reorder, or
-// assembling a custom quest) changes the travel time AND mode of the legs
-// around it. Each stop keeps its dwell; the first stop's start anchors the
-// chain.
-export function rescheduleStops(stops: Stop[]): Stop[] {
+type Leg = { minutes: number; mode: TravelMode }
+
+// Re-time a stop list: each stop keeps its dwell and the first stop's start
+// anchors the chain. `legFor` says how long each hop takes; by default every
+// one is worked out from geometry, which is right for a quest being assembled.
+// An edit passes keptLegs() instead.
+export function rescheduleStops(
+  stops: Stop[],
+  legFor: (from: Stop, to: Stop) => Leg = travelLeg,
+): Stop[] {
   for (let i = 0; i < stops.length; i += 1) {
     const dwell = durationMinutes(
       stops[i].time_block_start,
       stops[i].time_block_end,
     )
     if (i > 0) {
-      const leg = travelLeg(stops[i - 1], stops[i])
+      const leg = legFor(stops[i - 1], stops[i])
       stops[i - 1] = {
         ...stops[i - 1],
         travel_to_next_minutes: leg.minutes,
@@ -105,6 +110,177 @@ export function rescheduleStops(stops: Stop[]): Stop[] {
   const last = stops.length - 1
   stops[last] = { ...stops[last], travel_to_next_minutes: null, travel_mode: null }
   return stops
+}
+
+// ── Editing a quest ───────────────────────────────────────────────────────────
+
+/** The most stops a quest can be built up to. Mirrors _MAX_QUEST_STOPS in
+ * backend/routes.py. */
+export const MAX_STOPS = 4
+
+/** What makes a stop the same stop from one version of a quest to the next. */
+const stopKey = ({ place }: Stop): string =>
+  place.provider_id || `${place.name}|${place.lat}|${place.lng}`
+
+/** Two stops that were already next to each other, in either order, keep the
+ * travel time and mode the quest had between them. Only the hops an edit
+ * creates are worked out afresh. Hand-made quests write these by hand, and a
+ * straight line cannot tell how a walk really goes. */
+function keptLegs(before: Stop[]): (from: Stop, to: Stop) => Leg {
+  const stored = new Map<string, Leg>()
+  for (let i = 0; i + 1 < before.length; i += 1) {
+    const { travel_to_next_minutes: minutes, travel_mode: mode } = before[i]
+    if (minutes == null || mode == null) continue
+    stored.set(JSON.stringify([stopKey(before[i]), stopKey(before[i + 1])]), {
+      minutes,
+      mode,
+    })
+  }
+  return (from, to) =>
+    stored.get(JSON.stringify([stopKey(from), stopKey(to)])) ??
+    stored.get(JSON.stringify([stopKey(to), stopKey(from)])) ??
+    travelLeg(from, to)
+}
+
+/** The notes about distance that _why() in backend/quest_generator.py writes
+ * into why_this_place. Each describes the leg from the stop before. */
+const DISTANCE_NOTES = [
+  'just a short walk away',
+  'an easy walk from the previous stop',
+  'a quick ride from the previous stop',
+]
+
+function withoutDistanceNote(stop: Stop): Stop {
+  const parts = stop.why_this_place.replace(/\.$/, '').split(', ')
+  const kept = parts.filter((part) => !DISTANCE_NOTES.includes(part.toLowerCase()))
+  if (kept.length === parts.length) return stop
+  const line = kept.join(', ') || 'a solid local choice'
+  return { ...stop, why_this_place: `${line[0].toUpperCase()}${line.slice(1)}.` }
+}
+
+/** "A short walk away" only holds while the stop before stays the same. A stop
+ * that is new to the quest keeps its note: it was written for the stop it now
+ * follows. A first stop has nothing before it, so it never keeps one. */
+function dropStaleDistanceNotes(before: Stop[], after: Stop[]): Stop[] {
+  const previousBefore = new Map(
+    before.map((stop, i) => [stop.place.provider_id, before[i - 1]?.place.provider_id]),
+  )
+  return after.map((stop, i) => {
+    const id = stop.place.provider_id
+    const unchanged =
+      i > 0 &&
+      (!previousBefore.has(id) ||
+        previousBefore.get(id) === after[i - 1].place.provider_id)
+    return unchanged ? stop : withoutDistanceNote(stop)
+  })
+}
+
+/** Per-person totals, summed as the generator sums them: a stop with no
+ * estimate adds nothing. A quest that had no total (the hand-made ones carry
+ * no prices at all) only gains one once every stop has an estimate, so one new
+ * stop's price is never shown as the price of the whole outing. */
+function editedTotals(
+  before: Quest,
+  stops: Stop[],
+): { min: number | null; max: number | null } {
+  const priced = stops.filter((s) => s.est_cost_per_person_min_inr != null)
+  const hadTotal = before.est_total_per_person_min_inr != null
+  if (priced.length === 0 || (!hadTotal && priced.length < stops.length)) {
+    return { min: null, max: null }
+  }
+  return {
+    min: priced.reduce((sum, s) => sum + (s.est_cost_per_person_min_inr ?? 0), 0),
+    max: priced.reduce((sum, s) => sum + (s.est_cost_per_person_max_inr ?? 0), 0),
+  }
+}
+
+/** The quest with an already-timed stop list: why-lines, length and totals
+ * follow it. */
+function withTimedStops(quest: Quest, timed: Stop[]): Quest {
+  const stops = dropStaleDistanceNotes(quest.stops, timed)
+  const totals = editedTotals(quest, stops)
+  return {
+    ...quest,
+    stops,
+    total_duration_minutes: questDuration(stops),
+    est_total_per_person_min_inr: totals.min,
+    est_total_per_person_max_inr: totals.max,
+  }
+}
+
+/** The quest with a new stop list, re-timed from its first stop. Everything an
+ * edit can change is recomputed here except the narrative, which the quest page
+ * owns. Hops between stops that were already neighbours are left as they were. */
+export function withStops(quest: Quest, stops: Stop[]): Quest {
+  const timed = rescheduleStops(
+    stops.map((stop) => ({ ...stop })),
+    keptLegs(quest.stops),
+  )
+  return withTimedStops(quest, timed)
+}
+
+/** Whatever lands first keeps the quest's start time (and its own dwell). */
+function startingAt(stops: Stop[], start: string): Stop[] {
+  const dwell = durationMinutes(stops[0].time_block_start, stops[0].time_block_end)
+  return [
+    { ...stops[0], time_block_start: start, time_block_end: addMinutes(start, dwell) },
+    ...stops.slice(1),
+  ]
+}
+
+/** The quest with the stop at `from` moved to `to`. */
+export function reorderStops(quest: Quest, from: number, to: number): Quest {
+  if (from === to || to < 0 || to >= quest.stops.length) return quest
+  const stops = [...quest.stops]
+  const [moved] = stops.splice(from, 1)
+  stops.splice(to, 0, moved)
+  return withStops(quest, startingAt(stops, quest.stops[0].time_block_start))
+}
+
+/** The same quest without one stop. A quest keeps at least one, so removing the
+ * only stop returns the quest unchanged. */
+export function removeStop(quest: Quest, index: number): Quest {
+  if (quest.stops.length <= 1 || index < 0 || index >= quest.stops.length) {
+    return quest
+  }
+  const rest = quest.stops.filter((_, i) => i !== index)
+  if (index === rest.length) {
+    // The last stop: nothing before it moves.
+    rest[index - 1] = {
+      ...rest[index - 1],
+      travel_to_next_minutes: null,
+      travel_mode: null,
+    }
+    return withTimedStops(quest, rest)
+  }
+  return withStops(quest, startingAt(rest, quest.stops[0].time_block_start))
+}
+
+// Mirrors OUTDOOR_TYPES in backend/services/weather_service.py.
+const OUTDOOR_TYPES = ['park', 'zoo', 'amusement_park']
+
+/** The generator's rain note says the plan was kept indoors, which stops being
+ * true once someone adds somewhere outdoors. The forecast still stands. */
+function withHonestRainNote(quest: Quest, added: Stop): Quest {
+  const outdoors = added.place.types?.some((t) => OUTDOOR_TYPES.includes(t))
+  if (!quest.weather_note || !outdoors) return quest
+  return { ...quest, weather_note: 'Rain looks likely around your start time.' }
+}
+
+/** The quest with the stop at `index` replaced. */
+export function replaceStop(quest: Quest, index: number, stop: Stop): Quest {
+  const stops = quest.stops.map((current, i) => (i === index ? stop : current))
+  return withHonestRainNote(withStops(quest, stops), stop)
+}
+
+/** The quest with `stop` added right after the stop at `index`. */
+export function insertStopAfter(quest: Quest, index: number, stop: Stop): Quest {
+  const stops = [
+    ...quest.stops.slice(0, index + 1),
+    stop,
+    ...quest.stops.slice(index + 1),
+  ]
+  return withHonestRainNote(withStops(quest, stops), stop)
 }
 
 // ── Custom quest assembly ─────────────────────────────────────────────────────
@@ -142,13 +318,19 @@ const CATEGORY_BY_TYPE: Record<string, StopCategory> = {
   library: 'other',
 }
 
-export function categoryForPlace(place: PlaceItem): StopCategory {
-  for (const t of place.types ?? []) {
-    const category = CATEGORY_BY_TYPE[t]
-    if (category) return category
-  }
-  return 'other'
+/** The tag that decides what sort of stop a place makes. */
+function decidingType(place: PlaceItem): string | undefined {
+  return (place.types ?? []).find((t) => CATEGORY_BY_TYPE[t])
 }
+
+export function categoryForPlace(place: PlaceItem): StopCategory {
+  const type = decidingType(place)
+  return type ? CATEGORY_BY_TYPE[type] : 'other'
+}
+
+/** A film outlasts the other activities. Mirrors FILM_MINUTES in
+ * backend/models.py. */
+export const FILM_MINUTES = 150
 
 // Mirrors backend _DAY_PART_START.
 const DAY_PART_START: Record<DayPart, string> = {
@@ -219,7 +401,10 @@ export function buildCustomQuest(opts: {
   let cursor = `${start}:00`
   const initial: Stop[] = places.map((place) => {
     const category = categoryForPlace(place)
-    const dwell = DWELL_BY_CATEGORY[category]
+    const dwell =
+      decidingType(place) === 'movie_theater'
+        ? FILM_MINUTES
+        : DWELL_BY_CATEGORY[category]
     const band = estBand(place)
     const stop: Stop = {
       place,
