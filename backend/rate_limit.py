@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
+import math
 import re
 import time
 from collections import deque
@@ -26,24 +27,42 @@ class _SlidingWindowLimiter:
         self._hits: dict[str, deque[float]] = {}
         self._sweep_at = _SWEEP_AT
 
-    def is_allowed(self, client_id: str) -> bool:
+    def retry_after(self, client_id: str) -> int:
+        """Whole seconds until this caller has room again, 0 if it has some
+        now. Counts nothing against the caller.
+        """
+        now = time.monotonic()
+        dq = self._recent(client_id, now - self._window)
+        if dq is None or len(dq) < self._max:
+            return 0
+        return max(1, math.ceil(dq[0] + self._window - now))
+
+    def record(self, client_id: str) -> None:
         now = time.monotonic()
         cutoff = now - self._window
+        dq = self._recent(client_id, cutoff)
+        if dq is None:
+            if len(self._hits) >= self._sweep_at:
+                self._forget_idle(cutoff)
+            dq = self._hits[client_id] = deque()
+        dq.append(now)
+
+    def is_allowed(self, client_id: str) -> bool:
+        if self.retry_after(client_id):
+            return False
+        self.record(client_id)
+        return True
+
+    def _recent(self, client_id: str, cutoff: float) -> deque[float] | None:
+        """The caller's hits still in the window. Forgets a caller with none."""
         dq = self._hits.get(client_id)
         if dq is not None:
             while dq and dq[0] < cutoff:
                 dq.popleft()
             if not dq:
                 del self._hits[client_id]
-                dq = None
-        if dq is None:
-            if len(self._hits) >= self._sweep_at:
-                self._forget_idle(cutoff)
-            dq = self._hits[client_id] = deque()
-        if len(dq) >= self._max:
-            return False
-        dq.append(now)
-        return True
+                return None
+        return dq
 
     def _forget_idle(self, cutoff: float) -> None:
         idle = [c for c, hits in self._hits.items() if not hits or hits[-1] < cutoff]
@@ -57,11 +76,13 @@ class _SlidingWindowLimiter:
 _limiters: dict[str, tuple[int, _SlidingWindowLimiter]] = {}
 
 
-def _get_limiter(bucket: str, max_rpm: int) -> _SlidingWindowLimiter:
-    state = _limiters.get(bucket)
-    if state is None or state[0] != max_rpm:
-        state = (max_rpm, _SlidingWindowLimiter(max_requests=max_rpm, window_seconds=60.0))
-        _limiters[bucket] = state
+def _get_limiter(
+    name: str, max_requests: int, window_seconds: float = 60.0
+) -> _SlidingWindowLimiter:
+    state = _limiters.get(name)
+    if state is None or state[0] != max_requests:
+        state = (max_requests, _SlidingWindowLimiter(max_requests, window_seconds))
+        _limiters[name] = state
     return state[1]
 
 
@@ -113,6 +134,10 @@ _CEILINGS = {
     _GENERATE_BUCKET: _GENERATE_MAX_PER_MINUTE,
     _BLURBS_BUCKET: _BLURBS_MAX_PER_MINUTE,
 }
+
+# A per-minute number alone still lets one address make 14,400 quests a day,
+# so these buckets have an hourly ceiling as well. A request must pass both.
+_HOURLY_CEILINGS = {_GENERATE_BUCKET: 40}
 
 
 def _allowance(bucket: str, settings) -> int:
@@ -169,6 +194,15 @@ def _client_id(request: Request) -> str:
     return _caller_key(peer) or peer
 
 
+def _limiters_for(bucket: str, max_rpm: int) -> list[_SlidingWindowLimiter]:
+    limiters = [_get_limiter(bucket, max_rpm)]
+    if bucket in _HOURLY_CEILINGS:
+        limiters.append(
+            _get_limiter(f"{bucket}_hour", _HOURLY_CEILINGS[bucket], 3600.0)
+        )
+    return limiters
+
+
 class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
     """Apply per-client rate limiting to quota- and disk-spending endpoints."""
 
@@ -187,13 +221,20 @@ class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
         if max_rpm <= 0:
             return await call_next(request)
 
-        limiter = _get_limiter(bucket, max_rpm)
-        if not limiter.is_allowed(_client_id(request)):
+        caller = _client_id(request)
+        limiters = _limiters_for(bucket, max_rpm)
+        # Every ceiling is asked before any of them counts the request, so a
+        # refused request uses up nothing and trying again never lengthens the
+        # wait. Nothing is awaited in between.
+        wait = max(limiter.retry_after(caller) for limiter in limiters)
+        if wait:
             return JSONResponse(
                 status_code=429,
                 content={
                     "detail": "Rate limit exceeded. Try again later.",
-                    "retry_after_seconds": 60,
+                    "retry_after_seconds": wait,
                 },
             )
+        for limiter in limiters:
+            limiter.record(caller)
         return await call_next(request)

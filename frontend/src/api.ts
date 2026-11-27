@@ -1,3 +1,4 @@
+import { TooManyQuestsError } from './lib/tooManyQuests'
 import type { Quest, StopAlternative, StopKind } from './types/quest'
 
 const DEFAULT_BASE = 'http://127.0.0.1:8000'
@@ -5,10 +6,6 @@ const DEFAULT_BASE = 'http://127.0.0.1:8000'
 export function getApiBase(): string {
   return import.meta.env.VITE_API_BASE_URL ?? DEFAULT_BASE
 }
-
-/** What a person sees when the server's limit on new quests is reached. */
-export const TOO_MANY_QUESTS =
-  "That's a lot of quests at once. Wait a minute, then try again."
 
 export async function generateQuest(payload: {
   /** Typed area, or "lat,lng" when the device's position is used. */
@@ -34,7 +31,10 @@ export async function generateQuest(payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (res.status === 429) throw new Error(TOO_MANY_QUESTS)
+  if (res.status === 429) {
+    const data = await res.json().catch(() => null)
+    throw new TooManyQuestsError(data?.retry_after_seconds)
+  }
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     const detail =

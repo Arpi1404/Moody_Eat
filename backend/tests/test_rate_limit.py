@@ -59,6 +59,13 @@ def client():
     return TestClient(app)
 
 
+@pytest.fixture
+def clock(monkeypatch):
+    now = SimpleNamespace(value=1_000.0)
+    monkeypatch.setattr(rate_limit.time, "monotonic", lambda: now.value)
+    return now
+
+
 def _call(client, route, headers=None) -> int:
     method, path, _ = route
     kwargs = {"json": {}} if method == "POST" else {}
@@ -122,6 +129,99 @@ def test_the_other_limits_are_unchanged():
     assert buckets[("GET", "/api/places/autocomplete")] == "suggest"
     assert buckets[("GET", "/api/places/autocomplete/location")] == "suggest"
     assert buckets[("POST", "/api/quest/swap-log")] == "swap_log"
+
+
+# ── Generate's hourly ceiling ──
+
+
+def _generate(client, caller=CALLER):
+    """The status and, for a refusal, how long it says to wait."""
+    response = client.post("/api/quest/generate", headers=_xff(caller), json={})
+    return response.status_code, response.json().get("retry_after_seconds")
+
+
+def _forty_in_an_hour(client, clock):
+    for _ in range(4):
+        assert [_generate(client)[0] for _ in range(10)] == [422] * 10
+        clock.value += 61
+
+
+def test_the_minute_ceiling_says_how_long_is_left_of_the_minute(client, clock):
+    assert [_generate(client)[0] for _ in range(10)] == [422] * 10
+    assert _generate(client) == (429, 60)
+    clock.value += 45
+    assert _generate(client) == (429, 15)
+    clock.value += 16
+    assert _generate(client)[0] == 422
+
+
+def test_the_hourly_ceiling_holds_a_caller_who_keeps_to_the_minute_one(client, clock):
+    _forty_in_an_hour(client, clock)
+    # 244 s after the first request, so the hour has 3356 s left to run.
+    assert _generate(client) == (429, 3356)
+    assert _generate(client, OTHER)[0] == 422
+    clock.value += 3355
+    assert _generate(client) == (429, 1)
+    clock.value += 2
+    # The first ten have aged out, and only those.
+    assert [_generate(client)[0] for _ in range(10)] == [422] * 10
+    assert _generate(client)[0] == 429
+
+
+def test_when_both_ceilings_are_full_the_longer_wait_is_given(client, clock):
+    for _ in range(3):
+        for _ in range(10):
+            _generate(client)
+        clock.value += 61
+    for _ in range(10):
+        _generate(client)
+    status, wait = _generate(client)
+    assert status == 429
+    assert wait == 3600 - 3 * 61
+
+
+def test_refused_requests_count_against_neither_ceiling(client, clock):
+    assert [_generate(client)[0] for _ in range(100)] == [422] * 10 + [429] * 90
+    clock.value += 61
+    # Had the 90 refusals counted towards the hour, nothing would be left.
+    for _ in range(3):
+        assert [_generate(client)[0] for _ in range(10)] == [422] * 10
+        clock.value += 61
+    assert _generate(client)[0] == 429
+    # Nor do refusals by the hour fill the minute or push the hour back.
+    assert {_generate(client)[0] for _ in range(50)} == {429}
+    clock.value += 3600
+    assert _generate(client)[0] == 422
+
+
+def test_only_generate_has_an_hourly_ceiling(client, clock):
+    assert rate_limit._HOURLY_CEILINGS == {"generate": 40}
+    for _ in range(5):
+        _use_up(client, BLURBS, _xff(CALLER))
+        clock.value += 61
+
+
+def test_a_lower_general_limit_leaves_the_hourly_ceiling_at_40(
+    client, clock, monkeypatch
+):
+    monkeypatch.setattr("rate_limit.get_settings", lambda: _settings(per_minute=5))
+    for _ in range(8):
+        assert [_generate(client)[0] for _ in range(6)] == [422] * 5 + [429]
+        clock.value += 61
+    status, wait = _generate(client)
+    assert status == 429
+    assert wait > 60
+
+
+def test_asking_how_long_to_wait_counts_nothing(clock):
+    limiter = rate_limit._SlidingWindowLimiter(1, 60.0)
+    assert [limiter.retry_after("a") for _ in range(5)] == [0] * 5
+    assert limiter._hits == {}
+    limiter.record("a")
+    assert limiter.retry_after("a") == 60
+    # At the very edge of the window it still never says to wait 0 seconds.
+    clock.value += 60
+    assert limiter.retry_after("a") == 1
 
 
 # ── Who a request counts against ──
@@ -222,13 +322,6 @@ def test_client_id(forwarded, peer, expected):
 
 
 # ── Forgetting idle callers ──
-
-
-@pytest.fixture
-def clock(monkeypatch):
-    now = SimpleNamespace(value=1_000.0)
-    monkeypatch.setattr(rate_limit.time, "monotonic", lambda: now.value)
-    return now
 
 
 def test_a_returning_caller_starts_afresh_once_the_window_has_emptied(clock):
