@@ -26,6 +26,8 @@ export interface Stop {
   /** null on the final stop */
   travel_mode: TravelMode | null
   why_this_place: string
+  /** True when why_this_place is a note the quest's creator typed. */
+  note_by_creator?: boolean | null
   /** Estimated per-person spend at this stop in INR. null when no price signal. */
   est_cost_per_person_min_inr?: number | null
   est_cost_per_person_max_inr?: number | null
@@ -72,6 +74,9 @@ export interface Quest {
   est_total_per_person_max_inr?: number | null
   /** Present when the rain forecast changed how the quest was planned. */
   weather_note?: string | null
+  /** True when `narrative` is an intro the quest's creator typed. It is then
+   * never rewritten. */
+  narrative_by_creator?: boolean | null
   /** Display name of the custom-quest creator ("Priya's Old City Crawl"). */
   created_by?: string | null
   /** Absent on quests made before the field existed. */

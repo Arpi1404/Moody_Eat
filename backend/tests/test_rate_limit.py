@@ -119,7 +119,7 @@ def test_the_global_switch_still_turns_limiting_off(client, monkeypatch):
 
 def test_the_other_limits_are_unchanged():
     settings = _settings()
-    expected = {"search": 60, "suggest": 120, "swap_log": 20}
+    expected = {"search": 60, "suggest": 120, "swap_log": 20, "name_search": 20}
     assert {b: rate_limit._allowance(b, settings) for b in expected} == expected
     new = {"generate": 10, "photo": 120, "blurbs": 20}
     assert {b: rate_limit._allowance(b, settings) for b in new} == new
@@ -129,6 +129,7 @@ def test_the_other_limits_are_unchanged():
     assert buckets[("GET", "/api/places/autocomplete")] == "suggest"
     assert buckets[("GET", "/api/places/autocomplete/location")] == "suggest"
     assert buckets[("POST", "/api/quest/swap-log")] == "swap_log"
+    assert buckets[("POST", "/api/places/search")] == "name_search"
 
 
 # ── Generate's hourly ceiling ──
@@ -271,7 +272,7 @@ def test_addresses_in_one_ipv6_network_are_one_caller(client):
 def test_forged_entries_evade_nothing_behind_uvicorns_proxy_headers(production_flags):
     # The Dockerfile's --forwarded-allow-ips='*' makes uvicorn set the client
     # address to the first entry. Neither the usual case nor a last entry that
-    # does not parse may fall back to it.
+    # does not parse may be counted against it.
     served = ProxyHeadersMiddleware(app, trusted_hosts="*") if production_flags else app
     client = TestClient(served)
     for last in (CALLER, "not-an-address", "unknown"):
@@ -280,6 +281,20 @@ def test_forged_entries_evade_nothing_behind_uvicorns_proxy_headers(production_f
             _call(client, GENERATE, _xff(f"10.1.1.{n}, {last}")) for n in range(11)
         ]
         assert codes == [422] * 10 + [429], last
+
+
+@pytest.mark.parametrize("production_flags", [False, True], ids=["plain", "as-dockerfile"])
+def test_unparsable_last_entries_are_all_one_caller(client, production_flags):
+    served = ProxyHeadersMiddleware(app, trusted_hosts="*") if production_flags else app
+    client = TestClient(served)
+    # Neither the first entry nor the junk itself makes a new caller.
+    codes = [
+        _call(client, GENERATE, _xff(f"10.2.2.{n}, junk-{n}")) for n in range(11)
+    ]
+    assert codes == [422] * 10 + [429]
+    assert rate_limit._limiters["generate"][1]._hits.keys() == {"unparsable"}
+    # A request with a real address is unaffected.
+    assert _call(client, GENERATE, _xff(CALLER)) == 422
 
 
 def _request(forwarded: list[str], peer: str | None) -> Request:
@@ -306,15 +321,15 @@ def _request(forwarded: list[str], peer: str | None) -> Request:
         (["::ffff:203.0.113.7"], "192.0.2.1", "203.0.113.7"),
         (["2001:DB8:0:0:ffff::1"], "192.0.2.1", "2001:db8::/64"),
         (["fe80::1%eth0"], "192.0.2.1", "fe80::/64"),
-        # A last entry that is not an address: the connection's own address...
-        (["10.0.0.1, garbage"], "192.0.2.1", "192.0.2.1"),
-        (["10.0.0.1, 203.0.113.7:443"], "192.0.2.1", "192.0.2.1"),
-        # ...unless that was copied out of the header by the server.
-        (["10.0.0.1, garbage"], "10.0.0.1", "unknown"),
-        (["garbage, junk"], "garbage", "unknown"),
-        ([", garbage"], "", "unknown"),
-        (["garbage"], None, "unknown"),
-        ([""], "192.0.2.1", "192.0.2.1"),
+        # A header whose last entry is not an address: one fixed id, never the
+        # connection's address, which the server may have copied from it.
+        (["10.0.0.1, garbage"], "192.0.2.1", "unparsable"),
+        (["10.0.0.1, garbage"], "10.0.0.1", "unparsable"),
+        (["10.0.0.1, 203.0.113.7:443"], "192.0.2.1", "unparsable"),
+        (["203.0.113.7", "garbage"], "192.0.2.1", "unparsable"),
+        (["garbage"], None, "unparsable"),
+        ([""], "192.0.2.1", "unparsable"),
+        ([" , "], "192.0.2.1", "unparsable"),
     ],
 )
 def test_client_id(forwarded, peer, expected):

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { CONTACT_URL } from '../lib/contact'
 
 export function Footer() {
   const year = new Date().getFullYear()
@@ -15,7 +16,7 @@ export function Footer() {
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
           <a
-            href="https://www.instagram.com/moody_eat/"
+            href={CONTACT_URL}
             target="_blank"
             rel="noreferrer noopener"
           >

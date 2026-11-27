@@ -19,8 +19,9 @@ from models import (
     PlaceItem,
     ResolvedLocationOut,
 )
-from services.place_utils import attach_distances, dedupe_places
+from services.place_utils import attach_distances, dedupe_places, haversine_meters
 from services.places_exceptions import (
+    FeatureUnavailableError,
     LocationNotFoundError,
     PlacesProviderError,
     ProviderAuthError,
@@ -120,6 +121,23 @@ _NOISY_TYPE_THRESHOLDS = {
     "book_store": (4.3, 300),
     "tourist_attraction": (4.3, 300),
 }
+# Search by name (build-your-own). The caller named the place they want, so
+# there is no rating or review-count bar here.
+_NAME_SEARCH_MAX_RESULTS = 8
+# Two entries of the type denylist keep nearby search from suggesting places
+# nobody asked for, but hide places someone asks for by name: a hotel known for
+# its restaurant or its high tea is often listed only as the hotel, and Google
+# tags many proper restaurants as takeaway too. The rest of the list (services,
+# shops, clinics, schools) still applies.
+_NAME_SEARCH_TYPE_DENYLIST = _TYPE_DENYLIST - {"lodging", "meal_takeaway"}
+# A match farther than this is not "near" the chosen area, and a quest stop
+# there could not be walked or driven to as part of one outing.
+_NAME_SEARCH_MAX_DISTANCE_M = 50_000.0
+# Text Search also answers with map areas and bare addresses. Nobody can have a
+# neighbourhood or a postcode as a stop. (Streets stay: some are the outing.)
+_NOT_A_VENUE_TYPES = frozenset(
+    {"political", "postal_code", "plus_code", "street_address", "intersection"}
+)
 _FILTER_RULES = (
     "business_status",
     "type_denylist",
@@ -303,6 +321,86 @@ class NearbyPlacesService:
         await self._set_cached(key, out)
         return out
 
+    async def search_by_name(
+        self,
+        *,
+        text: str,
+        lat: float | None = None,
+        lng: float | None = None,
+        area: str | None = None,
+    ) -> NearbyPlacesResponse:
+        """Places matching a name, near coordinates or a typed area.
+
+        Nothing is cached: Google's terms do not allow keeping results.
+        `resolved_location.name` is empty when the caller gave coordinates,
+        since it already knows what to call that spot.
+        """
+        # Checked before geocoding so a switched-off feature costs nothing.
+        if not self._settings.use_new_places_api:
+            raise FeatureUnavailableError(
+                "Search by name needs Places API (New), which is switched off."
+            )
+        if lat is not None and lng is not None:
+            anchor = ResolvedLocation(name="", lat=lat, lng=lng)
+        else:
+            anchor = await self.resolve_location((area or "").strip())
+
+        found = await self._provider.search_by_text(
+            text=text, lat=anchor.lat, lng=anchor.lng
+        )
+        places: list[PlaceItem] = []
+        # Google's order is its best guess at which place was meant: keep it.
+        for raw in dedupe_places(p for p in found if self._is_named_venue(p)):
+            distance = haversine_meters(anchor.lat, anchor.lng, raw.lat, raw.lng)
+            if distance > _NAME_SEARCH_MAX_DISTANCE_M:
+                continue
+            places.append(
+                PlaceItem(
+                    name=raw.name,
+                    address=raw.address or "",
+                    lat=raw.lat,
+                    lng=raw.lng,
+                    distance_meters=round(distance, 1),
+                    rating=raw.rating,
+                    user_ratings_total=raw.user_ratings_total,
+                    price_level=raw.price_level,
+                    price_range_start_inr=raw.price_range_start_inr,
+                    price_range_end_inr=raw.price_range_end_inr,
+                    business_status=raw.business_status,
+                    types=raw.types,
+                    primary_type=raw.primary_type,
+                    provider_id=raw.provider_id,
+                )
+            )
+            if len(places) == _NAME_SEARCH_MAX_RESULTS:
+                break
+
+        # Counts only: what was typed is never logged.
+        logger.info("places_name_search found=%s returned=%s", len(found), len(places))
+        return NearbyPlacesResponse(
+            resolved_location=ResolvedLocationOut(
+                name=anchor.name, lat=anchor.lat, lng=anchor.lng
+            ),
+            places=places,
+            count=len(places),
+        )
+
+    @staticmethod
+    def _is_named_venue(place: RawPlace) -> bool:
+        """Whether a name-search match can be offered as a quest stop."""
+        if not place.provider_id or not place.name:
+            return False
+        if place.business_status and place.business_status != "OPERATIONAL":
+            return False
+        place_types = {t.casefold() for t in (place.types or [])}
+        if place_types & (_NAME_SEARCH_TYPE_DENYLIST | _NOT_A_VENUE_TYPES):
+            return False
+        if _NAME_DENYLIST_RE.search(place.name):
+            return False
+        if "book_store" in place_types and _BOOK_STORE_NAME_DENYLIST_RE.search(place.name):
+            return False
+        return True
+
     @staticmethod
     def _query_tokens(query: str) -> list[str]:
         return [t for t in _TOKEN_RE.findall(query.casefold()) if t]
@@ -451,6 +549,8 @@ def map_provider_error(exc: PlacesProviderError) -> tuple[int, str]:
     if isinstance(exc, ProviderAuthError):
         return 503, str(exc)
     if isinstance(exc, ProviderQuotaError):
+        return 503, str(exc)
+    if isinstance(exc, FeatureUnavailableError):
         return 503, str(exc)
     if isinstance(exc, ProviderTimeoutError):
         return 504, str(exc)

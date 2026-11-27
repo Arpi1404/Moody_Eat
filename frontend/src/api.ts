@@ -214,6 +214,48 @@ export async function searchNearbyPlaces(payload: {
   return res.json()
 }
 
+/** Why a search by name failed, so the page can say something useful. */
+export type NameSearchFailure = 'area_not_found' | 'too_many' | 'unavailable'
+
+export class NameSearchError extends Error {
+  readonly reason: NameSearchFailure
+
+  constructor(reason: NameSearchFailure) {
+    super(`Search by name failed: ${reason}`)
+    this.reason = reason
+  }
+}
+
+/** Places matching a typed name, near coordinates or a typed area. Throws
+ * NameSearchError. A POST so the text stays out of server request logs. */
+export async function searchPlacesByName(payload: {
+  q: string
+  lat?: number
+  lng?: number
+  area?: string
+}): Promise<NearbyPlacesResponse> {
+  let res: Response
+  try {
+    res = await fetch(`${getApiBase()}/api/places/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    throw new NameSearchError('unavailable')
+  }
+  if (res.ok) return res.json()
+  const data = (await res.json().catch(() => ({}))) as {
+    detail?: { code?: string }
+  }
+  if (res.status === 429) throw new NameSearchError('too_many')
+  // A backend without this endpoint also answers 404, so go by the code.
+  if (data.detail?.code === 'area_not_found') {
+    throw new NameSearchError('area_not_found')
+  }
+  throw new NameSearchError('unavailable')
+}
+
 /** One row of the location dropdown: "Banjara Hills" / "Hyderabad, Telangana, India". */
 export type LocationSuggestion = {
   place_id: string

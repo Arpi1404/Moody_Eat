@@ -1,19 +1,9 @@
 // The schedule maths behind editing a quest. Run with `npm test`.
 //
-// questBuild.ts imports only types, so it is compiled here with the compiler
-// Vite already ships and loaded on its own. Works on the Node 20 that CI uses.
-
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { fileURLToPath } from 'node:url'
-import { transformWithEsbuild } from 'vite'
+import { loadSource } from './loadSource.mjs'
 
-const source = fileURLToPath(new URL('../src/lib/questBuild.ts', import.meta.url))
-const { code } = await transformWithEsbuild(await readFile(source, 'utf8'), source, {
-  loader: 'ts',
-  format: 'esm',
-})
 const {
   FILM_MINUTES,
   addMinutes,
@@ -24,7 +14,7 @@ const {
   reorderStops,
   replaceStop,
   travelLeg,
-} = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
+} = await loadSource('lib/questBuild.ts')
 
 /** A place `km` north of the origin. */
 const place = (id, km, types = ['cafe']) => ({

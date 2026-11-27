@@ -13,6 +13,8 @@ import { CoachMark } from '../components/CoachMark'
 import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
+import { CONTACT_URL } from '../lib/contact'
+import { withoutLinks } from '../lib/creatorText'
 import { QUEST_HINTS, QUEST_HINTS_REPLAY_ORDER } from '../lib/onboarding'
 import { MAX_STOPS } from '../lib/questBuild'
 import { recordQuestPlaces } from '../lib/questHistory'
@@ -128,11 +130,15 @@ function rebuildNarrative(quest: Quest): string {
 }
 
 function makeQuestTextSummary(quest: Quest, url: string): string {
+  // The title and the notes can be anyone's words: no links from them in chat.
   const stops = quest.stops
-    .map((stop, index) => `${index + 1}. ${stop.place.name} - ${stop.why_this_place}`)
+    .map(
+      (stop, index) =>
+        `${index + 1}. ${stop.place.name} - ${withoutLinks(stop.why_this_place)}`,
+    )
     .join('\n')
 
-  return `${quest.title}\n${quest.occasion} quest · ${quest.total_duration_minutes} min\n\n${stops}\n\nPlan yours at ${url}`
+  return `${withoutLinks(quest.title)}\n${quest.occasion} quest · ${quest.total_duration_minutes} min\n\n${stops}\n\nPlan yours at ${url}`
 }
 
 function nextPaint(): Promise<void> {
@@ -611,15 +617,16 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   const handleQuestChange = (nextQuest: Quest) => {
-    // The narrative names specific stops; after an edit it would keep
+    // An automatic narrative names specific stops; after an edit it would keep
     // describing the old list, so rebuild it from the new one. The length is
-    // compared too: removing the last stop changes no other position.
+    // compared too: removing the last stop changes no other position. An intro
+    // the creator wrote is theirs: it stays as written.
     const stopsChanged =
       nextQuest.stops.length !== quest.stops.length ||
       nextQuest.stops.some(
         (stop, i) => stop.place.provider_id !== quest.stops[i]?.place.provider_id,
       )
-    if (stopsChanged && nextQuest.narrative) {
+    if (stopsChanged && nextQuest.narrative && !nextQuest.narrative_by_creator) {
       nextQuest = { ...nextQuest, narrative: rebuildNarrative(nextQuest) }
     }
     persistQuest(nextQuest)
@@ -635,7 +642,10 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   ) => {
     const previous = quest
     handleQuestChange(next)
-    showToast(`Removed ${removed.place.name}.`, {
+    // A note someone typed goes with its stop: say so while Undo can bring
+    // both back.
+    const lost = removed.note_by_creator ? ' and the note on it' : ''
+    showToast(`Removed ${removed.place.name}${lost}.`, {
       actionLabel: 'Undo',
       undo: { to: previous, event: 'stop_removal_undone' },
       focusAction: byKeyboard,
@@ -858,7 +868,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     const popup = window.open('about:blank', '_blank')
     if (popup) popup.opener = null
     const url = await makeQuestShareUrl(titledQuest)
-    const text = `${titledQuest.title} — here's the plan 👇\n${url}`
+    const text = `${withoutLinks(titledQuest.title)} — here's the plan 👇\n${url}`
     const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
     if (popup) {
       popup.location.href = waUrl
@@ -1188,6 +1198,22 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
             </>
           )}
         </div>
+
+        {/* On every shared link, not only ones with a creator's words: the
+            title can be edited on any quest, and anyone can store one. */}
+        {shortId && (
+          <p className="qp-report">
+            <a
+              href={CONTACT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track('quest_report_tapped', { short_id: shortId })}
+            >
+              Report this quest
+            </a>{' '}
+            on Instagram. Tell us its code: <strong>{shortId}</strong>
+          </p>
+        )}
 
         <div className="qp-bottom-bar">
           <button

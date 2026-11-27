@@ -88,7 +88,9 @@ function setMeta(html, attr, name, value) {
 
 export function injectQuestTags(html, { title, description, url }) {
   const safeTitle = escapeHtml(`${title} — MoodyEat`)
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${safeTitle}</title>`)
+  // A function, so "$&" or "$`" in a title is text and not a replacement
+  // pattern that would paste parts of the page into it.
+  html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${safeTitle}</title>`)
   html = setMeta(html, 'property', 'og:title', safeTitle)
   html = setMeta(html, 'name', 'twitter:title', safeTitle)
   if (description) {
@@ -101,6 +103,17 @@ export function injectQuestTags(html, { title, description, url }) {
     html = setMeta(html, 'property', 'og:url', escapeHtml(url))
   }
   return html
+}
+
+/** Shared quests hold whatever their maker wrote, whether it is stored here
+ * (/q/) or carried in an older link's ?st= title (/quest/): keep them out of
+ * search engines. vercel.json sends the same header for visitors who skip
+ * this function. */
+export function addNoindex(html) {
+  return html.replace(
+    /<head[^>]*>/i,
+    (head) => `${head}\n    <meta name="robots" content="noindex" />`,
+  )
 }
 
 export default async function handler(req, res) {
@@ -122,6 +135,11 @@ export default async function handler(req, res) {
   }
 
   const url = new URL(req.url, origin)
+
+  // Every page served from here is a quest preview.
+  html = addNoindex(html)
+  res.setHeader('X-Robots-Tag', 'noindex')
+  const isShortLink = url.pathname.startsWith('/q/')
 
   const shortLinkMatch = url.pathname.match(/^\/q\/([a-z0-9]{4,16})$/)
   if (shortLinkMatch) {
@@ -148,6 +166,11 @@ export default async function handler(req, res) {
 
   res.statusCode = 200
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400')
+  // Shared links are cached for minutes, not a day: a quest that has been
+  // taken down must not keep its preview.
+  res.setHeader(
+    'Cache-Control',
+    `public, max-age=0, s-maxage=${isShortLink ? 300 : 86400}`,
+  )
   res.end(html)
 }

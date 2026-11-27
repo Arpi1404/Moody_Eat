@@ -1,9 +1,69 @@
+import re
+import unicodedata
 import uuid
 from datetime import datetime, time
 from enum import Enum
 from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
+
+# The two texts a quest's creator can write: a note on each stop and an intro.
+# Mirrored in frontend/src/lib/creatorText.ts: change one, change both.
+CREATOR_NOTE_MAX = 200
+CREATOR_INTRO_MAX = 300
+# Ceilings for the same two fields when the text is automatic or curated:
+# curated notes run to 224 characters, curated intros to 518, and a
+# model-written intro can be longer still. A quest over these cannot be shared
+# or have its stops swapped, so they leave room.
+STOP_NOTE_MAX = 300
+NARRATIVE_MAX = 1500
+
+# Control characters (newlines and tabs among them), line separators, and the
+# marks that make text display in a different order from how it was typed.
+_UNSAFE_TEXT_RE = re.compile(
+    "[\x00-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]"
+)
+
+
+# Characters that take no room: they can hide inside a word or a web address,
+# or make an empty note look written.
+_ZERO_WIDTH_RE = re.compile("[\u200b-\u200d\u2060\ufeff]")
+
+
+def _is_emoji_part(char: str) -> bool:
+    return 0x1F000 <= ord(char) <= 0x1FAFF or unicodedata.category(char) == "So"
+
+
+def _drop_zero_width(match: re.Match) -> str:
+    """Remove one zero-width character, unless it is the joiner holding the
+    parts of one emoji together, such as a family or a flag."""
+    text, at = match.string, match.start()
+    if match.group() == "\u200d" and 0 < at < len(text) - 1:
+        before, after = text[at - 1], text[at + 1]
+        if (before == "\ufe0f" or _is_emoji_part(before)) and _is_emoji_part(after):
+            return match.group()
+    return ""
+
+
+def tidy_text(value: str) -> str:
+    """One trimmed line: no control or zero-width characters, single spaces."""
+    text = _ZERO_WIDTH_RE.sub(_drop_zero_width, value)
+    return " ".join(_UNSAFE_TEXT_RE.sub(" ", text).split())
+
+
+def _unset_marker(value: object) -> bool:
+    """A by-creator marker is only written out when it is true, so a quest with
+    no creator text is stored exactly as it was before the markers existed (and
+    sharing it again still finds its existing link)."""
+    return not value
+
+
+def _fitting_text(value: str, limit: int) -> str:
+    text = tidy_text(value)
+    if len(text) > limit:
+        raise ValueError(f"Keep this to {limit} characters or fewer.")
+    return text
+
 
 # Google Places Nearby Search (legacy) `type` values we support for this API.
 ALLOWED_NEARBY_TYPES = frozenset(
@@ -96,6 +156,31 @@ class NearbyPlacesResponse(BaseModel):
     resolved_location: ResolvedLocationOut
     places: list[PlaceItem]
     count: int
+
+
+NAME_SEARCH_MIN_CHARS = 3
+
+
+class NameSearchRequest(BaseModel):
+    """A search for a place by its name, near the area a creator chose.
+
+    Sent as a request body, not a query string, so that what was typed and
+    where from do not end up in web server request logs.
+    """
+
+    q: str = Field(max_length=120)
+    # The area's coordinates when known; otherwise `area`, which is geocoded.
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    lng: Optional[float] = Field(default=None, ge=-180, le=180)
+    area: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("q")
+    @classmethod
+    def tidy_query(cls, v: str) -> str:
+        text = " ".join(v.split())
+        if len(text) < NAME_SEARCH_MIN_CHARS:
+            raise ValueError(f"Type at least {NAME_SEARCH_MIN_CHARS} characters.")
+        return text
 
 
 class LocationSuggestion(BaseModel):
@@ -225,12 +310,27 @@ class Stop(BaseModel):
     travel_to_next_minutes: Optional[int] = None
     travel_mode: Optional[TravelMode] = None
     why_this_place: str
+    # True when why_this_place is a note the quest's creator typed. Absent on
+    # automatic lines, and on links stored before the field existed.
+    note_by_creator: Optional[bool] = Field(default=None, exclude_if=_unset_marker)
     # Estimated per-person spend at this stop in INR. None when no price signal
     # exists (e.g. parks, attractions). Where the estimate comes from is in
     # price_source: google_price_range | google_price_level | heuristic.
     est_cost_per_person_min_inr: Optional[int] = None
     est_cost_per_person_max_inr: Optional[int] = None
     price_source: Optional[str] = None
+
+    @field_validator("why_this_place")
+    @classmethod
+    def note_fits(cls, v: str) -> str:
+        return _fitting_text(v, STOP_NOTE_MAX)
+
+    @field_validator("note_by_creator")
+    @classmethod
+    def creator_note_fits(cls, v: Optional[bool], info) -> Optional[bool]:
+        if v and len(info.data.get("why_this_place", "")) > CREATOR_NOTE_MAX:
+            raise ValueError(f"Keep a note to {CREATOR_NOTE_MAX} characters or fewer.")
+        return v
 
 
 class StopSwapDelta(BaseModel):
@@ -261,6 +361,18 @@ class Quest(BaseModel):
     est_total_per_person_max_inr: Optional[int] = None
     # Present when the rain forecast changed how the quest was planned.
     weather_note: Optional[str] = None
+    # True when `narrative` is an intro the quest's creator typed. Absent on
+    # automatic text, and on links stored before the field existed.
+    narrative_by_creator: Optional[bool] = Field(
+        default=None, exclude_if=_unset_marker
+    )
+
+    @field_validator("narrative")
+    @classmethod
+    def narrative_fits(cls, v: str, info) -> str:
+        by_creator = info.data.get("narrative_by_creator")
+        return _fitting_text(v, CREATOR_INTRO_MAX if by_creator else NARRATIVE_MAX)
+
     # Optional display name of the person who assembled a custom quest
     # ("Priya's Old City Crawl"). Never set on generated quests.
     created_by: Optional[str] = Field(default=None, max_length=60)

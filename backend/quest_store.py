@@ -108,6 +108,25 @@ def fetch_quest(short_id: str, *, count_view: bool = True) -> StoredQuest | None
     return _sqlite_fetch(short_id, count_view=count_view)
 
 
+def delete_quest(short_id: str) -> bool:
+    """Take a shared quest down for good. False when there is no such quest.
+
+    Used by scripts/delete_shared_quest.py; no HTTP route reaches it.
+    """
+    if _backend() == "firestore":
+        return _firestore_delete(short_id)
+    return _sqlite_delete(short_id)
+
+
+def describe_store() -> str:
+    """Which store the environment points at, in words, for scripts to show."""
+    if _backend() == "firestore":
+        project = os.environ.get("FIRESTORE_PROJECT", "").strip() or "default project"
+        database = os.environ.get("FIRESTORE_DATABASE", "").strip() or "(default)"
+        return f"Firestore ({project}, database {database})"
+    return f"SQLite file {_db_path()}"
+
+
 # --- SQLite ---------------------------------------------------------------
 
 
@@ -184,6 +203,14 @@ def _sqlite_fetch(short_id: str, *, count_view: bool) -> StoredQuest | None:
     )
 
 
+def _sqlite_delete(short_id: str) -> bool:
+    with closing(_connect()) as conn, conn:
+        cursor = conn.execute(
+            "DELETE FROM stored_quests WHERE short_id = ?", (short_id,)
+        )
+        return cursor.rowcount > 0
+
+
 # --- Firestore ------------------------------------------------------------
 
 
@@ -252,3 +279,21 @@ def _firestore_fetch(short_id: str, *, count_view: bool) -> StoredQuest | None:
         created_at=data["created_at"],
         views=int(data.get("views") or 0),
     )
+
+
+def _firestore_delete(short_id: str) -> bool:
+    client = firestore_client()
+    quest_ref = client.collection(QUESTS_COLLECTION).document(short_id)
+    snap = quest_ref.get()
+    if not snap.exists:
+        return False
+    content_hash = snap.to_dict().get("content_hash")
+    if content_hash:
+        # Left behind, this would hand the dead id to anyone sharing the same
+        # content again. It goes first so that stopping halfway is harmless.
+        hash_ref = client.collection(HASHES_COLLECTION).document(content_hash)
+        pointer = hash_ref.get()
+        if pointer.exists and pointer.to_dict().get("short_id") == short_id:
+            hash_ref.delete()
+    quest_ref.delete()
+    return True

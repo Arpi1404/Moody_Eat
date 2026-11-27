@@ -78,6 +78,7 @@ function AlternativePhoto({
 export function SwapSheet({
   mode,
   stopName,
+  dropsNote,
   kind,
   searched,
   alternatives,
@@ -92,6 +93,8 @@ export function SwapSheet({
   mode: 'swap' | 'add'
   /** The stop being replaced, or the one a new stop will follow. */
   stopName: string
+  /** The stop has a note someone typed, which a swap would remove. */
+  dropsNote: boolean
   /** null: the same type as the stop now (swap), or nothing chosen yet (add). */
   kind: StopKind | null
   /** False until a search has been asked for: adding starts with a choice. */
@@ -163,6 +166,12 @@ export function SwapSheet({
               ? 'Pick a kind, preview a place, then add it.'
               : 'Preview a new stop, then confirm when the timeline feels right.'}
           </p>
+          {dropsNote && !adding && (
+            <p className="swap-sheet-lost-note">
+              The personal note on this stop is about {stopName}. Swapping
+              removes it.
+            </p>
+          )}
         </div>
 
         <div className="swap-kind-row" role="group" aria-label="Kind of stop">

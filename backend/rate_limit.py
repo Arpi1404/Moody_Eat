@@ -104,10 +104,12 @@ _SWAP_LOG_BUCKET = "swap_log"
 _GENERATE_BUCKET = "generate"
 _PHOTO_BUCKET = "photo"
 _BLURBS_BUCKET = "blurbs"
+_NAME_SEARCH_BUCKET = "name_search"
 _LIMITED_ENDPOINTS = {
     ("POST", "/api/quest/generate"): _GENERATE_BUCKET,
     ("GET", "/api/places/photo"): _PHOTO_BUCKET,
     ("POST", "/api/places/blurbs"): _BLURBS_BUCKET,
+    ("POST", "/api/places/search"): _NAME_SEARCH_BUCKET,
     ("POST", "/api/places/nearby"): _SEARCH_BUCKET,
     ("POST", "/api/quest/store"): _SEARCH_BUCKET,
     ("GET", "/api/places/autocomplete"): _SUGGEST_BUCKET,
@@ -124,6 +126,9 @@ _SWAP_LOG_MAX_PER_MINUTE = 20
 _GENERATE_MAX_PER_MINUTE = 10
 # Each blurbs request is a call to the model API.
 _BLURBS_MAX_PER_MINUTE = 20
+# Every search by name is a billed Text Search (plus a geocode when the area
+# was typed) and nobody needs many a minute.
+_NAME_SEARCH_MAX_PER_MINUTE = 20
 # A page asks for many photos at once (curated cards, stops, swap options), so
 # this one is above the general allowance on purpose.
 _PHOTO_MAX_PER_MINUTE = 120
@@ -133,6 +138,7 @@ _CEILINGS = {
     _SWAP_LOG_BUCKET: _SWAP_LOG_MAX_PER_MINUTE,
     _GENERATE_BUCKET: _GENERATE_MAX_PER_MINUTE,
     _BLURBS_BUCKET: _BLURBS_MAX_PER_MINUTE,
+    _NAME_SEARCH_BUCKET: _NAME_SEARCH_MAX_PER_MINUTE,
 }
 
 # A per-minute number alone still lets one address make 14,400 quests a day,
@@ -148,6 +154,9 @@ def _allowance(bucket: str, settings) -> int:
         return _PHOTO_MAX_PER_MINUTE
     general = settings.rate_limit_per_minute
     return min(general, _CEILINGS.get(bucket, general))
+
+
+_UNPARSABLE = "unparsable"
 
 
 def _caller_key(address: str) -> str | None:
@@ -174,22 +183,19 @@ def _client_id(request: Request) -> str:
     With a load balancer in front, the balancer appends an address too, and
     the caller becomes the second entry from the end.
 
-    request.client is used only when it did not come out of that header. The
-    Dockerfile runs uvicorn with --forwarded-allow-ips='*', which sets it to
-    the FIRST entry, the one the caller writes.
+    request.client is used only when there is no such header at all (local
+    runs and tests). The Dockerfile starts uvicorn with --proxy-headers
+    --forwarded-allow-ips='*', which fills it from the FIRST entry, the one
+    the caller writes. So a header whose last entry is not an address counts
+    against one fixed id.
     """
-    sent = [
-        entry.strip()
-        for value in request.headers.getlist("x-forwarded-for")
-        for entry in value.split(",")
-    ]
-    entries = [entry for entry in sent if entry]
-    if entries:
-        key = _caller_key(entries[-1])
-        if key is not None:
-            return key
+    values = request.headers.getlist("x-forwarded-for")
+    if values:
+        entries = [entry.strip() for entry in ",".join(values).split(",")]
+        last = next((entry for entry in reversed(entries) if entry), "")
+        return _caller_key(last) or _UNPARSABLE
     peer = request.client.host if request.client else ""
-    if not peer or peer in sent:
+    if not peer:
         return "unknown"
     return _caller_key(peer) or peer
 
