@@ -4,7 +4,12 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import type { DayPart, Quest, QuestGenerationRequest, Stop } from '../types/quest'
 import type { JournalEntry } from '../types/journal'
-import { fetchCuratedQuest, fetchStoredQuest, generateQuest } from '../api'
+import {
+  fetchCuratedQuest,
+  fetchStoredQuest,
+  generateQuest,
+  TOO_MANY_QUESTS,
+} from '../api'
 import { isSavedQuestId, useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
 import { useQuestHints } from '../hooks/useQuestHints'
@@ -715,8 +720,13 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           durationMs: 8000,
         })
       }
-    } catch {
-      showToast("Couldn't shuffle the plan — try again.")
+    } catch (err) {
+      // "Try again" would be wrong at the limit: trying at once fails again.
+      showToast(
+        err instanceof Error && err.message === TOO_MANY_QUESTS
+          ? TOO_MANY_QUESTS
+          : "Couldn't shuffle the plan — try again.",
+      )
     } finally {
       setShuffling(false)
     }
