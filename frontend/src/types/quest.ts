@@ -39,8 +39,21 @@ export interface StopSwapDelta {
   distance_change_meters: number
 }
 
+/** What a person can ask for when swapping or adding a stop. */
+export type StopKind =
+  | 'meal'
+  | 'coffee'
+  | 'dessert'
+  | 'drinks'
+  | 'walk'
+  | 'sights'
+  | 'movie'
+  | 'bowling'
+
 export interface StopAlternative extends Stop {
   delta: StopSwapDelta
+  /** The kind asked for, echoed back. Absent from servers that predate it. */
+  kind?: StopKind | null
 }
 
 /** Who chose a quest's stops: the engine, an editor, or the person. */

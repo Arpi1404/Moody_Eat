@@ -110,6 +110,11 @@ function writeSaved(next: SavedQuest[]) {
   for (const listener of listeners) listener(next)
 }
 
+/** Whether a quest is in the saved list right now, for code outside a render. */
+export function isSavedQuestId(questId: string): boolean {
+  return readSaved().some((q) => q.id === questId)
+}
+
 export function useSavedQuests() {
   const [savedQuests, setSavedQuests] = useState<SavedQuest[]>(readSaved)
 

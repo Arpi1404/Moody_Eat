@@ -49,6 +49,11 @@ origins = (
     else _DEV_ORIGINS
 )
 
+app.add_middleware(NearbyPlacesRateLimitMiddleware)
+
+# Added last so that it wraps everything. A rate-limit reply without CORS
+# headers cannot be read by the browser, which then reports a network failure
+# instead of "too many requests".
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -56,8 +61,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(NearbyPlacesRateLimitMiddleware)
 
 app.include_router(quest_router)
 

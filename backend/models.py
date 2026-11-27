@@ -170,6 +170,41 @@ class StopCategory(str, Enum):
     other = "other"
 
 
+# ── Stop kinds ─────────────────────────────────────────────────────────────────
+
+class StopKind(str, Enum):
+    """What a person can ask for when they swap a stop or add one."""
+
+    meal = "meal"
+    coffee = "coffee"
+    dessert = "dessert"
+    drinks = "drinks"
+    walk = "walk"
+    sights = "sights"
+    movie = "movie"
+    bowling = "bowling"
+
+
+# kind -> (the one nearby-search type it asks for, the category the new stop
+# gets). One type each, so choosing a kind costs one Places search. Every type
+# must be in ALLOWED_NEARBY_TYPES. frontend/src/lib/stopKinds.ts lists the same
+# kinds.
+STOP_KIND_SEARCHES: dict[StopKind, tuple[str, StopCategory]] = {
+    StopKind.meal: ("restaurant", StopCategory.restaurant),
+    StopKind.coffee: ("cafe", StopCategory.cafe),
+    StopKind.dessert: ("bakery", StopCategory.other),
+    StopKind.drinks: ("bar", StopCategory.bar),
+    StopKind.walk: ("park", StopCategory.attraction),
+    StopKind.sights: ("tourist_attraction", StopCategory.attraction),
+    StopKind.movie: ("movie_theater", StopCategory.activity),
+    StopKind.bowling: ("bowling_alley", StopCategory.activity),
+}
+
+# A film outlasts the other activities, so it has a length of its own. Mirrors
+# FILM_MINUTES in frontend/src/lib/questBuild.ts.
+FILM_MINUTES = 150
+
+
 # ── Quest models ───────────────────────────────────────────────────────────────
 
 # How a quest's stops were chosen.
@@ -206,6 +241,9 @@ class StopSwapDelta(BaseModel):
 
 class StopAlternative(Stop):
     delta: StopSwapDelta
+    # Echoes the kind that was asked for. The quest page reads it to tell a
+    # server that searched by kind from an older one that ignored the request.
+    kind: Optional[StopKind] = None
 
 
 class Quest(BaseModel):

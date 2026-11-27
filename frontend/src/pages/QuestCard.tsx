@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { fetchStopAlternatives, getApiBase } from '../api'
-import type { Quest, Stop, StopAlternative } from '../types/quest'
+import { fetchStopAdditions, fetchStopAlternatives, getApiBase } from '../api'
+import type { Quest, Stop, StopAlternative, StopKind } from '../types/quest'
 import { CoachMark } from '../components/CoachMark'
 import { PlaceLink } from '../components/PlaceLink'
 import { EmptyState } from '../components/states'
@@ -10,10 +10,11 @@ import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
 import type { QuestHint } from '../lib/onboarding'
 import {
-  addMinutes,
-  durationMinutes,
-  questDuration,
-  rescheduleStops,
+  MAX_STOPS,
+  insertStopAfter,
+  removeStop,
+  reorderStops,
+  replaceStop,
 } from '../lib/questBuild'
 import { logSwap } from '../lib/swapLog'
 import { SwapSheet } from './SwapSheet'
@@ -55,12 +56,8 @@ function directionsUrl(place: Stop['place']): string {
   return `${base}&destination=${place.lat},${place.lng}`
 }
 
-function rescheduleWithAlternative(
-  quest: Quest,
-  stopIndex: number,
-  alternative: StopAlternative,
-): Quest {
-  const replacement: Stop = {
+function stopFromAlternative(alternative: StopAlternative): Stop {
+  return {
     place: alternative.place,
     category: alternative.category,
     time_block_start: alternative.time_block_start,
@@ -72,44 +69,18 @@ function rescheduleWithAlternative(
     est_cost_per_person_max_inr: alternative.est_cost_per_person_max_inr,
     price_source: alternative.price_source,
   }
-  const stops = rescheduleStops(
-    quest.stops.map((stop, index) =>
-      index === stopIndex ? replacement : { ...stop },
-    ),
-  )
-
-  return {
-    ...quest,
-    stops,
-    total_duration_minutes: questDuration(stops),
-  }
 }
 
-function reorderStops(quest: Quest, from: number, to: number): Quest {
-  if (from === to || to < 0 || to >= quest.stops.length) return quest
-  const anchorStart = quest.stops[0].time_block_start
-  const stops = quest.stops.map((stop) => ({ ...stop }))
-  const [moved] = stops.splice(from, 1)
-  stops.splice(to, 0, moved)
+/** One places search made while the sheet is open. */
+type OptionSearch =
+  | { status: 'loading' }
+  | { status: 'done'; options: StopAlternative[] }
+  | { status: 'error'; message: string }
 
-  // Whatever lands first inherits the quest's original start time.
-  const firstDwell = durationMinutes(
-    stops[0].time_block_start,
-    stops[0].time_block_end,
-  )
-  stops[0] = {
-    ...stops[0],
-    time_block_start: anchorStart,
-    time_block_end: addMinutes(anchorStart, firstDwell),
-  }
-  const rescheduled = rescheduleStops(stops)
+/** What a search is remembered under: a kind, or the stop's type as it is. */
+const searchKey = (kind: StopKind | null): string => kind ?? 'similar'
 
-  return {
-    ...quest,
-    stops: rescheduled,
-    total_duration_minutes: questDuration(rescheduled),
-  }
-}
+const NO_ALTERNATIVES: StopAlternative[] = []
 
 function makeMarker(n: number): L.DivIcon {
   return L.divIcon({
@@ -202,7 +173,9 @@ function StopCard({
   active = false,
   checked = false,
   onCheck,
-  readOnly = false,
+  locked = false,
+  onRemove,
+  onAddAfter,
   hint = null,
   onHintDismiss,
   revealHint = false,
@@ -216,7 +189,12 @@ function StopCard({
   active?: boolean
   checked?: boolean
   onCheck?: () => void
-  readOnly?: boolean
+  /** Its stops cannot be changed: a preview, or a quest in progress. */
+  locked?: boolean
+  /** Absent on the only stop of a quest, which has to stay. */
+  onRemove?: (byKeyboard: boolean) => void
+  /** Add a stop between this one and the next. Absent on the last stop. */
+  onAddAfter?: () => void
   /** The one-time hint to show on this card, if any. */
   hint?: QuestHint | null
   onHintDismiss?: (hint: QuestHint) => void
@@ -268,7 +246,7 @@ function StopCard({
         )}
         <button
           type="button"
-          className={`qp-stop-swap-btn${readOnly ? ' qp-stop-swap-btn--locked' : ''}`}
+          className={`qp-stop-swap-btn${locked ? ' qp-stop-swap-btn--locked' : ''}`}
           aria-label={`Swap stop ${index + 1}`}
           onClick={onSwap}
         >
@@ -276,7 +254,7 @@ function StopCard({
           <span>Swap</span>
         </button>
       </div>
-      {!readOnly && (onMoveUp || onMoveDown) && (
+      {!locked && (onMoveUp || onMoveDown) && (
         <div className="qp-stop-move">
           {hint === 'reorder' && (
             <CoachMark
@@ -359,15 +337,40 @@ function StopCard({
             >
               <span aria-hidden>🧭</span> Directions
             </a>
+            {!locked && onRemove && (
+              <button
+                type="button"
+                className="qp-stop-remove"
+                aria-label={`Remove stop ${index + 1}, ${stop.place.name}`}
+                // A click with no pointer behind it came from the keyboard.
+                onClick={(event) => onRemove(event.detail === 0)}
+              >
+                Remove
+              </button>
+            )}
           </div>
         </div>
       </div>
-      {stop.travel_to_next_minutes != null && (
-        <p className="qp-travel-tag">
-          {TRAVEL_EMOJI[stop.travel_mode ?? ''] ?? '🚗'}{' '}
-          {stop.travel_to_next_minutes} min {stop.travel_mode ?? 'drive'} to
-          next stop
-        </p>
+      {(stop.travel_to_next_minutes != null || (!locked && onAddAfter)) && (
+        <div className="qp-travel-tag">
+          {stop.travel_to_next_minutes != null && (
+            <span>
+              {TRAVEL_EMOJI[stop.travel_mode ?? ''] ?? '🚗'}{' '}
+              {stop.travel_to_next_minutes} min {stop.travel_mode ?? 'drive'} to
+              next stop
+            </span>
+          )}
+          {!locked && onAddAfter && (
+            <button
+              type="button"
+              className="qp-add-inline"
+              aria-label={`Add a stop here, after stop ${index + 1}`}
+              onClick={onAddAfter}
+            >
+              + Add a stop here
+            </button>
+          )}
+        </div>
       )}
     </li>
   )
@@ -382,6 +385,7 @@ export function QuestCard({
   onMarkDone,
   readOnly = false,
   onLockedSwap,
+  onStopRemoved,
   onSwapSheetChange,
   hint = null,
   onHintDismiss,
@@ -396,8 +400,11 @@ export function QuestCard({
   onToggleStopComplete?: (index: number) => void
   onMarkDone?: () => void
   readOnly?: boolean
-  /** Swap tapped on a read-only quest: the page says how to unlock it. */
+  /** Swap tapped on a quest whose stops cannot change right now: the page says
+   * why, and how to unlock it. */
   onLockedSwap?: () => void
+  /** A stop was removed. The page applies the change and offers to undo it. */
+  onStopRemoved: (next: Quest, removed: Stop, byKeyboard: boolean) => void
   /** Told whenever the swap sheet opens or closes. Must be a stable function. */
   onSwapSheetChange?: (open: boolean) => void
   /** The one-time hint to show on the first stop, if any. */
@@ -410,17 +417,36 @@ export function QuestCard({
   /** Scroll to each hint as it appears (during a replay). */
   revealHints?: boolean
 }) {
+  // The stop the open sheet is about: the one being swapped, or, when adding,
+  // the one the new stop will follow.
   const [activeStopIndex, setActiveStopIndex] = useState<number | null>(null)
-  const [alternatives, setAlternatives] = useState<StopAlternative[]>([])
+  const [adding, setAdding] = useState(false)
+  const [kind, setKind] = useState<StopKind | null>(null)
+  // Every search made since the sheet opened. Each one is a paid places
+  // search, so going back to a kind shows what it found before.
+  const [searches, setSearches] = useState<Record<string, OptionSearch>>({})
   const [selectedAlternative, setSelectedAlternative] =
     useState<StopAlternative | null>(null)
-  const [loadingAlternatives, setLoadingAlternatives] = useState(false)
-  const [swapError, setSwapError] = useState<string | null>(null)
+
+  const searched = !adding || kind != null
+  const search = searched ? searches[searchKey(kind)] : undefined
+  const alternatives =
+    search?.status === 'done' ? search.options : NO_ALTERNATIVES
+  const loadingAlternatives = search?.status === 'loading'
+  const swapError = search?.status === 'error' ? search.message : null
 
   const previewQuest = useMemo(() => {
     if (activeStopIndex == null || selectedAlternative == null) return null
-    return rescheduleWithAlternative(quest, activeStopIndex, selectedAlternative)
-  }, [activeStopIndex, quest, selectedAlternative])
+    const stop = stopFromAlternative(selectedAlternative)
+    return adding
+      ? insertStopAfter(quest, activeStopIndex, stop)
+      : replaceStop(quest, activeStopIndex, stop)
+  }, [activeStopIndex, adding, quest, selectedAlternative])
+  // Where the stop being previewed sits in the previewed list.
+  const previewIndex =
+    previewQuest && activeStopIndex != null
+      ? activeStopIndex + (adding ? 1 : 0)
+      : null
 
   const swapSheetOpen = activeStopIndex != null
   useEffect(() => {
@@ -437,51 +463,108 @@ export function QuestCard({
     s.place.lng,
   ])
 
-  // Monotonic id so a late alternatives response for a closed or superseded
-  // sheet is ignored (the fetch itself is not abortable here).
-  const swapRequestId = useRef(0)
+  // Goes up each time the sheet opens or closes, so a response that arrives
+  // for an earlier sheet is ignored (the fetch itself is not abortable here).
+  const sheetSession = useRef(0)
 
   const closeSheet = useCallback(() => {
-    swapRequestId.current++
+    sheetSession.current++
     setActiveStopIndex(null)
-    setAlternatives([])
+    setAdding(false)
+    setKind(null)
+    setSearches({})
     setSelectedAlternative(null)
-    setLoadingAlternatives(false)
-    setSwapError(null)
   }, [])
+
+  const runSearch = useCallback(
+    (index: number, isAdding: boolean, wanted: StopKind | null) => {
+      if (isAdding && wanted == null) return
+      const session = sheetSession.current
+      const remember = (result: OptionSearch) => {
+        if (sheetSession.current !== session) return
+        setSearches((current) => ({ ...current, [searchKey(wanted)]: result }))
+      }
+
+      remember({ status: 'loading' })
+      const request =
+        isAdding && wanted
+          ? fetchStopAdditions(quest, index, wanted)
+          : fetchStopAlternatives(quest, index, wanted)
+      request
+        .then((options) => remember({ status: 'done', options }))
+        .catch((err) =>
+          remember({
+            status: 'error',
+            message:
+              err instanceof Error ? err.message : 'Could not load alternatives.',
+          }),
+        )
+    },
+    [quest],
+  )
+
+  const openSheet = useCallback(
+    (index: number, isAdding: boolean) => {
+      sheetSession.current++
+      setActiveStopIndex(index)
+      setAdding(isAdding)
+      setKind(null)
+      setSearches({})
+      setSelectedAlternative(null)
+    },
+    [],
+  )
 
   const openSwapSheet = useCallback(
     (index: number) => {
       onHintUsed?.('swap')
-      const requestId = ++swapRequestId.current
-      setActiveStopIndex(index)
-      setAlternatives([])
-      setSelectedAlternative(null)
-      setSwapError(null)
-      setLoadingAlternatives(true)
-
-      fetchStopAlternatives(quest, index)
-        .then((items) => {
-          if (swapRequestId.current !== requestId) return
-          setAlternatives(items)
-        })
-        .catch((err) => {
-          if (swapRequestId.current !== requestId) return
-          setSwapError(
-            err instanceof Error ? err.message : 'Could not load alternatives.',
-          )
-        })
-        .finally(() => {
-          if (swapRequestId.current !== requestId) return
-          setLoadingAlternatives(false)
-        })
+      openSheet(index, false)
+      // Swapping starts with more of the same, as it always has.
+      runSearch(index, false, null)
     },
-    [onHintUsed, quest],
+    [onHintUsed, openSheet, runSearch],
+  )
+
+  // Adding waits for a kind to be chosen before it searches for anything.
+  const openAddSheet = useCallback(
+    (index: number) => {
+      onHintUsed?.('addremove')
+      openSheet(index, true)
+    },
+    [onHintUsed, openSheet],
+  )
+
+  // The only places a search starts are taps: nothing refetches on its own.
+  const chooseKind = useCallback(
+    (wanted: StopKind | null) => {
+      if (activeStopIndex == null) return
+      if (wanted !== kind) setSelectedAlternative(null)
+      setKind(wanted)
+      const known = searches[searchKey(wanted)]
+      if (!known || known.status === 'error') {
+        runSearch(activeStopIndex, adding, wanted)
+      }
+    },
+    [activeStopIndex, adding, kind, runSearch, searches],
+  )
+
+  const handleRemove = useCallback(
+    (index: number, byKeyboard: boolean) => {
+      const next = removeStop(quest, index)
+      if (next === quest) return
+      onHintUsed?.('addremove')
+      track('stop_removed', { stop_index: index, stop_count: next.stops.length })
+      onStopRemoved(next, quest.stops[index], byKeyboard)
+    },
+    [onHintUsed, onStopRemoved, quest],
   )
 
   const confirmSwap = useCallback(() => {
     if (!previewQuest || activeStopIndex == null || !selectedAlternative) return
-    track('stop_swapped', { stop_index: activeStopIndex })
+    track('stop_swapped', {
+      stop_index: activeStopIndex,
+      kind: searchKey(kind),
+    })
     onQuestChange(previewQuest)
     // After the swap is applied: logging never holds it up.
     logSwap({
@@ -495,11 +578,23 @@ export function QuestCard({
     activeStopIndex,
     alternatives,
     closeSheet,
+    kind,
     onQuestChange,
     previewQuest,
     quest,
     selectedAlternative,
   ])
+
+  const confirmAdd = useCallback(() => {
+    if (!previewQuest || activeStopIndex == null || kind == null) return
+    track('stop_added', {
+      kind,
+      stop_index: activeStopIndex + 1,
+      stop_count: previewQuest.stops.length,
+    })
+    onQuestChange(previewQuest)
+    closeSheet()
+  }, [activeStopIndex, closeSheet, kind, onQuestChange, previewQuest])
 
   const moveStop = useCallback(
     (from: number, to: number) => {
@@ -511,6 +606,13 @@ export function QuestCard({
     },
     [onHintUsed, onQuestChange, quest],
   )
+
+  // A quest in progress remembers ticked-off stops by position, so its stops
+  // stay put until it is finished or stopped.
+  const locked = readOnly || active
+  // Judged on the quest as it is, so a preview does not take the button that
+  // opened the sheet off the page.
+  const stopsFull = quest.stops.length >= MAX_STOPS
 
   return (
     <>
@@ -576,8 +678,18 @@ export function QuestCard({
               key={`${stop.place.provider_id}-${i}`}
               stop={stop}
               index={i}
-              previewing={activeStopIndex === i && selectedAlternative != null}
-              onSwap={() => (readOnly ? onLockedSwap?.() : openSwapSheet(i))}
+              previewing={previewIndex === i}
+              onSwap={() => (locked ? onLockedSwap?.() : openSwapSheet(i))}
+              onRemove={
+                displayQuest.stops.length > 1
+                  ? (byKeyboard) => handleRemove(i, byKeyboard)
+                  : undefined
+              }
+              onAddAfter={
+                !stopsFull && i < displayQuest.stops.length - 1
+                  ? () => openAddSheet(i)
+                  : undefined
+              }
               onMoveUp={i > 0 ? () => moveStop(i, i - 1) : undefined}
               onMoveDown={
                 i < displayQuest.stops.length - 1
@@ -590,13 +702,41 @@ export function QuestCard({
                 onHintUsed?.('checkoff')
                 onToggleStopComplete?.(i)
               }}
-              readOnly={readOnly}
+              locked={locked}
               hint={i === 0 ? hint : null}
               onHintDismiss={onHintDismiss}
               revealHint={revealHints}
             />
           ))}
         </ol>
+      )}
+
+      {!locked && displayQuest.stops.length > 0 && !stopsFull && (
+        <div className="qp-add-wrap">
+          {hint === 'addremove' && (
+            <CoachMark
+              placement="above"
+              title="Make it yours."
+              onDismiss={() => onHintDismiss?.('addremove')}
+              reveal={revealHints}
+            >
+              Add stops here, and remove any from their cards.
+            </CoachMark>
+          )}
+          <button
+            type="button"
+            className="qp-add-stop"
+            aria-label="Add a stop at the end"
+            onClick={() => openAddSheet(quest.stops.length - 1)}
+          >
+            + Add a stop
+          </button>
+        </div>
+      )}
+      {!locked && stopsFull && (
+        <p className="qp-add-full">
+          {MAX_STOPS} stops is the most a quest can hold.
+        </p>
       )}
 
       {active && displayQuest.stops.length > 0 && (
@@ -607,13 +747,17 @@ export function QuestCard({
 
       {activeStopIndex != null && (
         <SwapSheet
-          stop={quest.stops[activeStopIndex]}
+          mode={adding ? 'add' : 'swap'}
+          stopName={quest.stops[activeStopIndex].place.name}
+          kind={kind}
+          searched={searched}
           alternatives={alternatives}
           selected={selectedAlternative}
           loading={loadingAlternatives}
           error={swapError}
+          onChooseKind={chooseKind}
           onPreview={setSelectedAlternative}
-          onConfirm={confirmSwap}
+          onConfirm={adding ? confirmAdd : confirmSwap}
           onCancel={closeSheet}
         />
       )}
