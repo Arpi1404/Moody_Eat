@@ -31,3 +31,9 @@ class ProviderTimeoutError(PlacesProviderError):
     """Request timed out."""
 
     pass
+
+
+class FeatureUnavailableError(PlacesProviderError):
+    """The configured provider API cannot do what was asked."""
+
+    pass

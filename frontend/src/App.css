@@ -3022,6 +3022,55 @@ a.explore-edit-filters {
   opacity: 0.75;
 }
 
+/* Search by name */
+
+.cq-name-input {
+  min-width: 0;
+  /* 16px or iOS zooms the page when the field takes focus. */
+  font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.cq-search-btn {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cq-search-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cq-name-status:empty {
+  margin: 0;
+}
+
+.cq-name-status + .cq-results {
+  margin-top: 8px;
+}
+
+.cq-results .loc-suggest-credit {
+  margin: 0;
+}
+
+.cq-result-address {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
 .cq-create-bar {
   position: fixed;
   left: 0;

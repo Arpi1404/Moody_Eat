@@ -98,6 +98,31 @@ class NearbyPlacesResponse(BaseModel):
     count: int
 
 
+NAME_SEARCH_MIN_CHARS = 3
+
+
+class NameSearchRequest(BaseModel):
+    """A search for a place by its name, near the area a creator chose.
+
+    Sent as a request body, not a query string, so that what was typed and
+    where from do not end up in web server request logs.
+    """
+
+    q: str = Field(max_length=120)
+    # The area's coordinates when known; otherwise `area`, which is geocoded.
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    lng: Optional[float] = Field(default=None, ge=-180, le=180)
+    area: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("q")
+    @classmethod
+    def tidy_query(cls, v: str) -> str:
+        text = " ".join(v.split())
+        if len(text) < NAME_SEARCH_MIN_CHARS:
+            raise ValueError(f"Type at least {NAME_SEARCH_MIN_CHARS} characters.")
+        return text
+
+
 class LocationSuggestion(BaseModel):
     place_id: str
     # "Banjara Hills"
