@@ -13,6 +13,7 @@ from models import (
     ALLOWED_NEARBY_TYPES,
     LocationSuggestion,
     LocationSuggestionsResponse,
+    NameSearchRequest,
     NearbyPlacesRequest,
     NearbyPlacesResponse,
     PlaceBlurbsRequest,
@@ -41,7 +42,7 @@ from services.google_places import GooglePlacesProvider
 from services.nearby_places_service import NearbyPlacesService, map_provider_error
 from services.place_blurbs_service import generate_place_blurbs
 from services.place_photo_service import fetch_place_photo
-from services.places_exceptions import PlacesProviderError
+from services.places_exceptions import LocationNotFoundError, PlacesProviderError
 
 router = APIRouter()
 
@@ -381,6 +382,33 @@ async def autocomplete_location(
     except PlacesProviderError as exc:
         raise _provider_http_error(exc) from exc
     return SuggestionLocation(lat=lat, lng=lng)
+
+
+@router.post("/api/places/search", response_model=NearbyPlacesResponse)
+async def search_places_by_name(
+    payload: NameSearchRequest,
+    service: NearbyPlacesService = Depends(get_nearby_places_service),
+) -> NearbyPlacesResponse:
+    """Find a place by its name for the build-your-own page.
+
+    A POST so the typed text stays out of request logs; it is not stored.
+    """
+    has_position = payload.lat is not None and payload.lng is not None
+    if not has_position and not (payload.area or "").strip():
+        raise HTTPException(status_code=422, detail={"message": "Pick an area first."})
+    try:
+        return await service.search_by_name(
+            text=payload.q, lat=payload.lat, lng=payload.lng, area=payload.area
+        )
+    except LocationNotFoundError as exc:
+        # `code` tells this apart from the plain 404 of a backend that does not
+        # have this endpoint yet.
+        raise HTTPException(
+            status_code=404,
+            detail={"message": "We couldn't find that area.", "code": "area_not_found"},
+        ) from exc
+    except PlacesProviderError as exc:
+        raise _provider_http_error(exc) from exc
 
 
 @router.get("/api/places/photo")

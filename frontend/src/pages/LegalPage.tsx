@@ -50,6 +50,12 @@ export function PrivacyPage() {
           you.
         </li>
         <li>
+          <strong>Search by name.</strong> When you search for a place by name
+          while building your own quest, what you typed and the area you chose
+          are sent to our server, and on to Google, to find matching places.
+          We do not store what you typed or link it to you.
+        </li>
+        <li>
           <strong>Location access.</strong> If you tap "Use my current
           location", your coordinates are used to look up the name of your
           area (via OpenStreetMap Nominatim) and, rounded to about 100 metres,

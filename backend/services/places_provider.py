@@ -86,3 +86,14 @@ class PlacesProvider(Protocol):
         Returns all-None when hours are unknown.
         """
         ...
+
+    async def search_by_text(
+        self,
+        *,
+        text: str,
+        lat: float,
+        lng: float,
+    ) -> list[RawPlace]:
+        """Places matching a typed name, best match first, leaning towards
+        (lat, lng). Unfiltered: closed places and non-venues are included."""
+        ...

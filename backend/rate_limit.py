@@ -31,8 +31,14 @@ class _SlidingWindowLimiter:
 
 _limiters: dict[str, tuple[int, _SlidingWindowLimiter]] = {}
 
+# Every search by name is a billed Text Search (plus a geocode when the area
+# was typed) and nobody needs many a minute, so the bucket has a low ceiling.
+_NAME_SEARCH_BUCKET = "name_search"
+_BUCKET_CEILINGS = {_NAME_SEARCH_BUCKET: 20}
+
 
 def _get_limiter(bucket: str, max_rpm: int) -> _SlidingWindowLimiter:
+    max_rpm = min(max_rpm, _BUCKET_CEILINGS.get(bucket, max_rpm))
     state = _limiters.get(bucket)
     if state is None or state[0] != max_rpm:
         state = (max_rpm, _SlidingWindowLimiter(max_requests=max_rpm, window_seconds=60.0))
@@ -46,6 +52,7 @@ def _get_limiter(bucket: str, max_rpm: int) -> _SlidingWindowLimiter:
 _SEARCH_BUCKET = "search"
 _SUGGEST_BUCKET = "suggest"
 _LIMITED_ENDPOINTS = {
+    ("POST", "/api/places/search"): _NAME_SEARCH_BUCKET,
     ("POST", "/api/places/nearby"): _SEARCH_BUCKET,
     ("POST", "/api/quest/store"): _SEARCH_BUCKET,
     ("GET", "/api/places/autocomplete"): _SUGGEST_BUCKET,

@@ -9,6 +9,7 @@ import httpx
 
 from config import Settings, get_settings
 from services.places_exceptions import (
+    FeatureUnavailableError,
     LocationNotFoundError,
     PlacesProviderError,
     ProviderAuthError,
@@ -69,6 +70,30 @@ _PRICE_LEVEL_NEW_TO_INT = {
     "PRICE_LEVEL_EXPENSIVE": 3,
     "PRICE_LEVEL_VERY_EXPENSIVE": 4,
 }
+
+_TEXT_SEARCH_URL_NEW = "https://places.googleapis.com/v1/places:searchText"
+# Search by name shows the same place cards as nearby search and stays on the
+# same SKU (Text Search Enterprise): no Atmosphere fields. It has its own list
+# so that a change to one search's fields is not silently a change to both.
+_TEXT_SEARCH_FIELD_MASK = ",".join(
+    (
+        "places.id",
+        "places.displayName",
+        "places.formattedAddress",
+        "places.location",
+        "places.rating",
+        "places.userRatingCount",
+        "places.types",
+        "places.businessStatus",
+        "places.priceLevel",
+        "places.priceRange",
+    )
+)
+# Text Search bills per request, not per result, so ask for the most it gives
+# (20) and let the filters work on all of them.
+_TEXT_SEARCH_PAGE_SIZE = 20
+# Matches inside this circle rank higher. It is a lean, not a fence.
+_TEXT_SEARCH_BIAS_RADIUS_M = 5_000.0
 
 
 def _fmt_hhmm(g_time: str) -> str | None:
@@ -390,6 +415,36 @@ class GooglePlacesProvider(PlacesProvider):
             return float(location["latitude"]), float(location["longitude"])
         except (KeyError, TypeError, ValueError) as exc:
             raise LocationNotFoundError("Place has no coordinates.") from exc
+
+    async def search_by_text(
+        self,
+        *,
+        text: str,
+        lat: float,
+        lng: float,
+    ) -> list[RawPlace]:
+        """Places matching a typed name, in Google's relevance order.
+
+        One billed Text Search request per call; there are no session tokens.
+        """
+        if not self._settings.use_new_places_api:
+            raise FeatureUnavailableError(
+                "Search by name needs Places API (New), which is switched off."
+            )
+        payload: dict[str, Any] = {
+            "textQuery": text,
+            "pageSize": _TEXT_SEARCH_PAGE_SIZE,
+            "locationBias": {
+                "circle": {
+                    "center": {"latitude": lat, "longitude": lng},
+                    "radius": _TEXT_SEARCH_BIAS_RADIUS_M,
+                }
+            },
+        }
+        data = await self._post_json_new(
+            _TEXT_SEARCH_URL_NEW, payload, _TEXT_SEARCH_FIELD_MASK
+        )
+        return [self._raw_from_new_place(item) for item in data.get("places") or []]
 
     async def nearby_by_type(
         self,
