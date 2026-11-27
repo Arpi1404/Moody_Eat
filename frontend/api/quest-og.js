@@ -105,9 +105,10 @@ export function injectQuestTags(html, { title, description, url }) {
   return html
 }
 
-/** Shared quests hold whatever their maker wrote: keep them out of search
- * engines. vercel.json sends the same header for visitors who skip this
- * function. */
+/** Shared quests hold whatever their maker wrote, whether it is stored here
+ * (/q/) or carried in an older link's ?st= title (/quest/): keep them out of
+ * search engines. vercel.json sends the same header for visitors who skip
+ * this function. */
 export function addNoindex(html) {
   return html.replace(
     /<head[^>]*>/i,
@@ -135,11 +136,10 @@ export default async function handler(req, res) {
 
   const url = new URL(req.url, origin)
 
+  // Every page served from here is a quest preview.
+  html = addNoindex(html)
+  res.setHeader('X-Robots-Tag', 'noindex')
   const isShortLink = url.pathname.startsWith('/q/')
-  if (isShortLink) {
-    html = addNoindex(html)
-    res.setHeader('X-Robots-Tag', 'noindex')
-  }
 
   const shortLinkMatch = url.pathname.match(/^\/q\/([a-z0-9]{4,16})$/)
   if (shortLinkMatch) {
