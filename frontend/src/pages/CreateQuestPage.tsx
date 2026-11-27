@@ -10,6 +10,7 @@ import { LocationInput } from '../components/LocationInput'
 import { PlaceLink } from '../components/PlaceLink'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
+import { CREATOR_INTRO_MAX, CREATOR_NOTE_MAX, tidyText } from '../lib/creatorText'
 import {
   areaKey,
   COORDINATES_RE,
@@ -149,6 +150,53 @@ function ResultCard({
   )
 }
 
+/** A text box for the creator's own words, with its running count. It lets
+ * text run over and says so: a length cap on the box would cut a paste short
+ * without a word. */
+function CreatorTextField({
+  id,
+  label,
+  value,
+  max,
+  placeholder,
+  autoFocus,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: string
+  max: number
+  placeholder: string
+  autoFocus: boolean
+  onChange: (value: string) => void
+}) {
+  // Counted as it will be saved: trimmed, on one line.
+  const length = tidyText(value).length
+  const over = length > max
+  return (
+    <div className="cq-words-field">
+      <label htmlFor={id}>{label}</label>
+      <textarea
+        id={id}
+        rows={3}
+        value={value}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        aria-describedby={`${id}-count`}
+        aria-invalid={over || undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <p
+        id={`${id}-count`}
+        className={`cq-count${over ? ' cq-count--over' : ''}`}
+      >
+        {length}/{max}
+        {over && ` · ${length - max} too many`}
+      </p>
+    </div>
+  )
+}
+
 export function CreateQuestPage() {
   const navigate = useNavigate()
   const [occasion, setOccasion] = useState<Occasion>('friends')
@@ -169,6 +217,12 @@ export function CreateQuestPage() {
   const [searchError, setSearchError] = useState<string | null>(null)
   const [selected, setSelected] = useState<PlaceItem[]>([])
   const [creatorName, setCreatorName] = useState('')
+  const [intro, setIntro] = useState('')
+  // Notes are kept by place id and outlive removing a stop, so adding it back
+  // brings its note back.
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  // The note or intro box just opened with its button: it takes focus.
+  const [openedField, setOpenedField] = useState<string | null>(null)
   const [nameQuery, setNameQuery] = useState('')
   const [nameSearch, setNameSearch] = useState<NameSearch>({ status: 'idle' })
   // Goes up whenever a name search starts or stops mattering, so a late answer
@@ -181,6 +235,11 @@ export function CreateQuestPage() {
   const dayPart = dayPartChoice ?? DAY_PART_DEFAULT_BY_OCCASION[occasion]
   const selectedIds = new Set(selected.map((p) => p.provider_id))
   const questFull = selected.length >= MAX_STOPS
+  const wordsTooLong =
+    tidyText(intro).length > CREATOR_INTRO_MAX ||
+    selected.some(
+      (p) => tidyText(notes[p.provider_id] ?? '').length > CREATOR_NOTE_MAX,
+    )
   const nameAddresses =
     nameSearch.status === 'done'
       ? shortAddresses(nameSearch.places.map((p) => p.address))
@@ -306,6 +365,7 @@ export function CreateQuestPage() {
   }
 
   const removePlace = (providerId: string) => {
+    if (openedField === providerId) setOpenedField(null)
     setSelected((prev) => prev.filter((p) => p.provider_id !== providerId))
   }
 
@@ -321,7 +381,7 @@ export function CreateQuestPage() {
   }
 
   const handleCreate = () => {
-    if (selected.length === 0) return
+    if (selected.length === 0 || wordsTooLong) return
     // A coordinate search resolves to a street address; the picked label
     // ("Banjara Hills, Hyderabad") is the better name for the quest.
     const area = picked?.label || resolvedArea || location.trim()
@@ -332,13 +392,17 @@ export function CreateQuestPage() {
       // Raw coordinates must never reach a title or a shared link.
       area: COORDINATES_RE.test(area) ? '' : area,
       createdBy: creatorName.trim() || undefined,
+      intro,
+      notes,
     })
     track('custom_quest_created', {
       stop_count: selected.length,
       occasion,
       day_part: dayPart,
-      // Boolean only — the name itself is PII and never leaves the quest.
+      // Booleans and counts only — no name, note or intro ever goes here.
       has_creator_name: Boolean(creatorName.trim()),
+      has_intro: Boolean(quest.narrative_by_creator),
+      note_count: quest.stops.filter((s) => s.note_by_creator).length,
     })
     localStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
     navigate(`/quest/${quest.id}`, { state: { quest, justCreated: true } })
@@ -561,9 +625,62 @@ export function CreateQuestPage() {
                       ✕
                     </button>
                   </span>
+                  <div className="cq-selected-words">
+                    {openedField === place.provider_id ||
+                    notes[place.provider_id] ? (
+                      <CreatorTextField
+                        id={`cq-note-${place.provider_id}`}
+                        label={`Why ${place.name}?`}
+                        value={notes[place.provider_id] ?? ''}
+                        max={CREATOR_NOTE_MAX}
+                        placeholder="What to order, where to sit, when to go"
+                        autoFocus={openedField === place.provider_id}
+                        onChange={(value) =>
+                          setNotes((prev) => ({
+                            ...prev,
+                            [place.provider_id]: value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className="cq-words-btn"
+                        aria-label={`Add a note about ${place.name}`}
+                        onClick={() => setOpenedField(place.provider_id)}
+                      >
+                        ✎ Add a note
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ol>
+            <div className="cq-intro">
+              {openedField === 'intro' || intro ? (
+                <CreatorTextField
+                  id="cq-intro"
+                  label="Your intro"
+                  value={intro}
+                  max={CREATOR_INTRO_MAX}
+                  placeholder="What is this quest for, and who will love it?"
+                  autoFocus={openedField === 'intro'}
+                  onChange={setIntro}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="cq-words-btn"
+                  onClick={() => setOpenedField('intro')}
+                >
+                  ✎ Add an intro
+                </button>
+              )}
+            </div>
+            <p className="cq-hint">
+              Optional. Your words replace our automatic lines, and anyone with
+              your share link can read them.
+            </p>
           </section>
         )}
 
@@ -591,10 +708,12 @@ export function CreateQuestPage() {
         <button
           type="button"
           className="cq-create-btn"
-          disabled={selected.length === 0}
+          disabled={selected.length === 0 || wordsTooLong}
           onClick={handleCreate}
         >
-          Create quest{selected.length > 0 ? ` (${selected.length} stop${selected.length === 1 ? '' : 's'})` : ''} ✦
+          {wordsTooLong
+            ? 'Shorten your words to create'
+            : `Create quest${selected.length > 0 ? ` (${selected.length} stop${selected.length === 1 ? '' : 's'})` : ''} ✦`}
         </button>
       </div>
     </main>

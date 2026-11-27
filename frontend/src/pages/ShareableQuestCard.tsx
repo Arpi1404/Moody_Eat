@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getApiBase } from '../api'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
 import { OCCASION_LABELS as SHARED_OCCASION_LABELS } from '../lib/occasions'
@@ -115,8 +115,30 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
     const occasionClass = OCCASION_LABELS[quest.occasion]
       ? ` share-card--${quest.occasion}`
       : ''
+    // Long names, a long title or a creator's own words can push the last
+    // stop under the footer. A route that does not fit gets the dense layout,
+    // which holds the longest four-stop card.
+    const routeRef = useRef<HTMLOListElement | null>(null)
+    const [overflowed, setOverflowed] = useState(false)
+    useLayoutEffect(() => {
+      let live = true
+      // Reading a size lays the card out, which is what asks for its fonts.
+      void routeRef.current?.scrollHeight
+      // Measured only once they are in: a stand-in font wraps lines
+      // differently and would call for the dense layout when it is not needed.
+      void document.fonts.ready.then(() => {
+        const route = routeRef.current
+        if (live && route && route.scrollHeight > route.clientHeight) {
+          setOverflowed(true)
+        }
+      })
+      return () => {
+        live = false
+      }
+    }, [quest])
     // Long quests get a 4th stop; tighten the layout so it still fits.
-    const denseClass = quest.stops.length >= 4 ? ' share-card--dense' : ''
+    const denseClass =
+      quest.stops.length >= 4 || overflowed ? ' share-card--dense' : ''
     const budget =
       formatInrEstimate(
         quest.est_total_per_person_min_inr,
@@ -156,7 +178,7 @@ export const ShareableQuestCard = forwardRef<HTMLDivElement, { quest: Quest }>(
           )}
         </section>
 
-        <ol className="share-route">
+        <ol ref={routeRef} className="share-route">
           {quest.stops.map((stop, index) => {
             const last = index === quest.stops.length - 1
             const clock = formatClock(stop.time_block_start)

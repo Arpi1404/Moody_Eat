@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 
-from models import PlaceBlurbIn
+from models import NARRATIVE_MAX, PlaceBlurbIn
 
 logger = logging.getLogger(__name__)
 
@@ -257,7 +257,7 @@ Write exactly 2-3 sentences that set the scene for this outing. Be vivid and spe
             res.raise_for_status()
             data = res.json()
         text = _extract_text(data)
-        if text:
+        if text and len(text) <= NARRATIVE_MAX:
             return text
     except (httpx.HTTPError, ValueError, KeyError):
         pass

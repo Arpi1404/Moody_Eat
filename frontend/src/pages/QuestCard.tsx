@@ -749,6 +749,7 @@ export function QuestCard({
         <SwapSheet
           mode={adding ? 'add' : 'swap'}
           stopName={quest.stops[activeStopIndex].place.name}
+          dropsNote={Boolean(quest.stops[activeStopIndex].note_by_creator)}
           kind={kind}
           searched={searched}
           alternatives={alternatives}

@@ -3,6 +3,7 @@
 // client-side recomputes match what the generator would have produced.
 
 import type { PlaceItem } from '../api'
+import { tidyText } from './creatorText'
 import type {
   CostEstimate,
   DayPart,
@@ -151,6 +152,8 @@ const DISTANCE_NOTES = [
 ]
 
 function withoutDistanceNote(stop: Stop): Stop {
+  // Words someone typed are never edited, even if they read like one of ours.
+  if (stop.note_by_creator) return stop
   const parts = stop.why_this_place.replace(/\.$/, '').split(', ')
   const kept = parts.filter((part) => !DISTANCE_NOTES.includes(part.toLowerCase()))
   if (kept.length === parts.length) return stop
@@ -392,8 +395,14 @@ export function buildCustomQuest(opts: {
   area: string
   /** Optional creator display name — titles the quest "Priya's … Quest". */
   createdBy?: string
+  /** The creator's own intro. Empty keeps the automatic one. */
+  intro?: string
+  /** The creator's notes by place id. A stop without one gets the
+   * automatic line. */
+  notes?: Record<string, string>
 }): Quest {
   const { places, occasion, dayPart, area, createdBy } = opts
+  const ownIntro = tidyText(opts.intro ?? '')
   const start = DAY_PART_START[dayPart]
 
   // Lay stops out back-to-back from the day-part start, then let the shared
@@ -406,6 +415,7 @@ export function buildCustomQuest(opts: {
         ? FILM_MINUTES
         : DWELL_BY_CATEGORY[category]
     const band = estBand(place)
+    const note = tidyText(opts.notes?.[place.provider_id] ?? '')
     const stop: Stop = {
       place,
       category,
@@ -413,7 +423,8 @@ export function buildCustomQuest(opts: {
       time_block_end: addMinutes(cursor, dwell),
       travel_to_next_minutes: null,
       travel_mode: null,
-      why_this_place: whyLine(place),
+      why_this_place: note || whyLine(place),
+      note_by_creator: note ? true : null,
       est_cost_per_person_min_inr: band?.min ?? null,
       est_cost_per_person_max_inr: band?.max ?? null,
       price_source: band?.source ?? null,
@@ -457,7 +468,10 @@ export function buildCustomQuest(opts: {
     total_cost_estimate: costTierFromTotal(midTotal),
     est_total_per_person_min_inr: totalMin,
     est_total_per_person_max_inr: totalMax,
-    narrative: customNarrative(stops.map((s) => s.place.name), occasion, areaShort),
+    narrative:
+      ownIntro ||
+      customNarrative(stops.map((s) => s.place.name), occasion, areaShort),
+    narrative_by_creator: ownIntro ? true : null,
     created_at: new Date().toISOString(),
   }
 }
