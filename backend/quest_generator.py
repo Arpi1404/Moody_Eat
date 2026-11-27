@@ -1377,5 +1377,6 @@ async def assemble_quest(
             if outdoor_skipped
             else None
         ),
+        origin="generated",
         narrative=narrative,
     )

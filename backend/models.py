@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, time
 from enum import Enum
-from typing import Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
 # Google Places Nearby Search (legacy) `type` values we support for this API.
 ALLOWED_NEARBY_TYPES = frozenset(
@@ -172,6 +172,15 @@ class StopCategory(str, Enum):
 
 # ── Quest models ───────────────────────────────────────────────────────────────
 
+# How a quest's stops were chosen.
+QuestOrigin = Literal["generated", "curated", "custom"]
+
+# A Google place id. It ends up in upstream URL paths and in our own stores,
+# hence the strict shape.
+PLACE_ID_PATTERN = r"^[A-Za-z0-9_-]{10,400}$"
+PlaceId = Annotated[str, StringConstraints(pattern=PLACE_ID_PATTERN)]
+
+
 class Stop(BaseModel):
     place: PlaceItem
     category: StopCategory
@@ -217,8 +226,43 @@ class Quest(BaseModel):
     # Optional display name of the person who assembled a custom quest
     # ("Priya's Old City Crawl"). Never set on generated quests.
     created_by: Optional[str] = Field(default=None, max_length=60)
+    # Who chose the stops: the engine, an editor, or the person themselves.
+    # None on quests made before this field existed.
+    origin: Optional[QuestOrigin] = None
     narrative: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class SwapEvent(BaseModel):
+    """One confirmed stop swap, as reported by the quest page.
+
+    It says which suggested place was replaced by which, and for what kind of
+    outing. It deliberately says nothing about the person or the quest: no
+    quest id, no coordinates, no free text. Fields the model does not know are
+    ignored, so a newer frontend can send more than an older backend stores.
+    """
+
+    from_place_id: PlaceId
+    to_place_id: PlaceId
+    # What the swap sheet offered, in the order shown. Knowing what was passed
+    # over is what lets a choice be read as a preference.
+    shown_place_ids: list[PlaceId] = Field(default_factory=list, max_length=12)
+    occasion: Occasion
+    category: StopCategory
+    budget: CostEstimate
+    stop_index: int = Field(ge=0, le=9)
+    stop_count: int = Field(ge=1, le=10)
+    # When the replaced stop was scheduled to start.
+    slot_start: time
+    quest_origin: Optional[QuestOrigin] = None
+
+    @model_validator(mode="after")
+    def _coherent(self) -> "SwapEvent":
+        if self.from_place_id == self.to_place_id:
+            raise ValueError("A swap needs two different places.")
+        if self.stop_index >= self.stop_count:
+            raise ValueError("stop_index is outside the quest.")
+        return self
 
 
 class StoredQuestCreateResponse(BaseModel):

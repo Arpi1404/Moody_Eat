@@ -737,3 +737,5 @@ def test_assemble_quest_surfaces_inr_estimates_and_totals(monkeypatch) -> None:
     # Quest totals sum only the priced stops.
     assert quest.est_total_per_person_min_inr == 500
     assert quest.est_total_per_person_max_inr == 1000
+    # The engine chose these stops, and the quest says so.
+    assert quest.origin == "generated"
