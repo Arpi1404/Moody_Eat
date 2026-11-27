@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getApiBase } from '../api'
 import { PlaceLink } from '../components/PlaceLink'
-import type { Stop, StopAlternative } from '../types/quest'
+import { formatInrEstimate } from '../lib/budget'
+import { STOP_KINDS } from '../lib/stopKinds'
+import type { StopAlternative, StopKind } from '../types/quest'
 
 function formatDistanceDelta(meters: number): string {
   const sign = meters > 0 ? '+' : ''
@@ -20,6 +22,28 @@ function formatMoneyDelta(value: number): string | null {
 function formatMinuteDelta(value: number): string {
   if (value === 0) return '0 min'
   return `${value > 0 ? '+' : ''}${value} min`
+}
+
+/** What adding a place does to the quest. Nothing here is better or worse than
+ * the other, so the badges carry no colour. */
+function AdditionBadges({ option }: { option: StopAlternative }) {
+  const price = formatInrEstimate(
+    option.est_cost_per_person_min_inr,
+    option.est_cost_per_person_max_inr,
+  )
+  const away = option.place.distance_meters
+  return (
+    <span className="swap-delta-row">
+      <span className="swap-delta-badge">
+        {away >= 1000 ? `${(away / 1000).toFixed(1)}km` : `${Math.round(away)}m`}{' '}
+        away
+      </span>
+      <span className="swap-delta-badge">
+        {formatMinuteDelta(option.delta.time_change_minutes)} longer
+      </span>
+      {price && <span className="swap-delta-badge">{price}</span>}
+    </span>
+  )
 }
 
 function AlternativePhoto({
@@ -50,25 +74,57 @@ function AlternativePhoto({
   )
 }
 
+/** The sheet for swapping a stop, and for adding one after it. */
 export function SwapSheet({
-  stop,
+  mode,
+  stopName,
+  dropsNote,
+  kind,
+  searched,
   alternatives,
   selected,
   loading,
   error,
+  onChooseKind,
   onPreview,
   onConfirm,
   onCancel,
 }: {
-  stop: Stop
+  mode: 'swap' | 'add'
+  /** The stop being replaced, or the one a new stop will follow. */
+  stopName: string
+  /** The stop has a note someone typed, which a swap would remove. */
+  dropsNote: boolean
+  /** null: the same type as the stop now (swap), or nothing chosen yet (add). */
+  kind: StopKind | null
+  /** False until a search has been asked for: adding starts with a choice. */
+  searched: boolean
   alternatives: StopAlternative[]
   selected: StopAlternative | null
   loading: boolean
   error: string | null
+  /** Also how a failed search is tried again: choose the same kind. */
+  onChooseKind: (kind: StopKind | null) => void
   onPreview: (alternative: StopAlternative) => void
   onConfirm: () => void
   onCancel: () => void
 }) {
+  const adding = mode === 'add'
+  const plural = STOP_KINDS.find((option) => option.key === kind)?.plural
+  const settled = searched && !loading && !error
+  const sheetRef = useRef<HTMLElement>(null)
+
+  // Take the keyboard into the sheet, and hand it back on the way out.
+  useEffect(() => {
+    const opener = document.activeElement
+    sheetRef.current?.focus({ preventScroll: true })
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus({ preventScroll: true })
+      }
+    }
+  }, [])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onCancel()
@@ -86,10 +142,12 @@ export function SwapSheet({
       <button
         type="button"
         className="swap-sheet-overlay"
-        aria-label="Cancel stop swap"
+        aria-label={adding ? 'Cancel adding a stop' : 'Cancel stop swap'}
         onClick={onCancel}
       />
       <section
+        ref={sheetRef}
+        tabIndex={-1}
         className="swap-sheet"
         role="dialog"
         aria-modal="true"
@@ -97,33 +155,91 @@ export function SwapSheet({
       >
         <div className="swap-sheet-handle" aria-hidden />
         <div className="swap-sheet-header">
-          <p className="swap-sheet-eyebrow">Swap stop</p>
-          <h2 id="swap-sheet-title">Replace {stop.place.name}</h2>
-          <p>Preview a new stop, then confirm when the timeline feels right.</p>
-          {stop.note_by_creator && (
+          <p className="swap-sheet-eyebrow">
+            {adding ? 'Add a stop' : 'Swap stop'}
+          </p>
+          <h2 id="swap-sheet-title">
+            {adding ? 'After' : 'Replace'} {stopName}
+          </h2>
+          <p>
+            {adding
+              ? 'Pick a kind, preview a place, then add it.'
+              : 'Preview a new stop, then confirm when the timeline feels right.'}
+          </p>
+          {dropsNote && !adding && (
             <p className="swap-sheet-note">
-              The personal note on this stop is about {stop.place.name}.
-              Swapping removes it.
+              The personal note on this stop is about {stopName}. Swapping
+              removes it.
             </p>
           )}
         </div>
 
-        {loading && (
-          <div className="swap-sheet-status" role="status">
-            Finding nearby alternatives...
-          </div>
-        )}
+        <div className="swap-kind-row" role="group" aria-label="Kind of stop">
+          {!adding && (
+            <button
+              type="button"
+              className={`swap-kind-chip${kind === null ? ' swap-kind-chip--active' : ''}`}
+              aria-pressed={kind === null}
+              onClick={() => onChooseKind(null)}
+            >
+              Similar
+            </button>
+          )}
+          {STOP_KINDS.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className={`swap-kind-chip${kind === option.key ? ' swap-kind-chip--active' : ''}`}
+              aria-pressed={kind === option.key}
+              onClick={() => onChooseKind(option.key)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
 
-        {!loading && error && <p className="swap-sheet-error">{error}</p>}
-
-        {!loading && !error && alternatives.length === 0 && (
+        {!searched && (
           <p className="swap-sheet-status">
-            No unused alternatives found for this stop.
+            We'll look for places near {stopName}.
           </p>
         )}
 
-        {!loading && !error && alternatives.length > 0 && (
+        {loading && (
+          <div className="swap-sheet-status" role="status">
+            Finding nearby places...
+          </div>
+        )}
+
+        {!loading && error && (
+          <div role="alert">
+            <p className="swap-sheet-error">{error}</p>
+            <button
+              type="button"
+              className="swap-sheet-retry"
+              onClick={() => onChooseKind(kind)}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {settled && alternatives.length === 0 && (
+          <p className="swap-sheet-status" role="status">
+            {plural
+              ? `No well-reviewed ${plural} found near ${adding ? stopName : 'here'}. `
+              : 'No unused alternatives found for this stop. '}
+            {adding
+              ? 'Your quest is unchanged.'
+              : `${stopName} stays as it is.`}
+          </p>
+        )}
+
+        {settled && alternatives.length > 0 && (
           <div className="swap-alt-list">
+            <p className="swap-sheet-note">
+              Opening hours aren't checked for these. Look on Google Maps before
+              you go.
+            </p>
             {alternatives.map((alternative) => {
               const active =
                 selected?.place.provider_id === alternative.place.provider_id
@@ -151,30 +267,34 @@ export function SwapSheet({
                       <span className="swap-alt-vibe">
                         {alternative.why_this_place}
                       </span>
-                      <span className="swap-delta-row">
-                        <span
-                          className={`swap-delta-badge${alternative.delta.time_change_minutes > 0 ? ' swap-delta-badge--negative' : alternative.delta.time_change_minutes < 0 ? ' swap-delta-badge--positive' : ''}`}
-                        >
-                          {formatMinuteDelta(
-                            alternative.delta.time_change_minutes,
-                          )}
-                        </span>
-                        {formatMoneyDelta(alternative.delta.cost_change) !==
-                          null && (
+                      {adding ? (
+                        <AdditionBadges option={alternative} />
+                      ) : (
+                        <span className="swap-delta-row">
                           <span
-                            className={`swap-delta-badge${alternative.delta.cost_change > 0 ? ' swap-delta-badge--negative' : ' swap-delta-badge--positive'}`}
+                            className={`swap-delta-badge${alternative.delta.time_change_minutes > 0 ? ' swap-delta-badge--negative' : alternative.delta.time_change_minutes < 0 ? ' swap-delta-badge--positive' : ''}`}
                           >
-                            {formatMoneyDelta(alternative.delta.cost_change)}
+                            {formatMinuteDelta(
+                              alternative.delta.time_change_minutes,
+                            )}
                           </span>
-                        )}
-                        <span
-                          className={`swap-delta-badge${alternative.delta.distance_change_meters > 0 ? ' swap-delta-badge--negative' : alternative.delta.distance_change_meters < 0 ? ' swap-delta-badge--positive' : ''}`}
-                        >
-                          {formatDistanceDelta(
-                            alternative.delta.distance_change_meters,
+                          {formatMoneyDelta(alternative.delta.cost_change) !==
+                            null && (
+                            <span
+                              className={`swap-delta-badge${alternative.delta.cost_change > 0 ? ' swap-delta-badge--negative' : ' swap-delta-badge--positive'}`}
+                            >
+                              {formatMoneyDelta(alternative.delta.cost_change)}
+                            </span>
                           )}
+                          <span
+                            className={`swap-delta-badge${alternative.delta.distance_change_meters > 0 ? ' swap-delta-badge--negative' : alternative.delta.distance_change_meters < 0 ? ' swap-delta-badge--positive' : ''}`}
+                          >
+                            {formatDistanceDelta(
+                              alternative.delta.distance_change_meters,
+                            )}
+                          </span>
                         </span>
-                      </span>
+                      )}
                     </span>
                   </button>
                   <PlaceLink
@@ -196,7 +316,7 @@ export function SwapSheet({
           disabled={!selected}
           onClick={onConfirm}
         >
-          Confirm swap
+          {adding ? 'Add this stop' : 'Confirm swap'}
         </button>
       </section>
     </>
