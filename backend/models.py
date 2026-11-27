@@ -80,6 +80,10 @@ class PlaceItem(BaseModel):
     price_range_end_inr: Optional[int] = Field(default=None, ge=0)
     business_status: Optional[str] = None
     types: Optional[list[str]] = None
+    # What Google says the place mainly is ("pizza_restaurant"). `types` lists
+    # every tag, so a pizzeria that serves beer is also tagged "bar"; this is
+    # the field that tells them apart. None when unknown.
+    primary_type: Optional[str] = None
     provider_id: str
     # "HH:MM" 24-hour, today only. None when unknown or 24h.
     opens_today: Optional[str] = None

@@ -47,7 +47,8 @@ export function questDuration(stops: Stop[]): number {
 
 const WALK_M_PER_MIN = 80
 const DRIVE_M_PER_MIN = 350
-const WALK_THRESHOLD_M = 1400
+// Straight-line metres; the walk along real streets is longer.
+const WALK_THRESHOLD_M = 800
 
 export function haversineM(
   lat1: number,

@@ -35,7 +35,9 @@ from price_inference import CostBand, estimate_cost_band
 from quest_generator import (
     _DWELL,
     _add_min,
+    _popularity_cap,
     _score,
+    _swap_kind,
     _travel_time,
     _why,
     assemble_quest,
@@ -253,9 +255,22 @@ async def stop_alternatives(
         if place.provider_id not in used_provider_ids
         and (place.name.strip().casefold(), place.address.strip().casefold()) not in used_place_keys
     ]
+    # The same kind of place first: a search for `bar` also returns the
+    # restaurants that carry the tag, and swapping a bar should offer bars
+    # before those. Nothing is dropped, so a thin area still gets its options.
+    kind = _swap_kind(original, places_type, payload.occasion)
+    popularity_cap = _popularity_cap(payload.occasion, places_type)
     candidates.sort(
         key=lambda place: (
-            -_score(place, payload.total_cost_estimate, anchor_place.lat, anchor_place.lng),
+            kind is not None
+            and not kind.suits(place.name, place.primary_type, place.types),
+            -_score(
+                place,
+                payload.total_cost_estimate,
+                anchor_place.lat,
+                anchor_place.lng,
+                popularity_cap=popularity_cap,
+            ),
             place.distance_meters,
         )
     )

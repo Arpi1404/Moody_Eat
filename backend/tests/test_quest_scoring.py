@@ -644,6 +644,7 @@ class StopCountProvider:
             "bakery": [RawPlace("bakery", "Dessert Spot", "Road", 0.002, 0.0, 4.4, ["bakery"], 400)],
             "cafe": [RawPlace("cafe", "Coffee Spot", "Road", 0.003, 0.0, 4.6, ["cafe"], 500)],
             "tourist_attraction": [RawPlace("sight", "City Sight", "Road", 0.004, 0.0, 4.5, ["tourist_attraction"], 900)],
+            "bar": [RawPlace("bar", "Nightcap Spot", "Road", 0.005, 0.0, 4.4, ["bar"], 700)],
         }
         return by_type.get(place_type, [])
 
@@ -677,6 +678,10 @@ def test_stop_count_selector_trims_and_extends_template(monkeypatch) -> None:
     # 1 stop is the occasion's anchor; 2 keeps the core pair (dinner + dessert).
     assert [s.place.name for s in _quest(1).stops] == ["Dinner Spot"]
     assert [s.place.name for s in _quest(2).stops] == ["Dinner Spot", "Dessert Spot"]
+    # The fourth stop is a drink, not a second cafe after dessert.
+    assert [s.place.name for s in _quest(4).stops] == [
+        "Dinner Spot", "Dessert Spot", "Nightcap Spot", "City Sight",
+    ]
 
 
 def test_natural_dwell_when_no_duration_requested(monkeypatch) -> None:
