@@ -78,6 +78,10 @@ class PageFull(Exception):
     pass
 
 
+class PageGone(Exception):
+    """The page was deleted while a change to it was being made."""
+
+
 def handle_problem(handle: str) -> str | None:
     """Why a handle cannot be used, or None when it can."""
     if not _HANDLE_RE.fullmatch(handle):
@@ -152,7 +156,7 @@ def creator_for_token(token: str) -> Creator | None:
 
 
 def update_profile(handle: str, changes: dict[str, str]) -> Creator | None:
-    """Change any of display_name, bio and instagram."""
+    """Change any of display_name, bio and instagram. May raise PageGone."""
     allowed = {k: v for k, v in changes.items() if k in ("display_name", "bio", "instagram")}
     if allowed:
         _update(handle, allowed)
@@ -165,13 +169,17 @@ def rotate_token(handle: str) -> str | None:
     if get_creator(handle) is None:
         return None
     token = _new_token(handle)
-    _update(handle, {"token_hash": _hash(token)})
+    try:
+        _update(handle, {"token_hash": _hash(token)})
+    except PageGone:
+        return None
     return token
 
 
 def add_quest(handle: str, short_id: str) -> bool:
-    """Put a quest on the page. False when it was there already. Raises
-    PageFull when the page holds MAX_QUESTS."""
+    """Put a quest on the page. False when it was there already or there is no
+    such page. Raises PageFull when the page holds MAX_QUESTS, and may raise
+    PageGone."""
     if _firestore():
         return _firestore_add(handle, short_id)
     return _sqlite_add(handle, short_id)
@@ -266,16 +274,18 @@ def _sqlite_get(handle: str, *, count_view: bool) -> Creator | None:
 
 def _update(handle: str, changes: dict[str, str]) -> None:
     """Set plain fields. The names come from this module, never from a caller
-    of the API."""
+    of the API. Raises PageGone when there is no such page."""
     if _firestore():
-        quest_store.firestore_client().collection(CREATORS_COLLECTION).document(handle).update(changes)
+        _firestore_change(_document(handle), changes)
         return
     columns = ", ".join(f"{name} = ?" for name in changes)
     with closing(_connect()) as conn, conn:
-        conn.execute(
+        changed = conn.execute(
             f"UPDATE creator_pages SET {columns} WHERE handle = ?",
             (*changes.values(), handle),
-        )
+        ).rowcount
+    if not changed:
+        raise PageGone
 
 
 def _sqlite_change_quests(handle: str, change) -> bool:
@@ -349,6 +359,16 @@ def _firestore_get(handle: str, *, count_view: bool) -> Creator | None:
     return _from_record(handle, snap.to_dict()) if snap.exists else None
 
 
+def _firestore_change(ref, changes: dict) -> None:
+    """Update a page's document. Raises PageGone when it no longer exists."""
+    from google.api_core.exceptions import NotFound
+
+    try:
+        ref.update(changes)
+    except NotFound as exc:
+        raise PageGone from exc
+
+
 def _firestore_add(handle: str, short_id: str) -> bool:
     from google.cloud import firestore
 
@@ -359,11 +379,14 @@ def _firestore_add(handle: str, short_id: str) -> bool:
         raise PageFull(handle)
     ref = _document(handle)
     # An atomic append, so additions made at the same moment are both kept.
-    ref.update({"quest_ids": firestore.ArrayUnion([short_id])})
+    _firestore_change(ref, {"quest_ids": firestore.ArrayUnion([short_id])})
+    stored = ref.get().to_dict()
+    if stored is None:
+        raise PageGone
     # Two at once on a nearly full page could both get in: check after, and
     # step back out rather than leave the page over its limit.
-    if len(ref.get().to_dict().get("quest_ids") or []) > MAX_QUESTS:
-        ref.update({"quest_ids": firestore.ArrayRemove([short_id])})
+    if len(stored.get("quest_ids") or []) > MAX_QUESTS:
+        _firestore_change(ref, {"quest_ids": firestore.ArrayRemove([short_id])})
         raise PageFull(handle)
     return True
 

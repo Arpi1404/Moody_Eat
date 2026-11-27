@@ -40,7 +40,10 @@ export type MyCreatorPage = CreatorProfile & {
 
 export type CreatorFailure =
   | 'bad_key'
+  /** A key that was checked, found wrong, and one wrong key too many. */
   | 'too_many'
+  /** Too many requests in a minute. Says nothing about the key. */
+  | 'busy'
   | 'creator_not_found'
   /** The server turned the request down and said why, in plain words. */
   | 'refused'
@@ -51,6 +54,7 @@ const MESSAGES: Record<Exclude<CreatorFailure, 'refused'>, string> = {
   bad_key:
     "This manage link doesn't work. It may have been replaced with a new one.",
   too_many: "Too many tries with a link that doesn't work. Wait a few minutes.",
+  busy: "That's a lot of requests at once. Wait a minute, then try again.",
   creator_not_found: 'There is no creator page here.',
   unavailable: "Creator pages aren't available right now. Try again later.",
 }
@@ -62,6 +66,15 @@ export class CreatorError extends Error {
     super(message ?? MESSAGES[reason as Exclude<CreatorFailure, 'refused'>])
     this.reason = reason
   }
+}
+
+/** Whether the server checked the key and turned it down. It answers
+ * 'too_many' only to a key that is wrong, so that key is as dead as any. */
+export function isDeadKey(err: unknown): boolean {
+  return (
+    err instanceof CreatorError &&
+    (err.reason === 'bad_key' || err.reason === 'too_many')
+  )
 }
 
 const REFUSALS = new Set([
@@ -95,18 +108,25 @@ async function request<T>(
       throw new CreatorError('unavailable')
     })) as T
   }
-  const data = (await res.json().catch(() => ({}))) as {
-    detail?: { code?: string; message?: string }
+  throw failureFrom(res.status, await res.json().catch(() => null))
+}
+
+/** What a reply that is not a success means. */
+export function failureFrom(status: number, body: unknown): CreatorError {
+  const detail = (
+    body as { detail?: { code?: string; message?: string } } | null
+  )?.detail
+  const code = detail?.code
+  if (status === 401) return new CreatorError('bad_key')
+  if (status === 429) {
+    return new CreatorError(code === 'too_many' ? 'too_many' : 'busy')
   }
-  const code = data.detail?.code
-  if (res.status === 401) throw new CreatorError('bad_key')
-  if (res.status === 429) throw new CreatorError('too_many')
   // A backend without these routes answers 404 too, so go by the code.
-  if (code === 'creator_not_found') throw new CreatorError('creator_not_found')
-  if (code && REFUSALS.has(code) && data.detail?.message) {
-    throw new CreatorError('refused', data.detail.message)
+  if (code === 'creator_not_found') return new CreatorError('creator_not_found')
+  if (code && REFUSALS.has(code) && detail?.message) {
+    return new CreatorError('refused', detail.message)
   }
-  throw new CreatorError('unavailable')
+  return new CreatorError('unavailable')
 }
 
 export function fetchCreatorPage(handle: string): Promise<PublicCreatorPage> {

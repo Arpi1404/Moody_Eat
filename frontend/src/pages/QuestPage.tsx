@@ -10,6 +10,7 @@ import {
   generateQuest,
   storeQuestForShare,
 } from '../api'
+import { TooManyQuestsError } from '../lib/tooManyQuests'
 import { isSavedQuestId, useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
 import { useQuestHints } from '../hooks/useQuestHints'
@@ -18,7 +19,7 @@ import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
 import { CONTACT_URL } from '../lib/contact'
-import { addMyQuest, CreatorError } from '../lib/creatorApi'
+import { addMyQuest, CreatorError, isDeadKey } from '../lib/creatorApi'
 import { forgetKeys, storedKey } from '../lib/creatorKey'
 import { withoutLinks } from '../lib/creatorText'
 import { QUEST_HINTS, QUEST_HINTS_REPLAY_ORDER } from '../lib/onboarding'
@@ -733,8 +734,13 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           durationMs: 8000,
         })
       }
-    } catch {
-      showToast("Couldn't shuffle the plan — try again.")
+    } catch (err) {
+      // "Try again" would be wrong at the limit: trying at once fails again.
+      showToast(
+        err instanceof TooManyQuestsError
+          ? err.message
+          : "Couldn't shuffle the plan — try again.",
+      )
     } finally {
       setShuffling(false)
     }
@@ -918,7 +924,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     } catch (err) {
       track('creator_quest_added', { source: 'share_sheet', result: 'failed' })
       // A replaced key is no use any more: stop offering the button.
-      if (err instanceof CreatorError && err.reason === 'bad_key') forgetKeys()
+      if (isDeadKey(err)) forgetKeys()
       closeShareMenu()
       showToast(
         err instanceof CreatorError

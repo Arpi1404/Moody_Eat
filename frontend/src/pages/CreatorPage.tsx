@@ -16,6 +16,7 @@ import '../App.css'
 type Loaded =
   | { handle: string; status: 'ready'; page: PublicCreatorPage }
   | { handle: string; status: 'missing' | 'unavailable' }
+  | { handle: string; status: 'busy'; message: string }
 
 export function CreatorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
@@ -34,8 +35,12 @@ export function CreatorPage() {
       })
       .catch((err) => {
         if (!live) return
-        const missing =
-          err instanceof CreatorError && err.reason === 'creator_not_found'
+        const reason = err instanceof CreatorError ? err.reason : 'unavailable'
+        if (reason === 'busy') {
+          setLoaded({ handle, status: 'busy', message: (err as Error).message })
+          return
+        }
+        const missing = reason === 'creator_not_found'
         setLoaded({ handle, status: missing ? 'missing' : 'unavailable' })
       })
     return () => {
@@ -57,7 +62,9 @@ export function CreatorPage() {
               description={
                 state.status === 'missing'
                   ? 'There is no creator page at this address.'
-                  : "Creator pages aren't available right now. Try again later."
+                  : state.status === 'busy'
+                    ? state.message
+                    : "Creator pages aren't available right now. Try again later."
               }
               retryLabel="Back home"
               onRetry={() => navigate('/')}

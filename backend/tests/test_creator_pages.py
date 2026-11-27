@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 import creator_store
 import quest_store
@@ -447,6 +448,10 @@ def test_there_is_no_way_to_sign_up(client):
 
 # ── Guessing keys ──
 
+CALLER = "203.0.113.7"
+OTHER = "198.51.100.23"
+WRONG = "priya.nope"
+
 
 @pytest.fixture
 def limited(monkeypatch):
@@ -457,34 +462,288 @@ def limited(monkeypatch):
         ),
     )
     monkeypatch.setattr(rate_limit, "_limiters", {})
-    monkeypatch.setattr(
-        rate_limit,
-        "_creator_key_failures",
-        rate_limit._SlidingWindowLimiter(max_requests=10, window_seconds=600.0),
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    now = SimpleNamespace(value=1_000.0)
+    monkeypatch.setattr(rate_limit.time, "monotonic", lambda: now.value)
+    return now
+
+
+def _me(client, token: str, forwarded: str = CALLER, **headers):
+    return client.get(
+        "/api/creator/me",
+        headers={**_auth(token), "X-Forwarded-For": forwarded, **headers},
     )
 
 
-def test_ten_wrong_keys_turn_a_client_away(client, limited):
+def _lock_out(client, forwarded: str = CALLER) -> None:
+    codes = [_me(client, WRONG, forwarded).status_code for _ in range(10)]
+    assert codes == [401] * 10
+
+
+def test_a_working_key_is_never_refused_for_wrong_ones(client, limited):
     token = _page()
-    bad = _auth("priya.nope")
-    codes = [client.get("/api/creator/me", headers=bad).status_code for _ in range(11)]
-    assert codes == [401] * 10 + [429]
-    # Even the right key waits now, and so does every creator route.
-    res = client.get("/api/creator/me", headers={**_auth(token), "Origin": origins[0]})
+    _lock_out(client)
+    assert _me(client, WRONG).status_code == 429
+    res = _me(client, token)
+    assert res.status_code == 200
+    assert res.json()["handle"] == "priya"
+    # And it clears nothing: the next wrong one still waits.
+    assert _me(client, WRONG).status_code == 429
+
+
+def test_the_eleventh_wrong_key_is_told_to_wait(client, limited, clock):
+    _page()
+    _lock_out(client)
+    res = _me(client, WRONG, Origin=origins[0])
     assert res.status_code == 429
     assert res.json()["detail"]["code"] == "too_many"
+    assert res.json()["retry_after_seconds"] == 600
     # The page can read the reply, so it can say why.
     assert res.headers["access-control-allow-origin"] == origins[0]
-    # The public page and other people are untouched.
-    assert client.get("/api/creators/priya").status_code == 200
-    other = {**_auth(token), "X-Forwarded-For": "203.0.113.9"}
-    assert client.get("/api/creator/me", headers=other).status_code == 200
+    # Asking again does not push the end back.
+    clock.value += 400
+    assert _me(client, WRONG).json()["retry_after_seconds"] == 200
+    clock.value += 201
+    assert _me(client, WRONG).status_code == 401
 
 
-def test_right_keys_are_never_counted(client, limited):
+def test_every_wrong_key_is_still_checked(client, limited, monkeypatch):
+    # The answer changes, not whether the key is looked at: that is what lets a
+    # working one through.
+    _page()
+    seen = []
+    real = creator_store.creator_for_token
+    monkeypatch.setattr(
+        creator_store, "creator_for_token", lambda t: seen.append(t) or real(t)
+    )
+    for _ in range(15):
+        _me(client, WRONG)
+    assert len(seen) == 15
+
+
+def test_another_caller_is_unaffected(client, limited):
     token = _page()
-    codes = {client.get("/api/creator/me", headers=_auth(token)).status_code for _ in range(30)}
+    _lock_out(client)
+    assert _me(client, WRONG).status_code == 429
+    assert _me(client, WRONG, OTHER).status_code == 401
+    assert _me(client, token, OTHER).status_code == 200
+    # The public page is not a creator-key route.
+    assert client.get("/api/creators/priya", headers={"X-Forwarded-For": CALLER}).status_code == 200
+
+
+def test_wrong_keys_on_any_creator_route_count_together(client, limited):
+    _page()
+    headers = {**_auth(WRONG), "X-Forwarded-For": CALLER}
+    calls = [
+        lambda: client.get("/api/creator/me", headers=headers),
+        lambda: client.patch("/api/creator/me", headers=headers, json={"bio": "x"}),
+        lambda: client.post("/api/creator/me/quests", headers=headers, json={"short_id": "abcd2345"}),
+        lambda: client.delete("/api/creator/me/quests/abcd2345", headers=headers),
+    ]
+    assert [calls[n % 4]().status_code for n in range(11)] == [401] * 10 + [429]
+
+
+def test_requests_that_are_not_refused_keys_are_never_counted(client, limited):
+    token = _page()
+    codes = {_me(client, token).status_code for _ in range(30)}
     assert codes == {200}
+    # A right key with a bad body is not a wrong key either.
+    for _ in range(15):
+        res = client.patch(
+            "/api/creator/me",
+            headers={**_auth(token), "X-Forwarded-For": CALLER},
+            json={"display_name": ""},
+        )
+        assert res.status_code == 422
+    assert _me(client, WRONG).status_code == 401
+
+
+@pytest.mark.parametrize("production_flags", [False, True], ids=["plain", "as-dockerfile"])
+def test_a_forged_first_entry_neither_evades_the_count_nor_blames_anyone(
+    limited, production_flags
+):
+    token = _page()
+    served = ProxyHeadersMiddleware(app, trusted_hosts="*") if production_flags else app
+    client = TestClient(served)
+    # A new first entry every time evades nothing...
+    codes = [_me(client, WRONG, f"10.0.0.{n}, {CALLER}").status_code for n in range(11)]
+    assert codes == [401] * 10 + [429]
+    # ...and naming someone else first locks nobody else out.
+    for _ in range(11):
+        _me(client, WRONG, f"{OTHER}, {CALLER}")
+    assert _me(client, WRONG, OTHER).status_code == 401
+    assert _me(client, token, OTHER).status_code == 200
+
+
+# ── Ceilings that bound store reads and writes ──
+
+
+def test_creator_routes_stop_at_60_a_minute_before_the_store_is_read(
+    client, limited, clock, monkeypatch
+):
+    token = _page()
+    reads = []
+    real = creator_store.creator_for_token
+    monkeypatch.setattr(
+        creator_store, "creator_for_token", lambda t: reads.append(t) or real(t)
+    )
+    codes = [_me(client, WRONG).status_code for _ in range(100)]
+    assert codes == [401] * 10 + [429] * 90
+    assert len(reads) == 60
+    # This is the general ceiling now, so it holds the right key too.
+    res = _me(client, token)
+    assert res.status_code == 429
+    assert "code" not in res.text
+    assert res.json()["retry_after_seconds"] == 60
+    assert _me(client, token, OTHER).status_code == 200
+    clock.value += 61
+    assert _me(client, token).status_code == 200
+
+
+def test_public_page_loads_stop_at_60_a_minute(client, limited, clock):
+    _page()
+
+    def load(forwarded):
+        return client.get("/api/creators/priya", headers={"X-Forwarded-For": forwarded})
+
+    codes = [load(f"10.0.0.{n}, {CALLER}").status_code for n in range(70)]
+    assert codes == [200] * 60 + [429] * 10
+    # The refused loads wrote nothing.
+    assert creator_store.get_creator("priya").views == 60
+    assert load(OTHER).status_code == 200
+    # A bucket of its own: the creator can still manage the page.
+    assert _me(client, WRONG).status_code == 401
+    clock.value += 61
+    assert load(CALLER).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "method, path, bucket",
+    [
+        ("GET", "/api/creator/me", "creator_key"),
+        ("PATCH", "/api/creator/me", "creator_key"),
+        ("POST", "/api/creator/me/quests", "creator_key"),
+        ("DELETE", "/api/creator/me/quests/abcd2345", "creator_key"),
+        ("GET", "/api/creators/priya", "creator_page"),
+        ("POST", "/api/creators/priya", None),
+        ("GET", "/api/creators/priya/more", None),
+    ],
+)
+def test_which_ceiling_each_creator_route_has(method, path, bucket):
+    assert rate_limit._bucket_for(method, path) == bucket
+    if bucket:
+        settings = SimpleNamespace(rate_limit_per_minute=100, suggest_rate_limit_per_minute=120)
+        assert rate_limit._allowance(bucket, settings) == 60
+
+
+# ── A page deleted while a request is changing it ──
+
+
+def _delete_around(monkeypatch, handle: str, *, field: str, when: str) -> None:
+    """Delete the page just before or just after the next write to `field`."""
+    real_update = _Document.update
+    done = []
+
+    def update(self, data):
+        if field in data and not done:
+            done.append(True)
+            if when == "before":
+                self.delete()
+                return real_update(self, data)
+            real_update(self, data)
+            self.delete()
+            return None
+        return real_update(self, data)
+
+    monkeypatch.setattr(_Document, "update", update)
+
+
+def _gone(res) -> None:
+    assert res.status_code == 404, res.text
+    assert res.json()["detail"]["code"] == "creator_not_found"
+
+
+@pytest.mark.parametrize("when", ["before", "after"])
+def test_adding_to_a_page_deleted_mid_request_is_a_404(client, store, monkeypatch, when):
+    if store.backend != "firestore":
+        pytest.skip("Firestore's two-step add")
+    token, quest = _page(), _shared()
+    _delete_around(monkeypatch, "priya", field="quest_ids", when=when)
+    _gone(_add(client, token, quest))
+    assert creator_store.get_creator("priya") is None
+
+
+def test_a_page_deleted_while_an_overfull_add_steps_back_is_a_404(client, store, monkeypatch):
+    if store.backend != "firestore":
+        pytest.skip("Firestore's step back")
+    token, quest = _page(), _shared()
+    real_update = _Document.update
+    writes = []
+
+    def update(self, data):
+        if "quest_ids" in data:
+            writes.append(data)
+            if len(writes) == 2:
+                self.delete()
+                return real_update(self, data)
+            real_update(self, data)
+            # Others filled the page at the same moment.
+            self._docs[self._key]["quest_ids"] += [f"other{n:03d}" for n in range(60)]
+            return None
+        return real_update(self, data)
+
+    monkeypatch.setattr(_Document, "update", update)
+    _gone(_add(client, token, quest))
+    assert len(writes) == 2
+
+
+def test_editing_a_page_deleted_mid_request_is_a_404(client, store, monkeypatch):
+    token = _page()
+    real = creator_store.update_profile
+
+    def deleted_first(handle, changes):
+        # The key has been checked; the page goes before the write.
+        if store.backend == "sqlite":
+            creator_store.delete_creator(handle)
+        return real(handle, changes)
+
+    monkeypatch.setattr(creator_store, "update_profile", deleted_first)
+    if store.backend == "firestore":
+        _delete_around(monkeypatch, "priya", field="bio", when="before")
+    _gone(client.patch("/api/creator/me", headers=_auth(token), json={"bio": "Hi"}))
+
+
+@pytest.mark.parametrize("action", ["add", "remove"])
+def test_quest_changes_to_a_page_deleted_after_sign_in_are_404s(client, monkeypatch, action):
+    token, quest = _page(), _shared()
+    name = f"{action}_quest"
+    real = getattr(creator_store, name)
+
+    def deleted_first(handle, short_id):
+        creator_store.delete_creator(handle)
+        return real(handle, short_id)
+
+    monkeypatch.setattr(creator_store, name, deleted_first)
+    if action == "add":
+        _gone(_add(client, token, quest))
+    else:
+        _gone(client.delete(f"/api/creator/me/quests/{quest}", headers=_auth(token)))
+
+
+def test_rotating_a_page_deleted_mid_way_says_there_is_no_page(monkeypatch):
+    _page()
+    real = creator_store._update
+
+    def deleted_first(handle, changes):
+        creator_store.delete_creator(handle)
+        return real(handle, changes)
+
+    monkeypatch.setattr(creator_store, "_update", deleted_first)
+    assert creator_store.rotate_token("priya") is None
+    assert creator_store.get_creator("priya") is None
 
 
 # ── The team's script ──

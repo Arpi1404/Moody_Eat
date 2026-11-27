@@ -13,6 +13,7 @@ import {
   CREATOR_NAME_MAX,
   CreatorError,
   fetchMyPage,
+  isDeadKey,
   removeMyQuest,
   shareLinkId,
   updateMyPage,
@@ -27,6 +28,12 @@ import {
   newKey,
   storedKey,
 } from '../lib/creatorKey'
+import {
+  isOtherPage,
+  keyHandle,
+  mustAskBeforeSwitching,
+  type StoredKeyCheck,
+} from '../lib/creatorKeySwitch'
 import { tidyText } from '../lib/creatorText'
 import '../App.css'
 
@@ -35,6 +42,16 @@ type View =
   | { status: 'signed_out' }
   | { status: 'failed'; reason: CreatorFailure; message: string }
   | { status: 'ready'; page: MyCreatorPage; key: string; notice?: string }
+  // A link for another page than the one this browser manages: nothing is
+  // changed until the person says which to keep.
+  | {
+      status: 'choose'
+      page: MyCreatorPage
+      key: string
+      currentHandle: string
+      /** Missing when the current page could not be loaded just now. */
+      currentName?: string
+    }
 
 function failure(err: unknown): View {
   const known =
@@ -52,13 +69,13 @@ async function openMyPage(): Promise<View> {
   if (fresh) {
     try {
       const page = await fetchMyPage(fresh)
+      const choice = await askBeforeSwitching(page, fresh)
+      if (choice) return choice
       keepKey(fresh)
       return { status: 'ready', page, key: fresh }
     } catch (err) {
       // Anything but a dead key: keep it, so trying again can use it.
-      if (!(err instanceof CreatorError) || err.reason !== 'bad_key') {
-        return failure(err)
-      }
+      if (!isDeadKey(err)) return failure(err)
       dropNewKey()
       const before = storedKey()
       if (!before || before === fresh) {
@@ -80,8 +97,33 @@ async function openMyPage(): Promise<View> {
         : undefined,
     }
   } catch (err) {
-    if (err instanceof CreatorError && err.reason === 'bad_key') forgetKeys()
+    if (isDeadKey(err)) forgetKeys()
     return failure(err)
+  }
+}
+
+/** The question to ask before an accepted key replaces the one this browser
+ * holds for another page, or null when there is nothing to ask. */
+async function askBeforeSwitching(
+  page: MyCreatorPage,
+  fresh: string,
+): Promise<View | null> {
+  const current = storedKey()
+  if (current === null || !isOtherPage(current, fresh)) return null
+  let check: StoredKeyCheck = 'works'
+  let currentName: string | undefined
+  try {
+    currentName = (await fetchMyPage(current)).display_name
+  } catch (err) {
+    check = isDeadKey(err) ? 'dead' : 'unknown'
+  }
+  if (!mustAskBeforeSwitching(current, fresh, check)) return null
+  return {
+    status: 'choose',
+    page,
+    key: fresh,
+    currentHandle: keyHandle(current),
+    currentName,
   }
 }
 
@@ -294,7 +336,7 @@ function QuestList({
         </ul>
       )}
       <p className="cm-small">
-        Open counts are only visible to you, and include your own opens.
+        Open counts are not shown on your page, and include your own opens.
         Removing a quest takes it off this page only: its share link keeps
         working. To delete a shared quest altogether,{' '}
         <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
@@ -446,7 +488,7 @@ export function ManagePage() {
 
   // A key replaced while the page was open: say so and stop offering edits.
   const onError = (err: unknown): string => {
-    if (err instanceof CreatorError && err.reason === 'bad_key') {
+    if (isDeadKey(err)) {
       forgetKeys()
       setView(failure(err))
     }
@@ -479,7 +521,7 @@ export function ManagePage() {
         {view.status === 'failed' && (
           <section className="cm-card" role="alert">
             <h1>
-              {view.reason === 'bad_key'
+              {view.reason === 'bad_key' || view.reason === 'too_many'
                 ? "That link doesn't work"
                 : "Can't open your page"}
             </h1>
@@ -496,6 +538,49 @@ export function ManagePage() {
             <p>
               <Link to="/">Back home</Link>
             </p>
+          </section>
+        )}
+
+        {view.status === 'choose' && (
+          <section className="cm-card" aria-labelledby="cm-choose-title">
+            <h1 id="cm-choose-title">Switch pages?</h1>
+            <p>
+              This link opens <strong>{view.page.display_name}</strong> (/by/
+              {view.page.handle}).
+            </p>
+            <p>
+              This browser manages{' '}
+              <strong>{view.currentName ?? view.currentHandle}</strong> (/by/
+              {view.currentHandle}). It can manage one page at a time.
+            </p>
+            <p className="cm-small">
+              If you switch, you'll need your link for /by/{view.currentHandle}{' '}
+              to manage it here again. If you didn't expect this link, keep
+              your page.
+            </p>
+            <div className="cm-row">
+              <button
+                type="button"
+                className="cm-primary"
+                onClick={() => {
+                  // Only the link on screen: another may have arrived since.
+                  if (newKey() === view.key) dropNewKey()
+                  reopen()
+                }}
+              >
+                Keep {view.currentHandle}
+              </button>
+              <button
+                type="button"
+                className="cm-secondary"
+                onClick={() => {
+                  keepKey(view.key)
+                  setView({ status: 'ready', page: view.page, key: view.key })
+                }}
+              >
+                Switch
+              </button>
+            </div>
           </section>
         )}
 

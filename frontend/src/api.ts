@@ -1,3 +1,4 @@
+import { TooManyQuestsError } from './lib/tooManyQuests'
 import type { Quest, StopAlternative, StopKind } from './types/quest'
 
 const DEFAULT_BASE = 'http://127.0.0.1:8000'
@@ -30,6 +31,10 @@ export async function generateQuest(payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
+  if (res.status === 429) {
+    const data = await res.json().catch(() => null)
+    throw new TooManyQuestsError(data?.retry_after_seconds)
+  }
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     const detail =

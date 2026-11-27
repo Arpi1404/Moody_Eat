@@ -4,8 +4,10 @@ view of it, opened with the key in their private manage link.
 Pages are made by the team with scripts/creator_page.py. There is no sign-up
 route here, and there are no accounts, cookies or passwords.
 
-The key arrives as `Authorization: Bearer <token>`. Keep it in variables named
-`token` or `authorization`: error reporting scrubs values by those names.
+The key arrives as `Authorization: Bearer <token>`. It must not reach error
+reports. Naming a variable `token` is not enough: scrubbing goes by variable
+name, and the request's `scope`, a local in the framework's own frames, holds
+the header inside a list. So main.py turns off the capture of local variables.
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 import creator_store
-from creator_store import MAX_QUESTS, Creator, PageFull
+from creator_store import MAX_QUESTS, Creator, PageFull, PageGone
 from models import tidy_text
 from quest_store import StoredQuest, fetch_quests
 
@@ -184,10 +186,14 @@ async def signed_in_creator(
     return creator
 
 
+def _page_gone() -> HTTPException:
+    return _fail(404, "creator_not_found", "This page no longer exists.")
+
+
 async def _reload_my_page(handle: str) -> MyCreatorPage:
     creator = await run_in_threadpool(creator_store.get_creator, handle)
     if creator is None:
-        raise _fail(404, "creator_not_found", "This page no longer exists.")
+        raise _page_gone()
     return await run_in_threadpool(_my_page, creator)
 
 
@@ -235,7 +241,10 @@ async def edit_my_page(
                 422, "bad_instagram", "Enter just your Instagram username, like priya.eats."
             )
         update["instagram"] = username
-    await run_in_threadpool(creator_store.update_profile, creator.handle, update)
+    try:
+        await run_in_threadpool(creator_store.update_profile, creator.handle, update)
+    except PageGone as exc:
+        raise _page_gone() from exc
     return await _reload_my_page(creator.handle)
 
 
@@ -259,6 +268,8 @@ async def add_to_my_page(
             f"Your page has {MAX_QUESTS} quests, the most it can hold. "
             "Remove one to add another.",
         ) from exc
+    except PageGone as exc:
+        raise _page_gone() from exc
     return AddQuestResult(added=added, page=await _reload_my_page(creator.handle))
 
 

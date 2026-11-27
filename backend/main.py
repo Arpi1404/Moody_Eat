@@ -28,6 +28,10 @@ if _sentry_dsn:
         environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
         traces_sample_rate=0.0,
         send_default_pii=False,
+        # A frame's locals can hold a creator's key: the request scope carries
+        # the Authorization header in a list, which no scrubbing by variable
+        # name will find.
+        include_local_variables=False,
     )
 
 app = FastAPI(title="Travel Planner API")
