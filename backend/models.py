@@ -1,4 +1,5 @@
 import re
+import unicodedata
 import uuid
 from datetime import datetime, time
 from enum import Enum
@@ -24,9 +25,30 @@ _UNSAFE_TEXT_RE = re.compile(
 )
 
 
+# Characters that take no room: they can hide inside a word or a web address,
+# or make an empty note look written.
+_ZERO_WIDTH_RE = re.compile("[\u200b-\u200d\u2060\ufeff]")
+
+
+def _is_emoji_part(char: str) -> bool:
+    return 0x1F000 <= ord(char) <= 0x1FAFF or unicodedata.category(char) == "So"
+
+
+def _drop_zero_width(match: re.Match) -> str:
+    """Remove one zero-width character, unless it is the joiner holding the
+    parts of one emoji together, such as a family or a flag."""
+    text, at = match.string, match.start()
+    if match.group() == "\u200d" and 0 < at < len(text) - 1:
+        before, after = text[at - 1], text[at + 1]
+        if (before == "\ufe0f" or _is_emoji_part(before)) and _is_emoji_part(after):
+            return match.group()
+    return ""
+
+
 def tidy_text(value: str) -> str:
-    """One trimmed line: no control characters, single spaces."""
-    return " ".join(_UNSAFE_TEXT_RE.sub(" ", value).split())
+    """One trimmed line: no control or zero-width characters, single spaces."""
+    text = _ZERO_WIDTH_RE.sub(_drop_zero_width, value)
+    return " ".join(_UNSAFE_TEXT_RE.sub(" ", text).split())
 
 
 def _unset_marker(value: object) -> bool:
@@ -233,6 +255,41 @@ class StopCategory(str, Enum):
     other = "other"
 
 
+# ── Stop kinds ─────────────────────────────────────────────────────────────────
+
+class StopKind(str, Enum):
+    """What a person can ask for when they swap a stop or add one."""
+
+    meal = "meal"
+    coffee = "coffee"
+    dessert = "dessert"
+    drinks = "drinks"
+    walk = "walk"
+    sights = "sights"
+    movie = "movie"
+    bowling = "bowling"
+
+
+# kind -> (the one nearby-search type it asks for, the category the new stop
+# gets). One type each, so choosing a kind costs one Places search. Every type
+# must be in ALLOWED_NEARBY_TYPES. frontend/src/lib/stopKinds.ts lists the same
+# kinds.
+STOP_KIND_SEARCHES: dict[StopKind, tuple[str, StopCategory]] = {
+    StopKind.meal: ("restaurant", StopCategory.restaurant),
+    StopKind.coffee: ("cafe", StopCategory.cafe),
+    StopKind.dessert: ("bakery", StopCategory.other),
+    StopKind.drinks: ("bar", StopCategory.bar),
+    StopKind.walk: ("park", StopCategory.attraction),
+    StopKind.sights: ("tourist_attraction", StopCategory.attraction),
+    StopKind.movie: ("movie_theater", StopCategory.activity),
+    StopKind.bowling: ("bowling_alley", StopCategory.activity),
+}
+
+# A film outlasts the other activities, so it has a length of its own. Mirrors
+# FILM_MINUTES in frontend/src/lib/questBuild.ts.
+FILM_MINUTES = 150
+
+
 # ── Quest models ───────────────────────────────────────────────────────────────
 
 # How a quest's stops were chosen.
@@ -284,6 +341,9 @@ class StopSwapDelta(BaseModel):
 
 class StopAlternative(Stop):
     delta: StopSwapDelta
+    # Echoes the kind that was asked for. The quest page reads it to tell a
+    # server that searched by kind from an older one that ignored the request.
+    kind: Optional[StopKind] = None
 
 
 class Quest(BaseModel):

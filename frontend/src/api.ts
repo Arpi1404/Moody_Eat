@@ -1,4 +1,4 @@
-import type { Quest, StopAlternative } from './types/quest'
+import type { Quest, StopAlternative, StopKind } from './types/quest'
 
 const DEFAULT_BASE = 'http://127.0.0.1:8000'
 
@@ -94,12 +94,21 @@ export async function fetchCuratedQuest(id: string): Promise<Quest> {
   return res.json()
 }
 
-export async function fetchStopAlternatives(
+// The site can go out before the server does. Until then the server has no
+// route for adding a stop, and ignores a requested kind.
+const NOT_AVAILABLE_YET =
+  'This is not available yet. Try again later. Your quest is unchanged.'
+
+/** One paid places search: options to put at, or after, one stop. */
+async function fetchStopOptions(
   quest: Quest,
   stopIndex: number,
+  route: 'alternatives' | 'additions',
+  kind: StopKind | null,
 ): Promise<StopAlternative[]> {
+  const query = kind ? `?kind=${kind}` : ''
   const res = await fetch(
-    `${getApiBase()}/api/quest/${quest.id}/stop/${stopIndex}/alternatives`,
+    `${getApiBase()}/api/quest/${quest.id}/stop/${stopIndex}/${route}${query}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -108,6 +117,9 @@ export async function fetchStopAlternatives(
   )
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
+    if (res.status === 404 && data.detail === 'Not Found') {
+      throw new Error(NOT_AVAILABLE_YET)
+    }
     const detail =
       typeof data.detail === 'string'
         ? data.detail
@@ -115,7 +127,31 @@ export async function fetchStopAlternatives(
           'Could not load alternatives.'
     throw new Error(detail)
   }
-  return res.json()
+  const options: StopAlternative[] = await res.json()
+  // Without the echo these are the old same-type results: showing them under
+  // the chosen kind would mislabel them.
+  if (kind && options.some((option) => option.kind !== kind)) {
+    throw new Error(NOT_AVAILABLE_YET)
+  }
+  return options
+}
+
+/** Replacements for a stop: the same type as now, or of `kind`. */
+export function fetchStopAlternatives(
+  quest: Quest,
+  stopIndex: number,
+  kind: StopKind | null = null,
+): Promise<StopAlternative[]> {
+  return fetchStopOptions(quest, stopIndex, 'alternatives', kind)
+}
+
+/** Places of one kind that could be added right after a stop. */
+export function fetchStopAdditions(
+  quest: Quest,
+  afterIndex: number,
+  kind: StopKind,
+): Promise<StopAlternative[]> {
+  return fetchStopOptions(quest, afterIndex, 'additions', kind)
 }
 
 export type PlaceItem = {

@@ -9,6 +9,10 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
     },
     {
+      "source": "/quest/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
+    {
       "source": "/by/:path*",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
     }
