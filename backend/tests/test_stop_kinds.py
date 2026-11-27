@@ -21,6 +21,7 @@ from models import (
 )
 from quest_generator import _DWELL, _why
 from services.nearby_places_service import NearbyPlacesService
+from routes import _KIND_STOPS
 from services.places_provider import RawPlace
 from tests.test_nearby_places import FakeProvider, _quest_payload
 
@@ -140,6 +141,45 @@ def test_nothing_of_that_kind_nearby_is_an_empty_list() -> None:
 
     assert res.status_code == 200
     assert res.json() == []
+
+
+# ── The wanted sort of place comes first ──────────────────────────────────────
+
+
+class MixedBakeries(FakeProvider):
+    """A highly rated shop that takes cake orders, and weaker places to sit."""
+
+    async def nearby_by_type(self, *, lat, lng, radius_meters, place_type, target_count=None):
+        self.nearby_types.append(place_type)
+        return [
+            RawPlace("orders", "Cake Orders", "A Road", 0.0005, 0.0, 4.9, ["bakery"],
+                     user_ratings_total=900, primary_type="cake_shop"),
+            RawPlace("sweet", "Sweet Table", "B Road", 0.003, 0.0, 4.3, ["bakery"],
+                     user_ratings_total=150, primary_type="dessert_shop"),
+            RawPlace("seated", "Corner Bakery", "C Road", 0.004, 0.0, 4.1, ["bakery", "cafe"],
+                     user_ratings_total=120, primary_type="bakery"),
+        ]
+
+
+@pytest.mark.parametrize("path", ["stop/1/alternatives?kind=dessert", "stop/1/additions?kind=dessert"])
+@pytest.mark.parametrize("occasion", ["date", "family"])
+def test_dessert_offers_places_to_sit_before_a_cake_order_shop(path: str, occasion: str) -> None:
+    payload = {**_quest_payload(), "occasion": occasion}
+
+    res = _post(path, payload, MixedBakeries())
+
+    assert res.status_code == 200
+    offered = [stop["place"]["provider_id"] for stop in res.json()]
+    assert offered[-1] == "orders"  # last, but still offered
+    assert set(offered[:2]) == {"sweet", "seated"}
+
+
+def test_every_kind_is_ordered_by_a_stop_the_generator_knows() -> None:
+    assert set(_KIND_STOPS) == set(StopKind)
+    for kind, (places_type, category) in STOP_KIND_SEARCHES.items():
+        template = _KIND_STOPS[kind]
+        assert template.category == category, kind
+        assert places_type in template.places_types, kind
 
 
 # ── Films ──────────────────────────────────────────────────────────────────────

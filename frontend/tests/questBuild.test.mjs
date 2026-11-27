@@ -181,6 +181,42 @@ test('a hop with no stored time is worked out', () => {
   assertChains(quest)
 })
 
+test('the hand-written walk from Charminar to Hotel Shadab survives edits', () => {
+  const at = (id, lat, lng, minutes = null, mode = null) => ({
+    ...stop(id, 0, '17:00', '17:30', minutes, mode),
+    place: { ...place(id, 0), lat, lng },
+  })
+  // The curated stops, 816 m apart in a straight line: past the walking limit.
+  const charminar = at('charminar', 17.3616, 78.4747, 10, 'walking')
+  const shadab = at('shadab', 17.3689, 78.4755, 11, 'walking')
+  assert.equal(travelLeg(charminar, shadab).mode, 'driving')
+
+  const quest = {
+    ...handMade(),
+    stops: [charminar, shadab, at('nimrah', 17.3614, 78.4741)],
+  }
+  const another = at('new', 17.365, 78.476)
+  const edits = {
+    'add after the second stop': insertStopAfter(quest, 1, another),
+    'add at the end': insertStopAfter(quest, 2, another),
+    'swap the last stop': replaceStop(quest, 2, another),
+    'remove the last stop': removeStop(quest, 2),
+    'move the last stop first': reorderStops(quest, 2, 0),
+    'swap the two around': reorderStops(quest, 1, 0),
+  }
+
+  for (const [edit, edited] of Object.entries(edits)) {
+    const from = edited.stops.findIndex(
+      (s, i) =>
+        ['charminar', 'shadab'].includes(s.place.provider_id) &&
+        ['charminar', 'shadab'].includes(edited.stops[i + 1]?.place.provider_id),
+    )
+    assert.notEqual(from, -1, edit)
+    assert.equal(edited.stops[from].travel_to_next_minutes, 10, edit)
+    assert.equal(edited.stops[from].travel_mode, 'walking', edit)
+  }
+})
+
 test('an edit leaves the quest it was made from untouched', () => {
   const before = handMade()
   const copy = structuredClone(before)

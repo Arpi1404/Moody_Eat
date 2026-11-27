@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toBlob, toPng } from 'html-to-image'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
-import type { Quest, QuestGenerationRequest, Stop } from '../types/quest'
+import type { DayPart, Quest, QuestGenerationRequest, Stop } from '../types/quest'
 import type { JournalEntry } from '../types/journal'
 import { fetchCuratedQuest, fetchStoredQuest, generateQuest } from '../api'
 import { isSavedQuestId, useSavedQuests } from '../hooks/useSavedQuests'
@@ -54,21 +54,76 @@ function makePngFileName(title: string): string {
   return `moodyeat-${slug || 'quest'}.png`
 }
 
-const OCCASION_PHRASE: Record<string, string> = {
-  date: 'date',
-  friends: 'friends',
-  solo: 'solo',
-  family: 'family',
+// The sentence the backend writes when no model-written narrative is
+// available, rebuilt here after a stop is swapped. Mirrors _OUTING_PHRASES and
+// _fallback_narrative in backend/services/place_blurbs_service.py: change one,
+// change both.
+const OUTING_PHRASES: Record<string, Record<DayPart, string>> = {
+  date: {
+    morning: 'morning date',
+    afternoon: 'afternoon date',
+    evening: 'evening date',
+    night: 'date night',
+  },
+  friends: {
+    morning: 'morning out with friends',
+    afternoon: 'afternoon out with friends',
+    evening: 'evening out with friends',
+    night: 'night out with friends',
+  },
+  solo: {
+    morning: 'solo morning',
+    afternoon: 'solo afternoon',
+    evening: 'solo evening',
+    night: 'solo night out',
+  },
+  family: {
+    morning: 'family morning out',
+    afternoon: 'family afternoon out',
+    evening: 'family evening out',
+    night: 'family night out',
+  },
+}
+
+const BUDGET_WORDS: Record<string, string> = {
+  cheap: 'budget-friendly',
+  splurge: 'splurge-worthy',
+}
+
+/** What a person would call the hour a quest starts at. */
+function spokenDayPart(start: string | undefined): DayPart {
+  const hour = parseInt((start ?? '').split(':')[0], 10)
+  if (Number.isNaN(hour) || hour < 5 || hour >= 20) return 'night'
+  if (hour < 12) return 'morning'
+  if (hour < 17) return 'afternoon'
+  return 'evening'
+}
+
+function outingPhrase(quest: Quest): string {
+  const dayPart = spokenDayPart(quest.stops[0]?.time_block_start)
+  let phrase =
+    OUTING_PHRASES[quest.occasion]?.[dayPart] ?? `${quest.occasion} outing`
+  const budget = BUDGET_WORDS[quest.total_cost_estimate]
+  if (budget) phrase = `${budget} ${phrase}`
+  return `${/^[aeiou]/i.test(phrase) ? 'An' : 'A'} ${phrase}`
 }
 
 function rebuildNarrative(quest: Quest): string {
   const names = quest.stops.map((stop) => stop.place.name)
-  const occasion = OCCASION_PHRASE[quest.occasion] ?? quest.occasion
-  const intro = `A ${quest.total_cost_estimate} ${occasion} outing`
+  const intro = outingPhrase(quest)
   if (names.length === 0) return `${intro}.`
-  if (names.length === 1) return `${intro}, anchored around ${names[0]}.`
-  const mid = names.slice(0, -1).join(', ')
-  return `${intro}: starting at ${mid}, then finishing the night at ${names[names.length - 1]}.`
+  if (names.length === 1) return `${intro}, built around ${names[0]}.`
+  const first = names[0]
+  const last = names[names.length - 1]
+  const between = names.slice(1, -1)
+  if (between.length === 0) {
+    return `${intro}: start at ${first}, then finish at ${last}.`
+  }
+  const middle =
+    between.length === 1
+      ? between[0]
+      : `${between.slice(0, -1).join(', ')} and ${between[between.length - 1]}`
+  return `${intro}: start at ${first}, move on to ${middle}, then finish at ${last}.`
 }
 
 function makeQuestTextSummary(quest: Quest, url: string): string {

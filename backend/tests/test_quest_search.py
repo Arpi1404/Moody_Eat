@@ -15,12 +15,11 @@ from models import (
     QuestGenerationRequest,
 )
 from quest_generator import (
-    _LONG_QUEST_EXTRA_STOP,
     _search_with_expansion,
     _window_for_slot,
     assemble_quest,
 )
-from quest_templates import TEMPLATES
+from quest_templates import PLANS
 from services.google_places import _hours_for_weekday, _new_periods_to_legacy
 from services.nearby_places_service import _TYPE_DENYLIST, NearbyPlacesService
 from services.places_exceptions import LocationNotFoundError, PlacesProviderError
@@ -164,18 +163,41 @@ def test_lunch_slot_uses_the_first_window_of_a_split_shift_place(fake_narrative)
 
 def test_slot_in_the_midday_break_is_still_rejected(fake_narrative) -> None:
     service = NearbyPlacesService(SplitShiftProvider())
+    # One evening stop with friends is a drink at 17:30 — after lunch service
+    # ends (15:30) and before dinner begins (19:00) — so the only candidate,
+    # found under its last fallback type, is genuinely shut.
+    req = QuestGenerationRequest(
+        location="Govindpuram",
+        occasion=Occasion.friends,
+        cost_estimate=CostEstimate.mid,
+        people=4,
+        stop_count=1,
+        day_part=DayPart.evening,
+    )
 
-    # An evening quest starts 17:30 — after lunch service ends (15:30) and
-    # before dinner begins (19:00) — so the only candidate is genuinely shut.
     with pytest.raises(ValueError):
-        asyncio.run(assemble_quest(_one_stop_date(DayPart.evening), service))
+        asyncio.run(assemble_quest(req, service))
+
+
+def test_dinner_led_evening_date_lands_in_the_dinner_window(fake_narrative) -> None:
+    service = NearbyPlacesService(SplitShiftProvider())
+
+    quest = asyncio.run(assemble_quest(_one_stop_date(DayPart.evening), service))
+
+    [stop] = quest.stops
+    assert stop.time_block_start == time(19, 0)
+    assert (stop.place.opens_today, stop.place.closes_today) == ("19:00", "23:00")
 
 
 # ── Templates never ask for a type the quality filter throws away ─────────────
 
 def test_no_template_searches_a_deny_listed_type() -> None:
-    stops = [stop for template in TEMPLATES.values() for stop in template]
-    stops += list(_LONG_QUEST_EXTRA_STOP.values())
+    stops = [
+        stop
+        for by_day_part in PLANS.values()
+        for plan in by_day_part.values()
+        for stop in plan.sequence
+    ]
     searched = {place_type for stop in stops for place_type in stop.places_types}
 
     assert searched <= ALLOWED_NEARBY_TYPES
@@ -340,7 +362,7 @@ def test_coordinate_location_with_label_names_the_quest_after_the_area(fake_narr
 
     quest = asyncio.run(assemble_quest(req, service))
 
-    assert quest.title == "An Evening Date in Gachibowli"
+    assert quest.title == "A Date Night in Gachibowli"
     # The narrative model is told the area in words, never the coordinates.
     assert fake_narrative[0]["location"] == "Gachibowli, Hyderabad"
 
@@ -351,7 +373,7 @@ def test_coordinate_location_without_label_never_shows_the_numbers(fake_narrativ
 
     quest = asyncio.run(assemble_quest(req, service))
 
-    assert quest.title == "An Evening Date"
+    assert quest.title == "A Date Night"
     assert fake_narrative[0]["location"] == "your area"
 
 
@@ -360,7 +382,7 @@ def test_typed_location_is_unaffected_by_the_label_field(fake_narrative) -> None
 
     quest = asyncio.run(assemble_quest(_one_stop_date(DayPart.night), service))
 
-    assert quest.title == "An Evening Date in Govindpuram"
+    assert quest.title == "A Date Night in Govindpuram"
     assert fake_narrative[0]["location"] == "Govindpuram"
 
 

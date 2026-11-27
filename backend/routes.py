@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from datetime import time
 
@@ -12,6 +13,7 @@ from deps import get_nearby_places_service, get_places_provider
 from models import (
     ALLOWED_NEARBY_TYPES,
     FILM_MINUTES,
+    PLACE_ID_PATTERN,
     STOP_KIND_SEARCHES,
     LocationSuggestion,
     LocationSuggestionsResponse,
@@ -30,23 +32,39 @@ from models import (
     StoredQuestCreateResponse,
     StoredQuestStats,
     SuggestionLocation,
+    SwapEvent,
 )
 from quest_store import fetch_quest, store_quest
+from swap_log import record_swap
 from price_inference import CostBand, estimate_cost_band
 from quest_generator import (
     _DWELL,
     _add_min,
+    _popularity_cap,
     _score,
+    _swap_kind,
     _travel_time,
     _why,
     assemble_quest,
     haversine_m,
+)
+from quest_templates import (
+    CAFE,
+    DESSERT,
+    DRINKS,
+    MEAL,
+    PLAY,
+    SIGHT,
+    STROLL,
+    TemplateStop,
 )
 from services.google_places import GooglePlacesProvider
 from services.nearby_places_service import NearbyPlacesService, map_provider_error
 from services.place_blurbs_service import generate_place_blurbs
 from services.place_photo_service import fetch_place_photo
 from services.places_exceptions import PlacesProviderError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -93,6 +111,50 @@ def _not_in_quest(places: list[PlaceItem], quest: Quest) -> list[PlaceItem]:
         if place.provider_id not in used_provider_ids
         and (place.name.strip().casefold(), place.address.strip().casefold()) not in used_place_keys
     ]
+
+
+# The stop in quest_templates.py that says what belongs in each kind a person
+# can choose, so that a swap or an added stop is ordered as the generator would.
+_KIND_STOPS: dict[StopKind, TemplateStop] = {
+    StopKind.meal: MEAL,
+    StopKind.coffee: CAFE,
+    StopKind.dessert: DESSERT,
+    StopKind.drinks: DRINKS,
+    StopKind.walk: STROLL,
+    StopKind.sights: SIGHT,
+    StopKind.movie: PLAY,
+    StopKind.bowling: PLAY,
+}
+
+
+def _best_first(
+    places: list[PlaceItem],
+    quest: Quest,
+    anchor: PlaceItem,
+    places_type: str,
+    wanted: TemplateStop | None,
+) -> None:
+    """Sort places for one stop: the wanted kind first, then by score.
+
+    A search for `bar` also returns the restaurants that carry the tag, and
+    "Dessert" searches bakeries, many of which only take cake orders. Nothing
+    is dropped, so a thin area still gets its options.
+    """
+    popularity_cap = _popularity_cap(quest.occasion, places_type)
+    places.sort(
+        key=lambda place: (
+            wanted is not None
+            and not wanted.suits(place.name, place.primary_type, place.types),
+            -_score(
+                place,
+                quest.total_cost_estimate,
+                anchor.lat,
+                anchor.lng,
+                popularity_cap=popularity_cap,
+            ),
+            place.distance_meters,
+        )
+    )
 
 
 def _is_film(stop: Stop) -> bool:
@@ -226,6 +288,38 @@ async def get_shared_quest_stats(
     return StoredQuestStats(short_id=stored.short_id, views=stored.views, created_at=stored.created_at)
 
 
+# A swap event is a dozen place ids and a few enums: well under 1 KB.
+_MAX_SWAP_LOG_BYTES = 8_000
+
+
+@router.post("/api/quest/swap-log", status_code=204)
+async def log_stop_swap(request: Request) -> Response:
+    """Record that someone replaced one suggested place with another.
+
+    The quest page posts this after a swap is confirmed and never waits on
+    the answer, so nothing here can slow down or break a swap. See
+    swap_log.py for what is stored and why.
+    """
+    body = await request.body()
+    if len(body) > _MAX_SWAP_LOG_BYTES:
+        raise HTTPException(status_code=413, detail={"message": "Swap event is too large."})
+    try:
+        event = SwapEvent.model_validate_json(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail={"message": "Invalid swap event."}) from exc
+
+    try:
+        await run_in_threadpool(record_swap, event)
+    except Exception as exc:
+        # Losing an event is acceptable; a 5xx keeps the loss visible in the
+        # service's request metrics instead of hiding it behind a 204.
+        logger.warning("swap_log_failed err_type=%s", exc.__class__.__name__)
+        raise HTTPException(
+            status_code=503, detail={"message": "Could not record the swap."}
+        ) from exc
+    return Response(status_code=204)
+
+
 @router.post(
     "/api/quest/{quest_id}/stop/{stop_index}/alternatives",
     response_model=list[StopAlternative],
@@ -263,12 +357,13 @@ async def stop_alternatives(
 
     result = await _search_around(service, anchor_place.lat, anchor_place.lng, places_type)
     candidates = _not_in_quest(result.places, payload)
-    candidates.sort(
-        key=lambda place: (
-            -_score(place, payload.total_cost_estimate, anchor_place.lat, anchor_place.lng),
-            place.distance_meters,
-        )
+    # With no kind chosen, more of what the stop already was.
+    wanted = (
+        _swap_kind(original, places_type, payload.occasion)
+        if chosen_kind is None
+        else _KIND_STOPS[chosen_kind]
     )
+    _best_first(candidates, payload, anchor_place, places_type, wanted)
 
     original_dwell = _minutes_between(original.time_block_start, original.time_block_end)
     if original_dwell <= 0:
@@ -396,12 +491,7 @@ async def stop_additions(
 
     result = await _search_around(service, anchor.lat, anchor.lng, places_type)
     candidates = _not_in_quest(result.places, payload)
-    candidates.sort(
-        key=lambda place: (
-            -_score(place, payload.total_cost_estimate, anchor.lat, anchor.lng),
-            place.distance_meters,
-        )
-    )
+    _best_first(candidates, payload, anchor, places_type, _KIND_STOPS[chosen_kind])
 
     dwell = _kind_dwell(chosen_kind, category)
     direct_dist = (
@@ -475,7 +565,7 @@ async def nearby_places(
 # Google's own limits: a session token is at most 36 URL-safe characters (a
 # UUID). The place id ends up in an upstream URL path, hence the strict shape.
 _SESSION_TOKEN_PATTERN = r"^[A-Za-z0-9_-]{1,36}$"
-_PLACE_ID_PATTERN = r"^[A-Za-z0-9_-]{10,400}$"
+_PLACE_ID_PATTERN = PLACE_ID_PATTERN
 
 
 def _provider_http_error(exc: PlacesProviderError) -> HTTPException:

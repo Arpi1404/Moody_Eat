@@ -55,12 +55,28 @@ def _is_stop_search(method: str, path: str) -> bool:
 # they are counted apart from searches.
 _SEARCH_BUCKET = "search"
 _SUGGEST_BUCKET = "suggest"
+_SWAP_LOG_BUCKET = "swap_log"
 _LIMITED_ENDPOINTS = {
     ("POST", "/api/places/nearby"): _SEARCH_BUCKET,
     ("POST", "/api/quest/store"): _SEARCH_BUCKET,
     ("GET", "/api/places/autocomplete"): _SUGGEST_BUCKET,
     ("GET", "/api/places/autocomplete/location"): _SUGGEST_BUCKET,
+    ("POST", "/api/quest/swap-log"): _SWAP_LOG_BUCKET,
 }
+
+# Nobody confirms more than a few swaps a minute, so the swap log gets a
+# small allowance of its own: a script posting to it cannot fill the log
+# quickly, and cannot use up a real person's allowance for searches either.
+_SWAP_LOG_MAX_PER_MINUTE = 20
+
+
+def _allowance(bucket: str, settings) -> int:
+    """Requests per minute one client may make against `bucket`."""
+    if bucket == _SUGGEST_BUCKET:
+        return settings.suggest_rate_limit_per_minute
+    if bucket == _SWAP_LOG_BUCKET:
+        return min(settings.rate_limit_per_minute, _SWAP_LOG_MAX_PER_MINUTE)
+    return settings.rate_limit_per_minute
 
 
 class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
@@ -77,11 +93,7 @@ class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
         )
         if bucket is None:
             return await call_next(request)
-        max_rpm = (
-            settings.suggest_rate_limit_per_minute
-            if bucket == _SUGGEST_BUCKET
-            else settings.rate_limit_per_minute
-        )
+        max_rpm = _allowance(bucket, settings)
         if max_rpm <= 0:
             return await call_next(request)
 
