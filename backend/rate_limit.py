@@ -95,6 +95,12 @@ def _is_stop_search(method: str, path: str) -> bool:
     return method == "POST" and _STOP_SEARCH_PATH.fullmatch(path) is not None
 
 
+# The creator's own routes, each opened with the key from their manage link,
+# and the public page, which writes a view count to the store on every load.
+_CREATOR_KEY_PREFIX = "/api/creator/"
+_CREATOR_PAGE_PATH = re.compile(r"/api/creators/[^/]+")
+
+
 # Endpoints that spend money (Google or the model API) or write to disk, and
 # the allowance each one counts against. Location suggestions fire every few
 # keystrokes, so they are counted apart from searches.
@@ -105,6 +111,8 @@ _GENERATE_BUCKET = "generate"
 _PHOTO_BUCKET = "photo"
 _BLURBS_BUCKET = "blurbs"
 _NAME_SEARCH_BUCKET = "name_search"
+_CREATOR_KEY_BUCKET = "creator_key"
+_CREATOR_PAGE_BUCKET = "creator_page"
 _LIMITED_ENDPOINTS = {
     ("POST", "/api/quest/generate"): _GENERATE_BUCKET,
     ("GET", "/api/places/photo"): _PHOTO_BUCKET,
@@ -129,6 +137,9 @@ _BLURBS_MAX_PER_MINUTE = 20
 # Every search by name is a billed Text Search (plus a geocode when the area
 # was typed) and nobody needs many a minute.
 _NAME_SEARCH_MAX_PER_MINUTE = 20
+# Both bound the store reads and writes one caller can cause.
+_CREATOR_KEY_MAX_PER_MINUTE = 60
+_CREATOR_PAGE_MAX_PER_MINUTE = 60
 # A page asks for many photos at once (curated cards, stops, swap options), so
 # this one is above the general allowance on purpose.
 _PHOTO_MAX_PER_MINUTE = 120
@@ -139,11 +150,18 @@ _CEILINGS = {
     _GENERATE_BUCKET: _GENERATE_MAX_PER_MINUTE,
     _BLURBS_BUCKET: _BLURBS_MAX_PER_MINUTE,
     _NAME_SEARCH_BUCKET: _NAME_SEARCH_MAX_PER_MINUTE,
+    _CREATOR_KEY_BUCKET: _CREATOR_KEY_MAX_PER_MINUTE,
+    _CREATOR_PAGE_BUCKET: _CREATOR_PAGE_MAX_PER_MINUTE,
 }
 
 # A per-minute number alone still lets one address make 14,400 quests a day,
 # so these buckets have an hourly ceiling as well. A request must pass both.
 _HOURLY_CEILINGS = {_GENERATE_BUCKET: 40}
+
+# Wrong creator keys. A key is always checked first, so a working one is never
+# refused for them: only a caller's further wrong ones get a different answer.
+_BAD_KEYS_MAX = 10
+_BAD_KEYS_WINDOW_SECONDS = 600.0
 
 
 def _allowance(bucket: str, settings) -> int:
@@ -209,6 +227,38 @@ def _limiters_for(bucket: str, max_rpm: int) -> list[_SlidingWindowLimiter]:
     return limiters
 
 
+def _bucket_for(method: str, path: str) -> str | None:
+    if _is_stop_search(method, path):
+        return _SEARCH_BUCKET
+    if path.startswith(_CREATOR_KEY_PREFIX):
+        return _CREATOR_KEY_BUCKET
+    if method == "GET" and _CREATOR_PAGE_PATH.fullmatch(path):
+        return _CREATOR_PAGE_BUCKET
+    return _LIMITED_ENDPOINTS.get((method, path))
+
+
+def _count_bad_key(caller: str, refused: Response) -> Response:
+    """Count a key the route turned away (401). Once a caller has sent too
+    many, its further wrong keys are told to wait. Nothing else changes.
+    """
+    failures = _get_limiter("bad_creator_key", _BAD_KEYS_MAX, _BAD_KEYS_WINDOW_SECONDS)
+    wait = failures.retry_after(caller)
+    if not wait:
+        failures.record(caller)
+        return refused
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": {
+                "code": "too_many",
+                "message": "Too many tries with a link that doesn't work. "
+                "Wait a few minutes.",
+            },
+            "retry_after_seconds": wait,
+        },
+    )
+
+
 class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
     """Apply per-client rate limiting to quota- and disk-spending endpoints."""
 
@@ -216,11 +266,7 @@ class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
         settings = get_settings()
         if not settings.rate_limit_enabled or settings.rate_limit_per_minute <= 0:
             return await call_next(request)
-        bucket = (
-            _SEARCH_BUCKET
-            if _is_stop_search(request.method, request.url.path)
-            else _LIMITED_ENDPOINTS.get((request.method, request.url.path))
-        )
+        bucket = _bucket_for(request.method, request.url.path)
         if bucket is None:
             return await call_next(request)
         max_rpm = _allowance(bucket, settings)
@@ -243,4 +289,7 @@ class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
             )
         for limiter in limiters:
             limiter.record(caller)
-        return await call_next(request)
+        response = await call_next(request)
+        if bucket == _CREATOR_KEY_BUCKET and response.status_code == 401:
+            return _count_bad_key(caller, response)
+        return response

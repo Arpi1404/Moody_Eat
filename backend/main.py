@@ -4,6 +4,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from creator_routes import router as creator_router
 from rate_limit import NearbyPlacesRateLimitMiddleware
 from routes import router as quest_router
 
@@ -27,6 +28,10 @@ if _sentry_dsn:
         environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
         traces_sample_rate=0.0,
         send_default_pii=False,
+        # A frame's locals can hold a creator's key: the request scope carries
+        # the Authorization header in a list, which no scrubbing by variable
+        # name will find.
+        include_local_variables=False,
     )
 
 app = FastAPI(title="Travel Planner API")
@@ -63,6 +68,7 @@ app.add_middleware(
 )
 
 app.include_router(quest_router)
+app.include_router(creator_router)
 
 
 @app.get("/")

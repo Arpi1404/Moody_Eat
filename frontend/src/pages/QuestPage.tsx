@@ -4,7 +4,12 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import type { DayPart, Quest, QuestGenerationRequest, Stop } from '../types/quest'
 import type { JournalEntry } from '../types/journal'
-import { fetchCuratedQuest, fetchStoredQuest, generateQuest } from '../api'
+import {
+  fetchCuratedQuest,
+  fetchStoredQuest,
+  generateQuest,
+  storeQuestForShare,
+} from '../api'
 import { TooManyQuestsError } from '../lib/tooManyQuests'
 import { isSavedQuestId, useSavedQuests } from '../hooks/useSavedQuests'
 import { useJournal } from '../hooks/useJournal'
@@ -14,6 +19,8 @@ import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
 import { CONTACT_URL } from '../lib/contact'
+import { addMyQuest, CreatorError, isDeadKey } from '../lib/creatorApi'
+import { forgetKeys, storedKey } from '../lib/creatorKey'
 import { withoutLinks } from '../lib/creatorText'
 import { QUEST_HINTS, QUEST_HINTS_REPLAY_ORDER } from '../lib/onboarding'
 import { MAX_STOPS } from '../lib/questBuild'
@@ -310,6 +317,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const [completedStopIndexes, setCompletedStopIndexes] = useState<number[]>([])
   const [journalOpen, setJournalOpen] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [addingToPage, setAddingToPage] = useState(false)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
   const [toast, setToast] = useState<{
@@ -893,6 +901,42 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     showToast('Share link copied.')
   }
 
+  // Only offered in a browser that has opened a creator's manage link.
+  const handleAddToMyPage = async () => {
+    const key = storedKey()
+    if (!key || addingToPage) return
+    setAddingToPage(true)
+    const titledQuest = { ...quest, title: title.trim() || quest.title }
+    try {
+      // Stored as any share is; the page then lists that link.
+      const shortId = await storeQuestForShare(titledQuest)
+      const { added, page } = await addMyQuest(key, shortId)
+      track('creator_quest_added', {
+        source: 'share_sheet',
+        result: added ? 'added' : 'already',
+      })
+      closeShareMenu()
+      showToast(added ? 'Added to your page.' : "It's already on your page.", {
+        actionLabel: 'View',
+        onAction: () => navigate(`/by/${page.handle}`),
+        durationMs: 6000,
+      })
+    } catch (err) {
+      track('creator_quest_added', { source: 'share_sheet', result: 'failed' })
+      // A replaced key is no use any more: stop offering the button.
+      if (isDeadKey(err)) forgetKeys()
+      closeShareMenu()
+      showToast(
+        err instanceof CreatorError
+          ? err.message
+          : "Couldn't add it to your page. Try again.",
+        { durationMs: 6000 },
+      )
+    } finally {
+      setAddingToPage(false)
+    }
+  }
+
   const handleDownloadShareImage = async () => {
     if (iosDevice) return handleIosShareImage()
     if (sharing) return
@@ -1376,6 +1420,27 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
                       </span>
                     </span>
                   </button>
+                  {storedKey() && (
+                    <button
+                      type="button"
+                      className="qp-share-option"
+                      onClick={handleAddToMyPage}
+                      disabled={sharing || addingToPage}
+                      aria-busy={addingToPage}
+                    >
+                      <span className="qp-share-option-icon" aria-hidden>
+                        ✦
+                      </span>
+                      <span>
+                        <span className="qp-share-option-title">
+                          {addingToPage ? 'Adding...' : 'Add to my page'}
+                        </span>
+                        <span className="qp-share-option-subtitle">
+                          List it publicly on your creator page.
+                        </span>
+                      </span>
+                    </button>
+                  )}
                 </div>
               )}
               <button

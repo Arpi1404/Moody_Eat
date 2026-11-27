@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import Landing from './pages/Landing'
 import { HomePage } from './pages/HomePage'
 import { CreateQuestPage } from './pages/CreateQuestPage'
+import { CreatorPage } from './pages/CreatorPage'
+import { ManagePage } from './pages/ManagePage'
 import { PlanPage } from './pages/PlanPage'
 import { QuestPage } from './pages/QuestPage'
 import { ResultsPage } from './pages/ResultsPage'
@@ -75,6 +77,9 @@ function App() {
         <Route path="/quest/:id" element={<QuestPage />} />
         {/* Short share links — quest fetched from the server-side store. */}
         <Route path="/q/:shortId" element={<QuestPage />} />
+        {/* Creator pages: the public list, and the owner's view of it. */}
+        <Route path="/by/:handle" element={<CreatorPage />} />
+        <Route path="/manage" element={<ManagePage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/explore" element={<Navigate to="/plan" replace />} />

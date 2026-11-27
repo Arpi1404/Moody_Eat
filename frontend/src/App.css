@@ -7186,3 +7186,281 @@ a.explore-edit-filters {
   color: var(--accent);
   overflow-wrap: anywhere;
 }
+
+/* ── Creator pages (/by/<handle> and /manage) ──────────────────────────── */
+
+.cp-page {
+  min-height: 70vh;
+  padding: 24px 16px calc(112px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  text-align: left;
+}
+
+.cp-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Names, bios, titles and notes are typed by people: long ones wrap. */
+.cp-page h1,
+.cp-page h2,
+.cp-page p,
+.cp-page a,
+.cp-page li {
+  overflow-wrap: anywhere;
+}
+
+.cp-header h1,
+.cm-card h1 {
+  margin: 8px 0;
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--text-h);
+}
+
+.cp-bio {
+  margin: 0 0 6px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.cp-instagram,
+.cp-card h2 a,
+.cm-card a,
+.cm-private a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.cp-empty {
+  color: var(--text);
+}
+
+.cp-quests,
+.cm-quests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cp-card,
+.cm-card {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+}
+
+.cp-card h2,
+.cm-card h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  line-height: 1.3;
+  color: var(--text-h);
+}
+
+.cp-made-by {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.cp-intro {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.cp-stops {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-stop-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.cp-note {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.cp-build {
+  align-self: center;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cm-card p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.cm-card p:empty {
+  margin: 0;
+}
+
+.cm-public {
+  border-color: var(--accent);
+}
+
+.cm-url {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.cm-input {
+  min-width: 0;
+  /* 16px or iOS zooms the page when the field takes focus. */
+  font-size: 16px;
+}
+
+.cm-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.cm-primary {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cm-primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cm-card p.cm-small,
+.cm-small {
+  font-size: 12.5px;
+  opacity: 0.85;
+}
+
+.cm-private {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1.5px dashed var(--accent);
+  background: var(--accent-bg);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.cm-private strong {
+  color: var(--text-h);
+}
+
+.cm-private p {
+  margin: 6px 0 0;
+}
+
+.cm-notice {
+  margin: 0;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.cm-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.cm-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.cm-form .cm-input {
+  margin-bottom: 14px;
+}
+
+.cm-quests {
+  margin-bottom: 12px;
+}
+
+.cm-quests li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.cm-quest-info {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.cm-card .cm-quest-info p {
+  margin: 4px 0 0;
+}
+
+.cm-confirm {
+  display: flex;
+  gap: 8px;
+}
+
+.cm-remove,
+.cm-confirm button,
+.cm-secondary,
+.cm-forget {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cm-confirm .cm-danger {
+  border-color: #b3402a;
+  color: #b3402a;
+}
+
+.cm-forget {
+  align-self: center;
+}
+

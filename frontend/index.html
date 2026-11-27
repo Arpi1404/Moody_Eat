@@ -10,6 +10,25 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400;1,9..144,600&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
       rel="stylesheet"
     />
+    <!-- A creator's manage link carries the key to their page after the "#".
+         This runs while the page is still being read, before analytics or the
+         app: it moves the key into storage and takes it off the address bar,
+         so no other script ever sees it there. Mirrors
+         captureKeyFromAddress in src/lib/creatorKey.ts: change one, change
+         both. -->
+    <script>
+      ;(function () {
+        if (location.pathname.replace(/\/+$/, '') !== '/manage') return
+        var match = /^#k=([^&]+)/.exec(location.hash)
+        if (!match) return
+        try {
+          localStorage.setItem('moodyeat:creator_key_new', match[1])
+        } catch (e) {
+          window.__moodyeatNewKey = match[1]
+        }
+        history.replaceState(history.state, '', location.pathname)
+      })()
+    </script>
     <!-- Umami, cookie-free analytics. Runs only on the production hosts, and
          keeps query strings and #fragments out of recorded URLs: share links
          and search pages carry quest titles and typed areas there. -->
