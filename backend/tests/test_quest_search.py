@@ -163,11 +163,30 @@ def test_lunch_slot_uses_the_first_window_of_a_split_shift_place(fake_narrative)
 
 def test_slot_in_the_midday_break_is_still_rejected(fake_narrative) -> None:
     service = NearbyPlacesService(SplitShiftProvider())
+    # One evening stop with friends is a drink at 17:30 — after lunch service
+    # ends (15:30) and before dinner begins (19:00) — so the only candidate,
+    # found under its last fallback type, is genuinely shut.
+    req = QuestGenerationRequest(
+        location="Govindpuram",
+        occasion=Occasion.friends,
+        cost_estimate=CostEstimate.mid,
+        people=4,
+        stop_count=1,
+        day_part=DayPart.evening,
+    )
 
-    # An evening quest starts 17:30 — after lunch service ends (15:30) and
-    # before dinner begins (19:00) — so the only candidate is genuinely shut.
     with pytest.raises(ValueError):
-        asyncio.run(assemble_quest(_one_stop_date(DayPart.evening), service))
+        asyncio.run(assemble_quest(req, service))
+
+
+def test_dinner_led_evening_date_lands_in_the_dinner_window(fake_narrative) -> None:
+    service = NearbyPlacesService(SplitShiftProvider())
+
+    quest = asyncio.run(assemble_quest(_one_stop_date(DayPart.evening), service))
+
+    [stop] = quest.stops
+    assert stop.time_block_start == time(19, 0)
+    assert (stop.place.opens_today, stop.place.closes_today) == ("19:00", "23:00")
 
 
 # ── Templates never ask for a type the quality filter throws away ─────────────

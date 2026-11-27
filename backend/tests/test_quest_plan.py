@@ -269,13 +269,76 @@ def test_one_stop_is_whatever_suits_the_hour(fake_narrative) -> None:
         quest = _quest(PoolProvider(_city()), _request(occasion, day_part, 1))
         return quest.stops[0].place.name
 
-    # A date at half past five is a coffee; at eight it is dinner.
-    assert one(Occasion.date, DayPart.evening) == "Corner Coffee"
+    # A one-stop date is dinner, in the evening as at night.
+    assert one(Occasion.date, DayPart.evening) == "Garden Bistro"
     assert one(Occasion.date, DayPart.night) == "Garden Bistro"
     assert one(Occasion.date, DayPart.afternoon) == "Garden Bistro"
     # Friends in the morning are not sent to a bar.
     assert one(Occasion.friends, DayPart.morning) == "Corner Coffee"
     assert one(Occasion.friends, DayPart.night) == "Corner Pub"
+
+
+@pytest.mark.parametrize(
+    ("occasion", "count", "expected", "starts"),
+    [
+        # Dinner anchors a short evening date and a one-stop family evening,
+        # and the plan starts at dinner time rather than at 17:30.
+        (Occasion.date, 1, ["Garden Bistro"], time(19, 0)),
+        (Occasion.date, 2, ["Garden Bistro", "Sweet Patisserie"], time(19, 0)),
+        (Occasion.family, 1, ["Garden Bistro"], time(19, 0)),
+        # Longer ones keep their shape and start: something first, then dinner.
+        (Occasion.date, 3, ["Lake Park", "Corner Coffee", "Garden Bistro"], time(17, 30)),
+        (Occasion.family, 2, ["Lake Park", "Garden Bistro"], time(17, 30)),
+        # Friends are unchanged: one evening stop is a bar, at 17:30.
+        (Occasion.friends, 1, ["Corner Pub"], time(17, 30)),
+    ],
+)
+def test_short_evening_plans_are_dinner_led(
+    fake_narrative, occasion, count, expected, starts
+) -> None:
+    quest = _quest(PoolProvider(_city()), _request(occasion, DayPart.evening, count))
+
+    assert _names(quest) == expected
+    assert quest.stops[0].time_block_start == starts
+    # Still an evening quest by name, whatever time dinner starts.
+    assert fake_narrative[-1]["day_part"] == "evening"
+
+
+def test_dinner_led_evening_date_is_titled_for_the_evening(fake_narrative) -> None:
+    quest = _quest(PoolProvider(_city()), _request(Occasion.date, DayPart.evening, 1))
+
+    assert quest.title == "An Evening Date in Govindpuram"
+    assert quest.stops[0].time_block_start == time(19, 0)
+
+
+def test_one_stop_family_morning_is_lunch_at_noon(fake_narrative) -> None:
+    """The same rule in the morning: a plan that opens with the meal starts at
+    the meal hour."""
+    quest = _quest(PoolProvider(_city()), _request(Occasion.family, DayPart.morning, 1))
+
+    assert _names(quest) == ["Garden Bistro"]
+    assert quest.stops[0].time_block_start == time(12, 0)
+
+
+def test_dinner_led_start_waits_for_a_kitchen_that_opens_at_seven(fake_narrative) -> None:
+    """The reason for the 19:00 start: at 17:30 this kitchen is shut and the
+    only dinner on offer would be an all-day place."""
+    provider = PoolProvider(
+        {
+            "restaurant": [
+                _raw("bistro", "Garden Bistro", "italian_restaurant", tags=("restaurant",),
+                     rating=4.7, reviews=3_000),
+                _raw("allday", "All Day Diner", "american_restaurant", tags=("restaurant",),
+                     rating=4.1, reviews=3_000),
+            ],
+        },
+        hours={"bistro": PlaceHours("19:00", "23:30", False)},
+    )
+
+    quest = _quest(provider, _request(Occasion.date, DayPart.evening, 1))
+
+    assert _names(quest) == ["Garden Bistro"]
+    assert quest.stops[0].time_block_start == time(19, 0)
 
 
 def test_day_part_start_times_are_unchanged() -> None:
@@ -1023,7 +1086,7 @@ def test_opening_stop_stays_near_the_searched_spot(fake_narrative) -> None:
         ],
     })
 
-    quest = _quest(provider, _request(Occasion.date, DayPart.evening, 2))
+    quest = _quest(provider, _request(Occasion.solo, DayPart.morning, 2))
 
     assert _names(quest) == ["Local Park", "Cafe By Local Park"]
 

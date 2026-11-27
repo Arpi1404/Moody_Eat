@@ -1206,6 +1206,12 @@ async def assemble_quest(
     template = plan.stops(wanted)
     meal_hour = _MEAL_NOT_BEFORE.get(plan_part)
     meal_not_before = time(*meal_hour) if meal_hour is not None else None
+    # A plan that opens with the meal starts at the meal hour: a one-stop
+    # evening date is dinner at 19:00, not at 17:30. The quest is still named
+    # for the day part that was asked for.
+    start_hm = _quest_start(req)
+    if meal_hour is not None and template and template[0].role == "meal":
+        start_hm = max(start_hm, meal_hour)
 
     used_ids: set[str] = set()
     seen_ids = frozenset(req.exclude_place_ids)
@@ -1213,7 +1219,7 @@ async def assemble_quest(
     hours_memo: dict[str, PlaceHours] = {}
     prev_lat: float | None = None
     prev_lng: float | None = None
-    sh, sm = _quest_start(req)
+    sh, sm = start_hm
     cursor = time(hour=sh, minute=sm)
     # Google's weekday convention: 0=Sunday, 1=Monday, ..., 6=Saturday.
     weekday_g = (datetime.now().weekday() + 1) % 7
@@ -1311,7 +1317,7 @@ async def assemble_quest(
             "Check that the location is recognisable and the Places API key is valid."
         )
 
-    stops = _schedule(slots, req.cost_estimate, _quest_start(req), req.duration_hours)
+    stops = _schedule(slots, req.cost_estimate, start_hm, req.duration_hours)
 
     priced = [s for s in stops if s.est_cost_per_person_min_inr is not None]
     est_total_min = sum(s.est_cost_per_person_min_inr or 0 for s in priced) if priced else None

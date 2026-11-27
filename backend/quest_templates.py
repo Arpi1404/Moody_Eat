@@ -15,7 +15,7 @@ All values in places_types must be in ALLOWED_NEARBY_TYPES (models.py).
 
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from models import DayPart, Occasion, StopCategory
 
@@ -317,29 +317,50 @@ class DayPlan:
     `sequence` is the order they happen in when all four are asked for.
     `keep` says which survive as the outing gets shorter: a plan of n stops is
     the first n of `keep`, visited in `sequence` order.
+    `short` replaces that for the stop counts it names, when a short outing is
+    a different shape rather than a cut-down long one: an evening date of one
+    stop is dinner, while three stops are a walk, a coffee, then dinner. Each
+    entry is (stops in order, spares in order).
     """
 
     sequence: tuple[TemplateStop, ...]
     keep: tuple[TemplateStop, ...]
+    short: dict[int, tuple[tuple[TemplateStop, ...], tuple[TemplateStop, ...]]] = field(
+        default_factory=dict
+    )
 
     def stops(self, count: int) -> tuple[TemplateStop, ...]:
+        if count in self.short:
+            return self.short[count][0]
         chosen = self.keep[:count]
         return tuple(stop for stop in self.sequence if stop in chosen)
 
     def spares(self, count: int) -> tuple[TemplateStop, ...]:
         """What to try, in order, when a planned stop cannot be filled."""
+        if count in self.short:
+            return self.short[count][1]
         return self.keep[count:]
 
 
-def _plan(*sequence: TemplateStop, keep: tuple[TemplateStop, ...] | None = None) -> DayPlan:
-    return DayPlan(sequence=sequence, keep=keep if keep is not None else sequence)
+def _plan(
+    *sequence: TemplateStop,
+    keep: tuple[TemplateStop, ...] | None = None,
+    short: dict[int, tuple[tuple[TemplateStop, ...], tuple[TemplateStop, ...]]] | None = None,
+) -> DayPlan:
+    return DayPlan(
+        sequence=sequence,
+        keep=keep if keep is not None else sequence,
+        short=short or {},
+    )
 
 
 # Ordered by the clock, not by the occasion:
 #   morning    a walk first, then breakfast or coffee
 #   afternoon  lunch first
 #   evening    something to do, a walk or a coffee first; dinner once it is
-#              dinner time (the generator holds it to about 7pm)
+#              dinner time (the generator holds it to about 7pm). A one- or
+#              two-stop date, and a one-stop family outing, are dinner-led
+#              instead and start at 7pm (the owner's call, 27 Nov 2026).
 #   night      dinner first, then dessert or drinks
 PLANS: dict[Occasion, dict[DayPart, DayPlan]] = {
     Occasion.date: {
@@ -351,6 +372,10 @@ PLANS: dict[Occasion, dict[DayPart, DayPlan]] = {
         DayPart.evening: _plan(
             STROLL, CAFE, DINNER, DESSERT,
             keep=(CAFE, STROLL, DINNER, DESSERT),
+            short={
+                1: ((DINNER,), (STROLL,)),
+                2: ((DINNER, DESSERT), (STROLL,)),
+            },
         ),
         DayPart.night: _plan(
             DINNER, DESSERT, NIGHTCAP, SIGHT,
@@ -399,6 +424,7 @@ PLANS: dict[Occasion, dict[DayPart, DayPlan]] = {
         DayPart.evening: _plan(
             FAMILY_FUN, FAMILY_MORE, DINNER, TREAT,
             keep=(FAMILY_FUN, DINNER, TREAT, FAMILY_MORE),
+            short={1: ((DINNER,), (FAMILY_FUN,))},
         ),
         DayPart.night: _plan(DINNER, TREAT, FAMILY_FUN, FAMILY_MORE),
     },
