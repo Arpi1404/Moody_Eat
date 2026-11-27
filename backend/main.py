@@ -4,6 +4,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from creator_routes import router as creator_router
 from rate_limit import NearbyPlacesRateLimitMiddleware
 from routes import router as quest_router
 
@@ -63,6 +64,7 @@ app.add_middleware(
 )
 
 app.include_router(quest_router)
+app.include_router(creator_router)
 
 
 @app.get("/")

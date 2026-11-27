@@ -28,6 +28,19 @@ class _SlidingWindowLimiter:
         dq.append(now)
         return True
 
+    def is_spent(self, client_id: str) -> bool:
+        """Whether the allowance is used up. Counts nothing."""
+        dq = self._hits.get(client_id)
+        if not dq:
+            return False
+        oldest_kept = time.monotonic() - self._window
+        while dq and dq[0] < oldest_kept:
+            dq.popleft()
+        return len(dq) >= self._max
+
+    def record(self, client_id: str) -> None:
+        self._hits[client_id].append(time.monotonic())
+
 
 _limiters: dict[str, tuple[int, _SlidingWindowLimiter]] = {}
 
@@ -35,6 +48,38 @@ _limiters: dict[str, tuple[int, _SlidingWindowLimiter]] = {}
 # was typed) and nobody needs many a minute, so the bucket has a low ceiling.
 _NAME_SEARCH_BUCKET = "name_search"
 _BUCKET_CEILINGS = {_NAME_SEARCH_BUCKET: 20}
+
+# A creator's manage key is the only way into their page. Only wrong keys are
+# counted; whoever keeps sending them is turned away for a while.
+_CREATOR_KEY_PREFIX = "/api/creator/"
+_creator_key_failures = _SlidingWindowLimiter(max_requests=10, window_seconds=600.0)
+
+
+def _client_id(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def _guard_creator_key(request: Request, call_next) -> Response:
+    client_id = _client_id(request)
+    if _creator_key_failures.is_spent(client_id):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": {
+                    "code": "too_many",
+                    "message": "Too many tries with a link that doesn't work. "
+                    "Wait a few minutes.",
+                },
+                "retry_after_seconds": 600,
+            },
+        )
+    response = await call_next(request)
+    if response.status_code == 401:
+        _creator_key_failures.record(client_id)
+    return response
 
 
 def _get_limiter(bucket: str, max_rpm: int) -> _SlidingWindowLimiter:
@@ -83,6 +128,8 @@ class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
         settings = get_settings()
         if not settings.rate_limit_enabled or settings.rate_limit_per_minute <= 0:
             return await call_next(request)
+        if request.url.path.startswith(_CREATOR_KEY_PREFIX) and request.method != "OPTIONS":
+            return await _guard_creator_key(request, call_next)
         bucket = _LIMITED_ENDPOINTS.get((request.method, request.url.path))
         if bucket is None:
             return await call_next(request)
@@ -90,12 +137,7 @@ class NearbyPlacesRateLimitMiddleware(BaseHTTPMiddleware):
         if max_rpm <= 0:
             return await call_next(request)
 
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            client_id = forwarded.split(",")[0].strip()
-        else:
-            client_id = request.client.host if request.client else "unknown"
-
+        client_id = _client_id(request)
         limiter = _get_limiter(bucket, max_rpm)
         if not limiter.is_allowed(client_id):
             return JSONResponse(

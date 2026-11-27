@@ -127,6 +127,16 @@ def describe_store() -> str:
     return f"SQLite file {_db_path()}"
 
 
+def fetch_quests(short_ids: list[str]) -> dict[str, StoredQuest]:
+    """Several stored quests at once, keyed by id; ids with no quest are left
+    out. Never counts a view: listing quests is not opening them."""
+    if not short_ids:
+        return {}
+    if _backend() == "firestore":
+        return _firestore_fetch_many(short_ids)
+    return _sqlite_fetch_many(short_ids)
+
+
 # --- SQLite ---------------------------------------------------------------
 
 
@@ -201,6 +211,17 @@ def _sqlite_fetch(short_id: str, *, count_view: bool) -> StoredQuest | None:
         created_at=row["created_at"],
         views=row["views"],
     )
+
+
+def _sqlite_fetch_many(short_ids: list[str]) -> dict[str, StoredQuest]:
+    marks = ",".join("?" for _ in short_ids)
+    with closing(_connect()) as conn, conn:
+        rows = conn.execute(
+            "SELECT short_id, quest_json, created_at, views FROM stored_quests"
+            f" WHERE short_id IN ({marks})",
+            short_ids,
+        ).fetchall()
+    return {row["short_id"]: StoredQuest(**dict(row)) for row in rows}
 
 
 def _sqlite_delete(short_id: str) -> bool:
@@ -279,6 +300,23 @@ def _firestore_fetch(short_id: str, *, count_view: bool) -> StoredQuest | None:
         created_at=data["created_at"],
         views=int(data.get("views") or 0),
     )
+
+
+def _firestore_fetch_many(short_ids: list[str]) -> dict[str, StoredQuest]:
+    client = firestore_client()
+    collection = client.collection(QUESTS_COLLECTION)
+    found: dict[str, StoredQuest] = {}
+    # One round trip for the whole list.
+    for snap in client.get_all([collection.document(i) for i in short_ids]):
+        if snap.exists:
+            data = snap.to_dict()
+            found[snap.id] = StoredQuest(
+                short_id=snap.id,
+                quest_json=data["quest_json"],
+                created_at=data["created_at"],
+                views=int(data.get("views") or 0),
+            )
+    return found
 
 
 def _firestore_delete(short_id: str) -> bool:

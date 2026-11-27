@@ -120,6 +120,30 @@ export function PrivacyPage() {
         previews other apps have kept.
       </p>
 
+      <h2>Creator pages</h2>
+      <p>
+        Some people we invite have a creator page at an address ending
+        /by/their-name. It is public. It shows the name they go by, that
+        handle, a short bio and an Instagram username if they give them, and
+        the quests they picked, with their titles, stop names and anything
+        typed on them. We store this on our server, along with the list of
+        picked quests and a count of page views that only the page's owner is
+        shown. We ask search engines not to list these pages.
+      </p>
+      <p>
+        There are no accounts, passwords or cookies. A private manage link is
+        the key to a page. Our server keeps only a one-way hash of the key.
+        Once the link is opened, the browser keeps the key in its local storage
+        and sends it to our server when the owner uses their page. The
+        browser's own history may also keep the link that was opened. To have
+        a page removed, or to replace a lost or leaked link,{' '}
+        <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
+          message us on Instagram
+        </a>
+        . Removing a page does not remove its quests' share links; ask us to
+        remove those too if you want them gone.
+      </p>
+
       <h2>Questions</h2>
       <p>
         <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
