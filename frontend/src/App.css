@@ -2906,6 +2906,7 @@ a.explore-edit-filters {
 
 .cq-selected-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -3020,6 +3021,78 @@ a.explore-edit-filters {
 .cq-add-btn:disabled {
   cursor: default;
   opacity: 0.75;
+}
+
+/* The creator's own words */
+
+.cq-selected-words,
+.cq-intro {
+  flex-basis: 100%;
+  text-align: left;
+}
+
+.cq-intro {
+  margin-top: 10px;
+}
+
+.cq-words-btn {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1.5px dashed rgba(199, 82, 42, 0.45);
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cq-words-field label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.cq-words-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  /* 16px or iOS zooms the page when the field takes focus. */
+  font-size: 16px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.cq-words-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.cq-words-field textarea[aria-invalid='true'] {
+  border-color: #b3402a;
+}
+
+.cq-count {
+  margin: 2px 0 0;
+  font-size: 12px;
+  text-align: right;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.cq-count--over {
+  color: #b3402a;
+  font-weight: 700;
+  opacity: 1;
 }
 
 /* Search by name */
@@ -3483,6 +3556,7 @@ a.explore-edit-filters {
 }
 
 .qp-narrative {
+  overflow-wrap: anywhere;
   margin: 0 0 24px;
   font-size: 14px;
   line-height: 1.65;
@@ -3906,6 +3980,7 @@ a.explore-edit-filters {
 }
 
 .qp-stop-why {
+  overflow-wrap: anywhere;
   margin: 0 0 10px;
   font-size: 13px;
   line-height: 1.5;
@@ -4889,6 +4964,7 @@ a.explore-edit-filters {
 
 .share-card--dense .share-title {
   font-size: 76px;
+  -webkit-line-clamp: 2;
 }
 
 .share-card--dense .share-narrative {
@@ -4909,9 +4985,28 @@ a.explore-edit-filters {
   height: 140px;
 }
 
+/* Four stops with two-line names must still fit above the footer, under a
+   two-line title, a byline and a two-line intro: the room comes out of the
+   spacing. */
 .share-card--dense .share-leg-body {
-  padding-bottom: 22px;
-  gap: 12px;
+  padding-bottom: 14px;
+  gap: 8px;
+}
+
+.share-card--dense .share-stop-time {
+  margin-bottom: 4px;
+}
+
+.share-card--dense .share-stop-name {
+  margin-bottom: 6px;
+}
+
+.share-card--dense .share-stop-meta {
+  margin-bottom: 8px;
+}
+
+.share-card--dense .share-travel {
+  min-height: 42px;
 }
 
 .share-card--dense .share-stats {
@@ -5046,6 +5141,7 @@ a.explore-edit-filters {
 }
 
 .share-title {
+  overflow-wrap: anywhere;
   margin: 0;
   max-width: 900px;
   color: #f8efe2;
@@ -5062,6 +5158,11 @@ a.explore-edit-filters {
 }
 
 .share-byline {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
   margin: 26px 0 0;
   color: var(--share-accent-soft);
   font-size: 26px;
@@ -5071,6 +5172,7 @@ a.explore-edit-filters {
 }
 
 .share-narrative {
+  overflow-wrap: anywhere;
   margin: 30px 0 0;
   max-width: 840px;
   color: rgba(246, 234, 217, 0.72);
@@ -5164,6 +5266,7 @@ a.explore-edit-filters {
 }
 
 .share-stop-name {
+  overflow-wrap: anywhere;
   margin: 0 0 12px;
   color: #f8efe2;
   font-family: 'Fraunces', Georgia, serif;
@@ -5186,6 +5289,7 @@ a.explore-edit-filters {
 }
 
 .share-stop-vibe {
+  overflow-wrap: anywhere;
   margin: 0;
   max-width: 560px;
   color: rgba(246, 234, 217, 0.68);
@@ -6851,4 +6955,24 @@ a.explore-edit-filters {
 
 .swap-alt-link .place-link-icon {
   margin-left: 0;
+}
+
+/* Reporting a shared quest, and the warning before a swap drops a note. */
+.qp-report {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.qp-report a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.swap-sheet-note {
+  font-weight: 600;
+  color: var(--accent);
+  overflow-wrap: anywhere;
 }

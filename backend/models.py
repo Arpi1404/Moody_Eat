@@ -1,9 +1,47 @@
+import re
 import uuid
 from datetime import datetime, time
 from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+# The two texts a quest's creator can write: a note on each stop and an intro.
+# Mirrored in frontend/src/lib/creatorText.ts: change one, change both.
+CREATOR_NOTE_MAX = 200
+CREATOR_INTRO_MAX = 300
+# Ceilings for the same two fields when the text is automatic or curated:
+# curated notes run to 224 characters, curated intros to 518, and a
+# model-written intro can be longer still. A quest over these cannot be shared
+# or have its stops swapped, so they leave room.
+STOP_NOTE_MAX = 300
+NARRATIVE_MAX = 1500
+
+# Control characters (newlines and tabs among them), line separators, and the
+# marks that make text display in a different order from how it was typed.
+_UNSAFE_TEXT_RE = re.compile(
+    "[\x00-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]"
+)
+
+
+def tidy_text(value: str) -> str:
+    """One trimmed line: no control characters, single spaces."""
+    return " ".join(_UNSAFE_TEXT_RE.sub(" ", value).split())
+
+
+def _unset_marker(value: object) -> bool:
+    """A by-creator marker is only written out when it is true, so a quest with
+    no creator text is stored exactly as it was before the markers existed (and
+    sharing it again still finds its existing link)."""
+    return not value
+
+
+def _fitting_text(value: str, limit: int) -> str:
+    text = tidy_text(value)
+    if len(text) > limit:
+        raise ValueError(f"Keep this to {limit} characters or fewer.")
+    return text
+
 
 # Google Places Nearby Search (legacy) `type` values we support for this API.
 ALLOWED_NEARBY_TYPES = frozenset(
@@ -202,12 +240,27 @@ class Stop(BaseModel):
     travel_to_next_minutes: Optional[int] = None
     travel_mode: Optional[TravelMode] = None
     why_this_place: str
+    # True when why_this_place is a note the quest's creator typed. Absent on
+    # automatic lines, and on links stored before the field existed.
+    note_by_creator: Optional[bool] = Field(default=None, exclude_if=_unset_marker)
     # Estimated per-person spend at this stop in INR. None when no price signal
     # exists (e.g. parks, attractions). Where the estimate comes from is in
     # price_source: google_price_range | google_price_level | heuristic.
     est_cost_per_person_min_inr: Optional[int] = None
     est_cost_per_person_max_inr: Optional[int] = None
     price_source: Optional[str] = None
+
+    @field_validator("why_this_place")
+    @classmethod
+    def note_fits(cls, v: str) -> str:
+        return _fitting_text(v, STOP_NOTE_MAX)
+
+    @field_validator("note_by_creator")
+    @classmethod
+    def creator_note_fits(cls, v: Optional[bool], info) -> Optional[bool]:
+        if v and len(info.data.get("why_this_place", "")) > CREATOR_NOTE_MAX:
+            raise ValueError(f"Keep a note to {CREATOR_NOTE_MAX} characters or fewer.")
+        return v
 
 
 class StopSwapDelta(BaseModel):
@@ -235,6 +288,18 @@ class Quest(BaseModel):
     est_total_per_person_max_inr: Optional[int] = None
     # Present when the rain forecast changed how the quest was planned.
     weather_note: Optional[str] = None
+    # True when `narrative` is an intro the quest's creator typed. Absent on
+    # automatic text, and on links stored before the field existed.
+    narrative_by_creator: Optional[bool] = Field(
+        default=None, exclude_if=_unset_marker
+    )
+
+    @field_validator("narrative")
+    @classmethod
+    def narrative_fits(cls, v: str, info) -> str:
+        by_creator = info.data.get("narrative_by_creator")
+        return _fitting_text(v, CREATOR_INTRO_MAX if by_creator else NARRATIVE_MAX)
+
     # Optional display name of the person who assembled a custom quest
     # ("Priya's Old City Crawl"). Never set on generated quests.
     created_by: Optional[str] = Field(default=None, max_length=60)

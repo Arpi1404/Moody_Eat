@@ -100,6 +100,12 @@ export function SwapSheet({
           <p className="swap-sheet-eyebrow">Swap stop</p>
           <h2 id="swap-sheet-title">Replace {stop.place.name}</h2>
           <p>Preview a new stop, then confirm when the timeline feels right.</p>
+          {stop.note_by_creator && (
+            <p className="swap-sheet-note">
+              The personal note on this stop is about {stop.place.name}.
+              Swapping removes it.
+            </p>
+          )}
         </div>
 
         {loading && (

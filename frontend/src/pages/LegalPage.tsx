@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { CONTACT_URL } from '../lib/contact'
 import '../App.css'
 
 function LegalShell({
@@ -29,19 +30,24 @@ export function PrivacyPage() {
     <LegalShell title="Privacy" updated="November 2026">
       <h2>The short version</h2>
       <p>
-        MoodyEat has no accounts and collects no personal information. Your
-        saved quests and journal entries (including any photos and notes) live
-        in your browser's local storage on your device — they are never
-        uploaded to our servers.
+        MoodyEat has no accounts and never asks who you are. Your saved quests
+        and journal live in your browser's local storage on your device. Your
+        journal, photos and notes included, is never uploaded to our servers.
+        A quest is stored on our server only when you share it (see Sharing
+        below).
       </p>
 
       <h2>What leaves your device</h2>
       <ul>
         <li>
-          <strong>Quest requests.</strong> When you build a quest, the
-          location text, occasion, budget, and duration you chose are sent to
-          our server to find matching places. They are not stored or linked to
-          you.
+          <strong>Quest requests.</strong> When you ask us for a quest, the
+          area you gave, the occasion, budget, time of day and number of stops,
+          and the IDs of places from your recent quests (so we can suggest
+          different ones) are sent to our server, which asks Google for
+          matching places. A third-party AI service may be sent the area, the
+          occasion, the budget and the places picked, to write the quest's
+          introduction. We don't save your request or link it to you. Our
+          server's technical logs can record the area a search was for.
         </li>
         <li>
           <strong>Location suggestions.</strong> As you type in the location
@@ -79,15 +85,38 @@ export function PrivacyPage() {
 
       <h2>Sharing</h2>
       <p>
-        When you copy a share link, the quest's details are encoded into the
-        link itself. Anyone you send it to can see that quest — share links
-        the way you'd share a screenshot.
+        When you share a quest (on WhatsApp, by copying its link, or from the
+        story-card option), we may store a copy of it on our server and give it
+        a short link. The copy holds what the quest shows: its title, places,
+        times and cost estimates, and anything you typed, including your "Made
+        by" name, your intro and your notes on stops. We also keep how many
+        times the link has been opened and when it was last opened. That count
+        does not say who opened it.
+      </p>
+      <p>
+        Anyone who has the link can see the quest, so share it the way you'd
+        share a screenshot. We ask search engines not to list shared quests.
+        If our server can't be reached, the link you get carries the whole
+        quest inside the address instead.
+      </p>
+      <p>
+        Changing a quest on your device does not change a link you have already
+        sent; sharing again makes a new one. We keep shared quests until they
+        are removed. To have one removed, or to report one,{' '}
+        <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
+          message us on Instagram
+        </a>{' '}
+        with its link. Removing it stops the link working. It cannot reach
+        copies people have already opened or saved, downloaded story cards, or
+        previews other apps have kept.
       </p>
 
       <h2>Questions</h2>
       <p>
-        Reach us on Instagram — we're a small team and we read
-        everything.
+        <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
+          Reach us on Instagram
+        </a>
+        . We're a small team and we read everything.
       </p>
     </LegalShell>
   )
