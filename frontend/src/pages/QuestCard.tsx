@@ -15,6 +15,7 @@ import {
   questDuration,
   rescheduleStops,
 } from '../lib/questBuild'
+import { logSwap } from '../lib/swapLog'
 import { SwapSheet } from './SwapSheet'
 
 const TRAVEL_EMOJI: Record<string, string> = {
@@ -479,11 +480,26 @@ export function QuestCard({
   )
 
   const confirmSwap = useCallback(() => {
-    if (!previewQuest || activeStopIndex == null) return
+    if (!previewQuest || activeStopIndex == null || !selectedAlternative) return
     track('stop_swapped', { stop_index: activeStopIndex })
     onQuestChange(previewQuest)
+    // After the swap is applied: logging never holds it up.
+    logSwap({
+      quest,
+      stopIndex: activeStopIndex,
+      chosen: selectedAlternative,
+      shown: alternatives,
+    })
     closeSheet()
-  }, [activeStopIndex, closeSheet, onQuestChange, previewQuest])
+  }, [
+    activeStopIndex,
+    alternatives,
+    closeSheet,
+    onQuestChange,
+    previewQuest,
+    quest,
+    selectedAlternative,
+  ])
 
   const moveStop = useCallback(
     (from: number, to: number) => {

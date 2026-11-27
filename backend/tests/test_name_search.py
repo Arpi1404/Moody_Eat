@@ -116,6 +116,7 @@ async def test_text_search_request_leans_to_the_area_and_asks_for_no_costlier_fi
         "places.rating",
         "places.userRatingCount",
         "places.types",
+        "places.primaryType",
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
@@ -225,6 +226,14 @@ async def test_matches_nowhere_near_the_area_are_dropped():
         )
     )
     assert names == ["Across Town"]
+
+
+async def test_results_carry_googles_primary_type():
+    # The swap list uses it to offer the same kind of place first.
+    result = await _service(
+        FakeProvider([_place("Bar With Food", primary_type="bar")])
+    ).search_by_name(text="bar", lat=LAT, lng=LNG)
+    assert result.places[0].primary_type == "bar"
 
 
 async def test_googles_order_is_kept_and_distances_are_from_the_area():

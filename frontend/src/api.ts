@@ -133,6 +133,8 @@ export type PlaceItem = {
   price_range_end_inr?: number | null
   business_status?: string | null
   types?: string[] | null
+  /** What Google says the place mainly is, e.g. "pizza_restaurant". null when unknown. */
+  primary_type?: string | null
   provider_id: string
   /** "HH:MM" 24-hour, today only. null when unknown. */
   opens_today?: string | null

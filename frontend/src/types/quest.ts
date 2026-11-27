@@ -45,6 +45,9 @@ export interface StopAlternative extends Stop {
   delta: StopSwapDelta
 }
 
+/** Who chose a quest's stops: the engine, an editor, or the person. */
+export type QuestOrigin = 'generated' | 'curated' | 'custom'
+
 export interface Quest {
   /** UUID v4 */
   id: string
@@ -63,6 +66,8 @@ export interface Quest {
   narrative_by_creator?: boolean | null
   /** Display name of the custom-quest creator ("Priya's Old City Crawl"). */
   created_by?: string | null
+  /** Absent on quests made before the field existed. */
+  origin?: QuestOrigin | null
   narrative: string
   /** ISO 8601 datetime string */
   created_at: string

@@ -40,6 +40,10 @@ class RawPlace:
     # None when the provider has no range data (or the currency is not INR).
     price_range_start_inr: int | None = None
     price_range_end_inr: int | None = None
+    # The one type Google says the place mainly is ("pizza_restaurant"), as
+    # opposed to `types`, which lists everything it is tagged with. None when
+    # the provider has no primary type for it (always, on the legacy API).
+    primary_type: str | None = None
 
 
 @dataclass(frozen=True)

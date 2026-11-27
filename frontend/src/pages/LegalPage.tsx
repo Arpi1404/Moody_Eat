@@ -74,6 +74,15 @@ export function PrivacyPage() {
           analytics tool that records aggregate page views and events (like
           "quest created") without identifying you.
         </li>
+        <li>
+          <strong>Swaps.</strong> When you swap a stop, we keep a record of
+          which place you replaced and which one you chose instead, along
+          with the occasion, the budget and the time of that stop. We use it
+          to suggest better places in future plans. The record does not say
+          who you are or which quest it came from, and it holds no location
+          of yours, only the two places. Nothing is recorded if your browser
+          sends a Do Not Track or Global Privacy Control signal.
+        </li>
       </ul>
 
       <h2>Third-party data</h2>

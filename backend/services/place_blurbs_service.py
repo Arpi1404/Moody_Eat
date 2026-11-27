@@ -130,21 +130,81 @@ Places:
         return {p.provider_id: _fallback_blurb(p, mood, budget) for p in places}
 
 
+# What the outing is called in a sentence, by occasion and time of day. The
+# None entry is for callers that do not say when it starts.
+# Mirrored by rebuildNarrative in frontend/src/pages/QuestPage.tsx, which
+# rewrites the sentence after a stop is swapped: change one, change both.
+_OUTING_PHRASES: dict[str, dict[str | None, str]] = {
+    "date": {
+        "morning": "morning date",
+        "afternoon": "afternoon date",
+        "evening": "evening date",
+        "night": "date night",
+        None: "date",
+    },
+    "friends": {
+        "morning": "morning out with friends",
+        "afternoon": "afternoon out with friends",
+        "evening": "evening out with friends",
+        "night": "night out with friends",
+        None: "outing with friends",
+    },
+    "solo": {
+        "morning": "solo morning",
+        "afternoon": "solo afternoon",
+        "evening": "solo evening",
+        "night": "solo night out",
+        None: "solo outing",
+    },
+    "family": {
+        "morning": "family morning out",
+        "afternoon": "family afternoon out",
+        "evening": "family evening out",
+        "night": "family night out",
+        None: "family outing",
+    },
+}
+# "mid" is our word for the middle budget, not one a person would use, so it
+# adds nothing to the sentence.
+_BUDGET_WORDS: dict[str, str] = {"cheap": "budget-friendly", "splurge": "splurge-worthy"}
+
+
+def _outing_phrase(occasion: str, cost_estimate: str, day_part: str | None) -> str:
+    """The outing in words: "An evening date", "A budget-friendly solo morning"."""
+    by_part = _OUTING_PHRASES.get(occasion)
+    if by_part is None:
+        phrase = f"{occasion} outing"
+    else:
+        phrase = by_part.get(day_part) or by_part[None]
+    budget = _BUDGET_WORDS.get(cost_estimate)
+    if budget:
+        phrase = f"{budget} {phrase}"
+    article = "An" if phrase[:1].lower() in "aeiou" else "A"
+    return f"{article} {phrase}"
+
+
 def _fallback_narrative(
     location: str,
     occasion: str,
     cost_estimate: str,
     stop_names: list[str],
+    day_part: str | None = None,
 ) -> str:
+    lead = _outing_phrase(occasion, cost_estimate, day_part)
+    intro = f"{lead} in {location}" if location else lead
     if not stop_names:
-        return f"A {cost_estimate} {occasion} outing in {location}."
+        return f"{intro}."
     if len(stop_names) == 1:
-        return f"A {cost_estimate} {occasion} outing in {location}, anchored around {stop_names[0]}."
-    mid = ", ".join(stop_names[:-1])
-    return (
-        f"A {cost_estimate} {occasion} outing in {location}: starting at {mid}, "
-        f"then finishing the night at {stop_names[-1]}."
-    )
+        return f"{intro}, built around {stop_names[0]}."
+    first, last = stop_names[0], stop_names[-1]
+    between = stop_names[1:-1]
+    if not between:
+        return f"{intro}: start at {first}, then finish at {last}."
+    if len(between) == 1:
+        middle = between[0]
+    else:
+        middle = f"{', '.join(between[:-1])} and {between[-1]}"
+    return f"{intro}: start at {first}, move on to {middle}, then finish at {last}."
 
 
 async def generate_quest_narrative(
@@ -153,24 +213,33 @@ async def generate_quest_narrative(
     cost_estimate: str,
     people: int,
     stop_summaries: list[dict[str, str]],
+    day_part: str | None = None,
 ) -> str:
     """Return a 2-3 sentence scene-setting narrative for the whole quest.
 
     stop_summaries: list of {"name": ..., "category": ..., "why": ...}
+    day_part: "morning" | "afternoon" | "evening" | "night" when known, so the
+    text does not call a morning plan a night out.
     Falls back to a heuristic string when the OpenCode API is unavailable.
     """
     stop_names = [s["name"] for s in stop_summaries]
     api_key = os.environ.get("OPENCODE_API_KEY", "").strip()
     if not api_key:
-        return _fallback_narrative(location, occasion, cost_estimate, stop_names)
+        return _fallback_narrative(location, occasion, cost_estimate, stop_names, day_part)
 
     stops_text = "\n".join(
         f"  {i + 1}. {s['name']} ({s['category']}) — {s['why']}"
         for i, s in enumerate(stop_summaries)
     )
+    if not day_part:
+        when = ""
+    elif day_part == "night":
+        when = ", starting at night"
+    else:
+        when = f", starting in the {day_part}"
     prompt = f"""You write the opening narrative for a curated city quest in a travel app.
 
-Quest: {occasion} outing, {cost_estimate} budget, {people} {'person' if people == 1 else 'people'}, in {location}.
+Quest: {occasion} outing{when}, {cost_estimate} budget, {people} {'person' if people == 1 else 'people'}, in {location}.
 Stops:
 {stops_text}
 
@@ -193,4 +262,4 @@ Write exactly 2-3 sentences that set the scene for this outing. Be vivid and spe
     except (httpx.HTTPError, ValueError, KeyError):
         pass
 
-    return _fallback_narrative(location, occasion, cost_estimate, stop_names)
+    return _fallback_narrative(location, occasion, cost_estimate, stop_names, day_part)

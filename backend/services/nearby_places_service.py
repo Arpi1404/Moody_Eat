@@ -298,6 +298,7 @@ class NearbyPlacesService:
                     price_range_end_inr=raw.price_range_end_inr,
                     business_status=raw.business_status,
                     types=raw.types,
+                    primary_type=raw.primary_type,
                     provider_id=raw.provider_id,
                 )
             )
@@ -361,6 +362,7 @@ class NearbyPlacesService:
                     price_range_end_inr=raw.price_range_end_inr,
                     business_status=raw.business_status,
                     types=raw.types,
+                    primary_type=raw.primary_type,
                     provider_id=raw.provider_id,
                 )
             )
