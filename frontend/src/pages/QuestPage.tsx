@@ -16,7 +16,11 @@ import { QUEST_HINTS, QUEST_HINTS_REPLAY_ORDER } from '../lib/onboarding'
 import { MAX_STOPS } from '../lib/questBuild'
 import { recordQuestPlaces } from '../lib/questHistory'
 import { makeQuestShareUrl, readQuestFromLocationHash } from '../lib/questShare'
-import { readEditedQuest, storeEditedQuest } from '../lib/questStorage'
+import {
+  readEditedQuest,
+  samePlan,
+  storeEditedQuest,
+} from '../lib/questStorage'
 import { shareCardFontEmbedCss } from '../lib/shareFonts'
 import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
@@ -25,6 +29,14 @@ import '../App.css'
 
 const ACTIVE_QUEST_KEY = 'moodyeat:active_quest'
 const LEGACY_ACTIVE_QUEST_KEY = 'moodyeat:activeQuest'
+
+interface Undo {
+  to: Quest
+  /** Bring back the title that quest had, not just its stops. */
+  restoreTitle?: boolean
+  /** Analytics event for taking the change back. */
+  event?: string
+}
 
 interface ActiveQuest extends Quest {
   started_at: string
@@ -229,6 +241,9 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const [questError, setQuestError] = useState<string | null>(null)
   const [questNotice, setQuestNotice] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
+  // Set while a short link shows a plan that this browser has its own, changed
+  // version of: that version, waiting for a choice.
+  const [ownVersion, setOwnVersion] = useState<Quest | null>(null)
   const [activeQuestId, setActiveQuestId] = useState<string | null>(null)
   const [completedStopIndexes, setCompletedStopIndexes] = useState<number[]>([])
   const [journalOpen, setJournalOpen] = useState(false)
@@ -239,8 +254,9 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     message: string
     actionLabel?: string
     onAction?: () => void
-    /** The quest as it was before a removal: the action puts it back. */
-    undo?: Quest
+    /** What the action puts back: the quest from before a removal, or the
+     * edited version that was just replaced. */
+    undo?: Undo
     /** Put the keyboard on the action, for someone who got here with it. */
     focusAction?: boolean
     durationMs: number
@@ -264,7 +280,10 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   const createdBannerTimer = useRef<number | null>(null)
 
   const savedToCollection = quest ? isQuestSaved(quest.id) : false
-  const active = quest ? activeQuestId === quest.id : false
+  // Until the choice is made, nothing on this page may write over their
+  // version: no edits, no Save, no Start.
+  const choosingVersion = quest != null && ownVersion?.id === quest.id
+  const active = quest ? activeQuestId === quest.id && !choosingVersion : false
 
   useEffect(() => {
     let cancelled = false
@@ -276,6 +295,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       try {
         await wait(200)
         let nextQuest: Quest | null = null
+        let changedCopy: Quest | null = null
         // A reload keeps the history entry, which still holds the quest as it
         // was when the page was first opened. If its stops were changed since,
         // the stored copy is the real one, and the generator's note about
@@ -295,9 +315,12 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           // side of the share loop.
           nextQuest = await fetchStoredQuest(shortId)
           // The link keeps the plan as it was shared. Show that, but never
-          // write it over a copy this browser has since changed.
-          if (!readEditedQuest(nextQuest.id)) {
+          // write it over a copy this browser has since changed: offer it.
+          const mine = readEditedQuest(nextQuest.id)
+          if (!mine) {
             localStorage.setItem(`quest_${nextQuest.id}`, JSON.stringify(nextQuest))
+          } else if (!samePlan(mine, nextQuest)) {
+            changedCopy = mine
           }
           track('shared_quest_opened', { short_id: shortId })
         } else if (id) {
@@ -335,6 +358,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           setQuest(nextQuest)
           setTitle(nextQuest.title)
           setQuestNotice(softMessage)
+          setOwnVersion(changedCopy)
         }
       } catch (err) {
         if (!cancelled) {
@@ -410,7 +434,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
       options?: {
         actionLabel?: string
         onAction?: () => void
-        undo?: Quest
+        undo?: Undo
         focusAction?: boolean
         durationMs?: number
       },
@@ -425,7 +449,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   // Curated previews are read-only until saved.
   const readOnly = preview && !savedToCollection
   const stopCount = quest?.stops.length ?? 0
-  const canEdit = stopCount > 0 && !readOnly && !active
+  const canEdit = stopCount > 0 && !readOnly && !active && !choosingVersion
   const { hint, dismissHint, hintUsed, replayHints } = useQuestHints(
     {
       share: sharePrompt || replaying,
@@ -474,7 +498,26 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     quest.est_total_per_person_max_inr,
   )
 
+  const openOwnVersion = () => {
+    if (!ownVersion) return
+    navigate(`/quest/${ownVersion.id}`, {
+      replace: true,
+      state: { quest: ownVersion },
+    })
+  }
+
+  const pointToOwnVersion = () =>
+    showToast('You have an edited version of this quest.', {
+      actionLabel: 'Open it',
+      onAction: openOwnVersion,
+      durationMs: 5000,
+    })
+
   const handleSave = () => {
+    if (choosingVersion) {
+      pointToOwnVersion()
+      return
+    }
     if (savedToCollection) {
       removeQuest(quest.id)
       // An unsaved preview is read-only again, so nothing may be undone on it.
@@ -492,9 +535,10 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   /** Make this the quest, on screen and everywhere this browser keeps it. */
-  const persistQuest = (nextQuest: Quest) => {
-    const titledQuest = { ...nextQuest, title }
+  const persistQuest = (nextQuest: Quest, nextTitle: string = title) => {
+    const titledQuest = { ...nextQuest, title: nextTitle }
     setQuest(titledQuest)
+    setTitle(nextTitle)
     storeEditedQuest(titledQuest)
     if (isQuestSaved(titledQuest.id)) {
       saveQuest(titledQuest)
@@ -537,17 +581,30 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     handleQuestChange(next)
     showToast(`Removed ${removed.place.name}.`, {
       actionLabel: 'Undo',
-      undo: previous,
+      undo: { to: previous, event: 'stop_removal_undone' },
       focusAction: byKeyboard,
       durationMs: 8000,
     })
   }
 
   // Puts back exactly what was there, narrative included.
-  const undoRemoval = (previous: Quest) => {
-    if (previous.id !== quest.id) return
-    track('stop_removal_undone', { stop_count: previous.stops.length })
-    persistQuest(previous)
+  const applyUndo = ({ to, restoreTitle, event }: Undo) => {
+    if (to.id !== quest.id) return
+    if (event) track(event, { stop_count: to.stops.length })
+    persistQuest(to, restoreTitle ? to.title : title)
+  }
+
+  // The one way an edited version is given up, and it can be taken back.
+  const replaceOwnVersion = () => {
+    if (!ownVersion) return
+    const mine = ownVersion
+    setOwnVersion(null)
+    persistQuest(quest)
+    showToast('Replaced your edited version.', {
+      actionLabel: 'Undo',
+      undo: { to: mine, restoreTitle: true },
+      durationMs: 8000,
+    })
   }
 
   const generationRequest = state?.request ?? null
@@ -810,6 +867,10 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
   }
 
   const handleStart = () => {
+    if (choosingVersion) {
+      pointToOwnVersion()
+      return
+    }
     if (active) {
       clearActiveQuest()
       setActiveQuestId(null)
@@ -934,6 +995,34 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           </div>
         </header>
 
+        {choosingVersion && (
+          <section className="qp-own-version" aria-label="Your edited version">
+            <p>
+              You changed this quest in this browser. This link still shows it as
+              it was shared.
+            </p>
+            <div className="qp-own-version-actions">
+              <button
+                type="button"
+                className="qp-own-version-open"
+                onClick={openOwnVersion}
+              >
+                Open my edited version
+              </button>
+              {/* Not while theirs is in progress: its ticks are by position. */}
+              {activeQuestId !== quest.id && (
+                <button
+                  type="button"
+                  className="qp-own-version-replace"
+                  onClick={replaceOwnVersion}
+                >
+                  Replace mine with this one
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
         {createdBanner && (
           <div className="qp-create-banner" role="status" aria-live="polite">
             <button
@@ -977,8 +1066,12 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           completedStopIndexes={completedStopIndexes}
           onToggleStopComplete={handleToggleStopComplete}
           onMarkDone={() => setJournalOpen(true)}
-          readOnly={readOnly}
+          readOnly={readOnly || choosingVersion}
           onLockedSwap={() => {
+            if (choosingVersion) {
+              pointToOwnVersion()
+              return
+            }
             if (active) {
               showToast("Stops can't change while this quest is in progress.", {
                 durationMs: 4000,
@@ -997,7 +1090,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           onHintDismiss={dismissHint}
           onHintUsed={hintUsed}
           onReplayHints={
-            readOnly
+            readOnly || choosingVersion
               ? undefined
               : () => {
                   setReplaying(true)
@@ -1038,12 +1131,12 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
         <div className="qp-bottom-bar">
           <button
             type="button"
-            className={`qp-action-btn qp-action-btn--save${savedToCollection ? ' qp-action-btn--saved' : ''}`}
+            className={`qp-action-btn qp-action-btn--save${savedToCollection && !choosingVersion ? ' qp-action-btn--saved' : ''}`}
             onClick={handleSave}
           >
             {justSaved
               ? '✓ Saved'
-              : savedToCollection
+              : savedToCollection && !choosingVersion
                 ? 'Saved ✓'
                 : 'Save'}
           </button>
@@ -1243,7 +1336,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
                 setToast(null)
                 // Undo is run from here, not stored on the toast, so that it
                 // sees the quest as it is now (saved since, for instance).
-                if (toast.undo) undoRemoval(toast.undo)
+                if (toast.undo) applyUndo(toast.undo)
                 else toast.onAction?.()
               }}
             >

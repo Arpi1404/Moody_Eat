@@ -13,9 +13,8 @@ import {
   MAX_STOPS,
   insertStopAfter,
   removeStop,
+  reorderStops,
   replaceStop,
-  startingAt,
-  withStops,
 } from '../lib/questBuild'
 import { SwapSheet } from './SwapSheet'
 
@@ -69,14 +68,6 @@ function stopFromAlternative(alternative: StopAlternative): Stop {
     est_cost_per_person_max_inr: alternative.est_cost_per_person_max_inr,
     price_source: alternative.price_source,
   }
-}
-
-function reorderStops(quest: Quest, from: number, to: number): Quest {
-  if (from === to || to < 0 || to >= quest.stops.length) return quest
-  const stops = [...quest.stops]
-  const [moved] = stops.splice(from, 1)
-  stops.splice(to, 0, moved)
-  return withStops(quest, startingAt(stops, quest.stops[0].time_block_start))
 }
 
 /** One places search made while the sheet is open. */

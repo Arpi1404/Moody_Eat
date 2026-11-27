@@ -11,6 +11,7 @@ from curated_quests import CURATED_CITIES, find_city, find_quest
 from deps import get_nearby_places_service, get_places_provider
 from models import (
     ALLOWED_NEARBY_TYPES,
+    FILM_MINUTES,
     STOP_KIND_SEARCHES,
     LocationSuggestion,
     LocationSuggestionsResponse,
@@ -23,6 +24,7 @@ from models import (
     QuestGenerationRequest,
     Stop,
     StopAlternative,
+    StopCategory,
     StopKind,
     StopSwapDelta,
     StoredQuestCreateResponse,
@@ -91,6 +93,33 @@ def _not_in_quest(places: list[PlaceItem], quest: Quest) -> list[PlaceItem]:
         if place.provider_id not in used_provider_ids
         and (place.name.strip().casefold(), place.address.strip().casefold()) not in used_place_keys
     ]
+
+
+def _is_film(stop: Stop) -> bool:
+    return stop.category == StopCategory.activity and "movie_theater" in (stop.place.types or [])
+
+
+def _kind_dwell(kind: StopKind, category: StopCategory) -> int:
+    """How long a newly chosen kind of stop takes."""
+    if kind == StopKind.movie:
+        return FILM_MINUTES
+    return _DWELL.get(category, 30)
+
+
+def _swap_dwell(original: Stop, original_dwell: int, kind: StopKind | None, category: StopCategory) -> int:
+    """How long the replacement stop lasts.
+
+    The same sort of stop keeps the time the old one had. A different sort takes
+    its own: dinner swapped for coffee should not keep dinner's hour. A film
+    counts as a sort of its own, and is never cut short of a film's length.
+    """
+    if kind is None:
+        return original_dwell
+    if kind == StopKind.movie:
+        return max(original_dwell, FILM_MINUTES) if _is_film(original) else FILM_MINUTES
+    if category == original.category and not _is_film(original):
+        return original_dwell
+    return _kind_dwell(kind, category)
 
 
 def _band_midpoint(band: CostBand | None) -> int | None:
@@ -244,9 +273,7 @@ async def stop_alternatives(
     original_dwell = _minutes_between(original.time_block_start, original.time_block_end)
     if original_dwell <= 0:
         original_dwell = _DWELL.get(original.category, 30)
-    # A different sort of stop takes its own time: dinner swapped for coffee
-    # should not keep dinner's hour.
-    dwell = original_dwell if category == original.category else _DWELL.get(category, 30)
+    dwell = _swap_dwell(original, original_dwell, chosen_kind, category)
 
     original_incoming_dist = (
         haversine_m(previous_stop.place.lat, previous_stop.place.lng, original.place.lat, original.place.lng)
@@ -376,13 +403,21 @@ async def stop_additions(
         )
     )
 
-    dwell = _DWELL.get(category, 30)
+    dwell = _kind_dwell(chosen_kind, category)
     direct_dist = (
         haversine_m(anchor.lat, anchor.lng, after.place.lat, after.place.lng)
         if after is not None
         else 0.0
     )
-    direct_minutes = _travel_time(direct_dist)[0] if after is not None else 0
+    # The hop the new stop replaces, as the quest has it: hand-made quests write
+    # their own, and the site keeps the hops an edit does not touch.
+    direct_minutes = 0
+    if after is not None:
+        direct_minutes = (
+            before.travel_to_next_minutes
+            if before.travel_to_next_minutes is not None
+            else _travel_time(direct_dist)[0]
+        )
 
     additions: list[StopAlternative] = []
     for place in candidates[:6]:

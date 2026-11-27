@@ -10,6 +10,23 @@ import type { Quest } from '../types/quest'
 const questKey = (id: string): string => `quest_${id}`
 const editedKey = (id: string): string => `moodyeat:edited_${id}`
 
+/** Whether two copies of a quest plan the same outing: the same places in the
+ * same order, at the same times. */
+export function samePlan(a: Quest, b: Quest): boolean {
+  const plan = (quest: Quest): string =>
+    JSON.stringify(
+      quest.stops.map((stop) => [
+        stop.place.provider_id,
+        stop.place.name,
+        stop.time_block_start.slice(0, 5),
+        stop.time_block_end.slice(0, 5),
+        stop.travel_to_next_minutes,
+        stop.travel_mode,
+      ]),
+    )
+  return plan(a) === plan(b)
+}
+
 export function storeEditedQuest(quest: Quest): void {
   localStorage.setItem(questKey(quest.id), JSON.stringify(quest))
   localStorage.setItem(editedKey(quest.id), '1')

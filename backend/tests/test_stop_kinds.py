@@ -13,6 +13,7 @@ from deps import get_nearby_places_service
 from main import app
 from models import (
     ALLOWED_NEARBY_TYPES,
+    FILM_MINUTES,
     STOP_KIND_SEARCHES,
     CostEstimate,
     PlaceItem,
@@ -141,6 +142,62 @@ def test_nothing_of_that_kind_nearby_is_an_empty_list() -> None:
     assert res.json() == []
 
 
+# ── Films ──────────────────────────────────────────────────────────────────────
+
+
+def _payload_with_middle_stop(category: str, types: list[str], end: str) -> dict:
+    """The middle stop (it starts at 19:41) as something else, ending at `end`."""
+    payload = _quest_payload()
+    stop = payload["stops"][1]
+    stop["category"] = category
+    stop["place"]["types"] = types
+    stop["time_block_end"] = end
+    return payload
+
+
+@pytest.mark.parametrize(
+    ("category", "types", "end", "expected"),
+    [
+        ("restaurant", ["restaurant"], "20:41", FILM_MINUTES),
+        ("activity", ["bowling_alley"], "20:41", FILM_MINUTES),
+        # A generated quest gives a film the activity hour; asking for a film fixes it.
+        ("activity", ["movie_theater"], "20:41", FILM_MINUTES),
+        ("activity", ["movie_theater"], "22:41", 180),
+    ],
+)
+def test_swapping_to_a_film_gives_it_a_films_length(category, types, end, expected) -> None:
+    payload = _payload_with_middle_stop(category, types, end)
+
+    res = _post("stop/1/alternatives?kind=movie", payload, KindProvider())
+
+    assert res.status_code == 200
+    assert {_dwell_of(stop) for stop in res.json()} == {expected}
+
+
+def test_swapping_a_film_for_another_activity_does_not_keep_the_films_length() -> None:
+    payload = _payload_with_middle_stop("activity", ["movie_theater"], "22:11")
+
+    res = _post("stop/1/alternatives?kind=bowling", payload, KindProvider())
+
+    assert {_dwell_of(stop) for stop in res.json()} == {60}
+
+
+def test_a_similar_swap_of_a_film_keeps_its_length_as_before() -> None:
+    payload = _payload_with_middle_stop("activity", ["movie_theater"], "20:41")
+
+    res = _post("stop/1/alternatives", payload, KindProvider())
+
+    assert {_dwell_of(stop) for stop in res.json()} == {60}
+
+
+def test_an_added_film_gets_a_films_length() -> None:
+    res = _post("stop/1/additions?kind=movie", _quest_payload(), KindProvider())
+
+    best = res.json()[0]
+    assert _dwell_of(best) == FILM_MINUTES
+    assert best["delta"]["time_change_minutes"] >= FILM_MINUTES
+
+
 # ── Adding a stop ──────────────────────────────────────────────────────────────
 
 
@@ -162,6 +219,18 @@ def test_addition_is_searched_around_the_stop_before_it() -> None:
     # Adding it makes the quest longer by at least the time spent there.
     assert best["delta"]["time_change_minutes"] >= 40
     assert best["delta"]["distance_change_meters"] >= 0
+
+
+def test_addition_is_measured_against_the_hop_the_quest_has() -> None:
+    payload = _quest_payload()
+    payload["stops"][1]["travel_to_next_minutes"] = 25  # written by hand
+
+    res = _post("stop/1/additions?kind=coffee", payload, KindProvider())
+
+    best = res.json()[0]
+    there = _minutes(best["time_block_start"]) - _minutes("20:41")
+    onward = best["travel_to_next_minutes"]
+    assert best["delta"]["time_change_minutes"] == there + 40 + onward - 25
 
 
 def test_addition_after_the_last_stop_has_no_onward_leg() -> None:
@@ -210,6 +279,12 @@ def test_frontend_offers_exactly_these_kinds_with_matching_types() -> None:
     offered = dict(re.findall(r"key: '(\w+)',[^}]*?placeType: '(\w+)'", source, re.S))
 
     assert offered == {kind.value: search[0] for kind, search in STOP_KIND_SEARCHES.items()}
+
+
+def test_frontend_gives_a_film_the_same_length() -> None:
+    source = (FRONTEND_SRC / "lib" / "questBuild.ts").read_text()
+
+    assert f"export const FILM_MINUTES = {FILM_MINUTES}\n" in source
 
 
 def test_frontend_knows_every_distance_note_the_engine_writes() -> None:

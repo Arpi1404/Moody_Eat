@@ -196,6 +196,10 @@ STOP_KIND_SEARCHES: dict[StopKind, tuple[str, StopCategory]] = {
     StopKind.bowling: ("bowling_alley", StopCategory.activity),
 }
 
+# A film outlasts the other activities, so it has a length of its own. Mirrors
+# FILM_MINUTES in frontend/src/lib/questBuild.ts.
+FILM_MINUTES = 150
+
 
 # ── Quest models ───────────────────────────────────────────────────────────────
 

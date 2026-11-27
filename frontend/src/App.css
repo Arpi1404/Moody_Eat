@@ -3423,6 +3423,59 @@ a.explore-edit-filters {
   opacity: 0.85;
 }
 
+/* A short link whose quest this browser has since changed */
+
+.qp-own-version {
+  margin: -6px 0 20px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(199, 82, 42, 0.35);
+  background: var(--accent-bg);
+  text-align: left;
+}
+
+.qp-own-version p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-h);
+}
+
+.qp-own-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qp-own-version-open,
+.qp-own-version-replace {
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.qp-own-version-open {
+  border: 1.5px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.qp-own-version-replace {
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.qp-own-version-open:focus-visible,
+.qp-own-version-replace:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Narrative */
 
 .qp-byline {

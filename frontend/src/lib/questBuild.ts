@@ -76,18 +76,23 @@ export function travelLeg(
   return { minutes: Math.max(1, Math.round(dist / DRIVE_M_PER_MIN)), mode: 'driving' }
 }
 
-// Recompute every leg from geometry: changing any stop (swap, reorder, or
-// assembling a custom quest) changes the travel time AND mode of the legs
-// around it. Each stop keeps its dwell; the first stop's start anchors the
-// chain.
-export function rescheduleStops(stops: Stop[]): Stop[] {
+type Leg = { minutes: number; mode: TravelMode }
+
+// Re-time a stop list: each stop keeps its dwell and the first stop's start
+// anchors the chain. `legFor` says how long each hop takes; by default every
+// one is worked out from geometry, which is right for a quest being assembled.
+// An edit passes keptLegs() instead.
+export function rescheduleStops(
+  stops: Stop[],
+  legFor: (from: Stop, to: Stop) => Leg = travelLeg,
+): Stop[] {
   for (let i = 0; i < stops.length; i += 1) {
     const dwell = durationMinutes(
       stops[i].time_block_start,
       stops[i].time_block_end,
     )
     if (i > 0) {
-      const leg = travelLeg(stops[i - 1], stops[i])
+      const leg = legFor(stops[i - 1], stops[i])
       stops[i - 1] = {
         ...stops[i - 1],
         travel_to_next_minutes: leg.minutes,
@@ -111,6 +116,30 @@ export function rescheduleStops(stops: Stop[]): Stop[] {
 /** The most stops a quest can be built up to. Mirrors _MAX_QUEST_STOPS in
  * backend/routes.py. */
 export const MAX_STOPS = 4
+
+/** What makes a stop the same stop from one version of a quest to the next. */
+const stopKey = ({ place }: Stop): string =>
+  place.provider_id || `${place.name}|${place.lat}|${place.lng}`
+
+/** Two stops that were already next to each other, in either order, keep the
+ * travel time and mode the quest had between them. Only the hops an edit
+ * creates are worked out afresh. Hand-made quests write these by hand, and a
+ * straight line cannot tell how a walk really goes. */
+function keptLegs(before: Stop[]): (from: Stop, to: Stop) => Leg {
+  const stored = new Map<string, Leg>()
+  for (let i = 0; i + 1 < before.length; i += 1) {
+    const { travel_to_next_minutes: minutes, travel_mode: mode } = before[i]
+    if (minutes == null || mode == null) continue
+    stored.set(JSON.stringify([stopKey(before[i]), stopKey(before[i + 1])]), {
+      minutes,
+      mode,
+    })
+  }
+  return (from, to) =>
+    stored.get(JSON.stringify([stopKey(from), stopKey(to)])) ??
+    stored.get(JSON.stringify([stopKey(to), stopKey(from)])) ??
+    travelLeg(from, to)
+}
 
 /** The notes about distance that _why() in backend/quest_generator.py writes
  * into why_this_place. Each describes the leg from the stop before. */
@@ -180,18 +209,31 @@ function withTimedStops(quest: Quest, timed: Stop[]): Quest {
 
 /** The quest with a new stop list, re-timed from its first stop. Everything an
  * edit can change is recomputed here except the narrative, which the quest page
- * owns. */
+ * owns. Hops between stops that were already neighbours are left as they were. */
 export function withStops(quest: Quest, stops: Stop[]): Quest {
-  return withTimedStops(quest, rescheduleStops(stops.map((stop) => ({ ...stop }))))
+  const timed = rescheduleStops(
+    stops.map((stop) => ({ ...stop })),
+    keptLegs(quest.stops),
+  )
+  return withTimedStops(quest, timed)
 }
 
 /** Whatever lands first keeps the quest's start time (and its own dwell). */
-export function startingAt(stops: Stop[], start: string): Stop[] {
+function startingAt(stops: Stop[], start: string): Stop[] {
   const dwell = durationMinutes(stops[0].time_block_start, stops[0].time_block_end)
   return [
     { ...stops[0], time_block_start: start, time_block_end: addMinutes(start, dwell) },
     ...stops.slice(1),
   ]
+}
+
+/** The quest with the stop at `from` moved to `to`. */
+export function reorderStops(quest: Quest, from: number, to: number): Quest {
+  if (from === to || to < 0 || to >= quest.stops.length) return quest
+  const stops = [...quest.stops]
+  const [moved] = stops.splice(from, 1)
+  stops.splice(to, 0, moved)
+  return withStops(quest, startingAt(stops, quest.stops[0].time_block_start))
 }
 
 /** The same quest without one stop. A quest keeps at least one, so removing the
@@ -275,13 +317,19 @@ const CATEGORY_BY_TYPE: Record<string, StopCategory> = {
   library: 'other',
 }
 
-export function categoryForPlace(place: PlaceItem): StopCategory {
-  for (const t of place.types ?? []) {
-    const category = CATEGORY_BY_TYPE[t]
-    if (category) return category
-  }
-  return 'other'
+/** The tag that decides what sort of stop a place makes. */
+function decidingType(place: PlaceItem): string | undefined {
+  return (place.types ?? []).find((t) => CATEGORY_BY_TYPE[t])
 }
+
+export function categoryForPlace(place: PlaceItem): StopCategory {
+  const type = decidingType(place)
+  return type ? CATEGORY_BY_TYPE[type] : 'other'
+}
+
+/** A film outlasts the other activities. Mirrors FILM_MINUTES in
+ * backend/models.py. */
+export const FILM_MINUTES = 150
 
 // Mirrors backend _DAY_PART_START.
 const DAY_PART_START: Record<DayPart, string> = {
@@ -352,7 +400,10 @@ export function buildCustomQuest(opts: {
   let cursor = `${start}:00`
   const initial: Stop[] = places.map((place) => {
     const category = categoryForPlace(place)
-    const dwell = DWELL_BY_CATEGORY[category]
+    const dwell =
+      decidingType(place) === 'movie_theater'
+        ? FILM_MINUTES
+        : DWELL_BY_CATEGORY[category]
     const band = estBand(place)
     const stop: Stop = {
       place,
