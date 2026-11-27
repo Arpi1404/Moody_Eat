@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 import rate_limit
 from config import Settings
 from deps import get_nearby_places_service
-from main import app
+from main import app, origins
 from services.google_places import GooglePlacesProvider
 from services.nearby_places_service import NearbyPlacesService
 from services.places_exceptions import (
@@ -425,6 +425,23 @@ def test_name_search_is_limited_to_twenty_a_minute_in_its_own_bucket(monkeypatch
         stored = client.post("/api/quest/store", content=b"not json")
     assert codes == [200] * 20 + [429]
     assert stored.status_code != 429
+
+
+def test_the_browser_can_read_a_rate_limit_reply(monkeypatch):
+    # Without CORS headers the page sees a network error, not a 429.
+    _limit_to(monkeypatch, 1)
+    origin = origins[0]
+    with _client(FakeProvider()) as client:
+        replies = [
+            client.post(
+                "/api/places/search",
+                json={"q": "third wave", "lat": LAT, "lng": LNG},
+                headers={"Origin": origin},
+            )
+            for _ in range(2)
+        ]
+    assert [r.status_code for r in replies] == [200, 429]
+    assert replies[1].headers["access-control-allow-origin"] == origin
 
 
 def test_name_search_never_gets_more_than_the_general_allowance(monkeypatch):
