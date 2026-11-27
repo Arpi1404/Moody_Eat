@@ -1,7 +1,7 @@
 name: CI
 
 # The checks every change is expected to pass: the backend test suite, and the
-# frontend lint + production build (which also generates the guide pages).
+# frontend lint, tests + production build (which also generates the guide pages).
 # Needs no secrets: the backend suite is offline and uses fake providers.
 # Deploys nothing: Vercel builds the frontend itself, the backend is deployed by hand.
 
@@ -54,4 +54,5 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm test
       - run: npm run build

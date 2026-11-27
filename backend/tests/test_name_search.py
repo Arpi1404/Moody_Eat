@@ -319,6 +319,18 @@ async def test_a_typed_area_is_geocoded_as_typed():
     assert result.resolved_location.name == "Indiranagar, Bengaluru, India"
 
 
+async def test_a_second_search_of_an_area_needs_no_geocode():
+    # What the page does: the coordinates in the first answer anchor the next
+    # search of the same typed area.
+    fake = FakeProvider([_place()])
+    service = _service(fake)
+    first = await service.search_by_name(text="wave", area="Indiranagar")
+    anchor = first.resolved_location
+    await service.search_by_name(text="toit", lat=anchor.lat, lng=anchor.lng)
+    assert fake.geocoded == ["Indiranagar"]
+    assert fake.searches == [("wave", LAT, LNG), ("toit", LAT, LNG)]
+
+
 async def test_results_are_not_cached():
     fake = FakeProvider([_place()])
     service = _service(fake)

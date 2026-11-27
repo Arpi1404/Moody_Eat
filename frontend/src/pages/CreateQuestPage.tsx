@@ -10,6 +10,12 @@ import { LocationInput } from '../components/LocationInput'
 import { PlaceLink } from '../components/PlaceLink'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
+import {
+  areaKey,
+  COORDINATES_RE,
+  nameSearchAnchor,
+  type ResolvedArea,
+} from '../lib/nameSearchArea'
 import { shortAddresses } from '../lib/placeAddress'
 import { buildCustomQuest } from '../lib/questBuild'
 import type { DayPart, Occasion } from '../types/quest'
@@ -17,8 +23,6 @@ import '../App.css'
 
 const MAX_STOPS = 4
 const MIN_NAME_CHARS = 3
-/** What the 📍 button puts in the location field. */
-const COORDINATES_RE = /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/
 
 type NameSearch =
   | { status: 'idle' }
@@ -170,6 +174,9 @@ export function CreateQuestPage() {
   // Goes up whenever a name search starts or stops mattering, so a late answer
   // is dropped.
   const nameRequestRef = useRef(0)
+  // Typed areas the server has geocoded for a name search, so that searching
+  // one again does not pay for it again. Kept only while the page is open.
+  const geocodedAreasRef = useRef(new Map<string, ResolvedArea>())
 
   const dayPart = dayPartChoice ?? DAY_PART_DEFAULT_BY_OCCASION[occasion]
   const selectedIds = new Set(selected.map((p) => p.provider_id))
@@ -207,12 +214,17 @@ export function CreateQuestPage() {
       (COORDINATES_RE.test(typedArea) ? 'your location' : typedArea)
     const requestId = ++nameRequestRef.current
     setNameSearch({ status: 'searching' })
+    const { send, knownName } = nameSearchAnchor(
+      typedArea,
+      picked,
+      geocodedAreasRef.current,
+    )
     try {
-      const res = await searchPlacesByName(
-        picked
-          ? { q: text, lat: picked.lat, lng: picked.lng }
-          : { q: text, area: typedArea },
-      )
+      const res = await searchPlacesByName({ q: text, ...send })
+      // Worth keeping even if this answer is too late to show.
+      if ('area' in send) {
+        geocodedAreasRef.current.set(areaKey(typedArea), res.resolved_location)
+      }
       if (nameRequestRef.current !== requestId) return
       // The count only: what was typed never goes to analytics.
       track('create_name_search', { result_count: res.places.length })
@@ -221,7 +233,11 @@ export function CreateQuestPage() {
         setResults([])
         setSearchError(null)
         setActiveType(null)
-        setResolvedArea(res.resolved_location.name || area)
+        // Names the quest. Empty for the 📍 position, which nothing has
+        // named: "your location" is for the messages only.
+        setResolvedArea(
+          res.resolved_location.name || knownName || picked?.label || '',
+        )
       }
       setNameSearch({ status: 'done', places: res.places, area })
     } catch (err) {
