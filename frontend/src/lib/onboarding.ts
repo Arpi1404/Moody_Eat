@@ -13,6 +13,7 @@ export const QUEST_HINTS = [
   'checkoff',
   'swap',
   'reorder',
+  'addremove',
   'shuffle',
 ] as const
 export type QuestHint = (typeof QUEST_HINTS)[number]
@@ -23,6 +24,7 @@ export const QUEST_HINTS_REPLAY_ORDER: readonly QuestHint[] = [
   'checkoff',
   'swap',
   'reorder',
+  'addremove',
   'shuffle',
   'share',
 ]

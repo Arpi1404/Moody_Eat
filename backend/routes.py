@@ -11,16 +11,19 @@ from curated_quests import CURATED_CITIES, find_city, find_quest
 from deps import get_nearby_places_service, get_places_provider
 from models import (
     ALLOWED_NEARBY_TYPES,
+    STOP_KIND_SEARCHES,
     LocationSuggestion,
     LocationSuggestionsResponse,
     NearbyPlacesRequest,
     NearbyPlacesResponse,
+    PlaceItem,
     PlaceBlurbsRequest,
     PlaceBlurbsResponse,
     Quest,
     QuestGenerationRequest,
     Stop,
     StopAlternative,
+    StopKind,
     StopSwapDelta,
     StoredQuestCreateResponse,
     StoredQuestStats,
@@ -56,6 +59,38 @@ def _stop_category_for_places(stop: Stop) -> str | None:
         if place_type in ALLOWED_NEARBY_TYPES:
             return place_type
     return None
+
+
+async def _search_around(
+    service: NearbyPlacesService,
+    lat: float,
+    lng: float,
+    places_type: str,
+) -> NearbyPlacesResponse:
+    """The one paid search behind a swap or an added stop."""
+    try:
+        return await service.search(
+            NearbyPlacesRequest(
+                query=f"{lat},{lng}",
+                categories=[places_type],
+                radius_meters=3_000,
+                limit=20,
+            )
+        )
+    except PlacesProviderError as exc:
+        raise _provider_http_error(exc) from exc
+
+
+def _not_in_quest(places: list[PlaceItem], quest: Quest) -> list[PlaceItem]:
+    """Places the quest does not already visit, matched by id or name and address."""
+    used_provider_ids = {s.place.provider_id for s in quest.stops if s.place.provider_id}
+    used_place_keys = {(s.place.name.strip().casefold(), s.place.address.strip().casefold()) for s in quest.stops}
+    return [
+        place
+        for place in places
+        if place.provider_id not in used_provider_ids
+        and (place.name.strip().casefold(), place.address.strip().casefold()) not in used_place_keys
+    ]
 
 
 def _band_midpoint(band: CostBand | None) -> int | None:
@@ -170,15 +205,21 @@ async def stop_alternatives(
     quest_id: uuid.UUID,
     stop_index: int,
     payload: Quest,
+    chosen_kind: StopKind | None = Query(default=None, alias="kind"),
     service: NearbyPlacesService = Depends(get_nearby_places_service),
 ) -> list[StopAlternative]:
+    """Replacements for one stop: the same type as it is now, or `?kind=`."""
     if payload.id != quest_id:
         raise HTTPException(status_code=422, detail={"message": "Quest id does not match request body."})
     if stop_index < 0 or stop_index >= len(payload.stops):
         raise HTTPException(status_code=404, detail={"message": "Stop index not found."})
 
     original = payload.stops[stop_index]
-    places_type = _stop_category_for_places(original)
+    if chosen_kind is None:
+        places_type = _stop_category_for_places(original)
+        category = original.category
+    else:
+        places_type, category = STOP_KIND_SEARCHES[chosen_kind]
     if places_type is None:
         raise HTTPException(
             status_code=422,
@@ -191,30 +232,8 @@ async def stop_alternatives(
     # first stop, anchor the search to the stop being replaced as the closest proxy.
     anchor_place = previous_stop.place if previous_stop is not None else original.place
 
-    try:
-        result = await service.search(
-            NearbyPlacesRequest(
-                query=f"{anchor_place.lat},{anchor_place.lng}",
-                categories=[places_type],
-                radius_meters=3_000,
-                limit=20,
-            )
-        )
-    except PlacesProviderError as exc:
-        status_code, message = map_provider_error(exc)
-        detail: dict[str, object] = {"message": message}
-        if exc.provider_status:
-            detail["provider_status"] = exc.provider_status
-        raise HTTPException(status_code=status_code, detail=detail) from exc
-
-    used_provider_ids = {s.place.provider_id for s in payload.stops if s.place.provider_id}
-    used_place_keys = {(s.place.name.strip().casefold(), s.place.address.strip().casefold()) for s in payload.stops}
-    candidates = [
-        place
-        for place in result.places
-        if place.provider_id not in used_provider_ids
-        and (place.name.strip().casefold(), place.address.strip().casefold()) not in used_place_keys
-    ]
+    result = await _search_around(service, anchor_place.lat, anchor_place.lng, places_type)
+    candidates = _not_in_quest(result.places, payload)
     candidates.sort(
         key=lambda place: (
             -_score(place, payload.total_cost_estimate, anchor_place.lat, anchor_place.lng),
@@ -225,6 +244,9 @@ async def stop_alternatives(
     original_dwell = _minutes_between(original.time_block_start, original.time_block_end)
     if original_dwell <= 0:
         original_dwell = _DWELL.get(original.category, 30)
+    # A different sort of stop takes its own time: dinner swapped for coffee
+    # should not keep dinner's hour.
+    dwell = original_dwell if category == original.category else _DWELL.get(category, 30)
 
     original_incoming_dist = (
         haversine_m(previous_stop.place.lat, previous_stop.place.lng, original.place.lat, original.place.lng)
@@ -256,7 +278,7 @@ async def stop_alternatives(
             if previous_stop is not None
             else original.time_block_start
         )
-        candidate_end = _add_min(candidate_start, original_dwell)
+        candidate_end = _add_min(candidate_start, dwell)
 
         candidate_outgoing_dist = (
             haversine_m(place.lat, place.lng, next_stop.place.lat, next_stop.place.lng)
@@ -277,7 +299,8 @@ async def stop_alternatives(
         alternatives.append(
             StopAlternative(
                 place=place,
-                category=original.category,
+                category=category,
+                kind=chosen_kind,
                 time_block_start=candidate_start,
                 time_block_end=candidate_end,
                 travel_to_next_minutes=outgoing_pair[0] if outgoing_pair is not None else None,
@@ -293,8 +316,8 @@ async def stop_alternatives(
                 delta=StopSwapDelta(
                     cost_change=cost_change,
                     time_change_minutes=round(
-                        (candidate_incoming_minutes + candidate_outgoing_minutes)
-                        - (original_incoming_minutes + original_outgoing_minutes)
+                        (candidate_incoming_minutes + candidate_outgoing_minutes + dwell)
+                        - (original_incoming_minutes + original_outgoing_minutes + original_dwell)
                     ),
                     distance_change_meters=round(
                         (candidate_incoming_dist + candidate_outgoing_dist)
@@ -305,6 +328,98 @@ async def stop_alternatives(
         )
 
     return alternatives
+
+
+# The most stops the quest page lets a person build up to.
+_MAX_QUEST_STOPS = 4
+
+
+@router.post(
+    "/api/quest/{quest_id}/stop/{stop_index}/additions",
+    response_model=list[StopAlternative],
+)
+async def stop_additions(
+    quest_id: uuid.UUID,
+    stop_index: int,
+    payload: Quest,
+    chosen_kind: StopKind = Query(alias="kind"),
+    service: NearbyPlacesService = Depends(get_nearby_places_service),
+) -> list[StopAlternative]:
+    """Places of one kind that could be added right after `stop_index`.
+
+    A route of its own so that a server without it answers 404, rather than
+    quietly returning replacements for some other stop. In `delta`, the values
+    are what adding the place does to the quest: minutes and metres it grows
+    by, and the middle of the new stop's price estimate (0 when unknown).
+    """
+    if payload.id != quest_id:
+        raise HTTPException(status_code=422, detail={"message": "Quest id does not match request body."})
+    if stop_index < 0 or stop_index >= len(payload.stops):
+        raise HTTPException(status_code=404, detail={"message": "Stop index not found."})
+    if len(payload.stops) >= _MAX_QUEST_STOPS:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": f"A quest holds up to {_MAX_QUEST_STOPS} stops."},
+        )
+
+    places_type, category = STOP_KIND_SEARCHES[chosen_kind]
+    before = payload.stops[stop_index]
+    after = payload.stops[stop_index + 1] if stop_index + 1 < len(payload.stops) else None
+    anchor = before.place
+
+    result = await _search_around(service, anchor.lat, anchor.lng, places_type)
+    candidates = _not_in_quest(result.places, payload)
+    candidates.sort(
+        key=lambda place: (
+            -_score(place, payload.total_cost_estimate, anchor.lat, anchor.lng),
+            place.distance_meters,
+        )
+    )
+
+    dwell = _DWELL.get(category, 30)
+    direct_dist = (
+        haversine_m(anchor.lat, anchor.lng, after.place.lat, after.place.lng)
+        if after is not None
+        else 0.0
+    )
+    direct_minutes = _travel_time(direct_dist)[0] if after is not None else 0
+
+    additions: list[StopAlternative] = []
+    for place in candidates[:6]:
+        incoming_dist = haversine_m(anchor.lat, anchor.lng, place.lat, place.lng)
+        incoming_minutes = _travel_time(incoming_dist)[0]
+        start = _add_min(before.time_block_end, incoming_minutes)
+        outgoing_dist = (
+            haversine_m(place.lat, place.lng, after.place.lat, after.place.lng)
+            if after is not None
+            else 0.0
+        )
+        outgoing = _travel_time(outgoing_dist) if after is not None else None
+        band = estimate_cost_band(place)
+        additions.append(
+            StopAlternative(
+                place=place,
+                category=category,
+                kind=chosen_kind,
+                time_block_start=start,
+                time_block_end=_add_min(start, dwell),
+                travel_to_next_minutes=outgoing[0] if outgoing is not None else None,
+                travel_mode=outgoing[1] if outgoing is not None else None,
+                why_this_place=_why(place, payload.total_cost_estimate, incoming_dist),
+                est_cost_per_person_min_inr=band.min_inr if band else None,
+                est_cost_per_person_max_inr=band.max_inr if band else None,
+                price_source=band.source if band else None,
+                delta=StopSwapDelta(
+                    cost_change=_band_midpoint(band) or 0,
+                    time_change_minutes=round(
+                        incoming_minutes + (outgoing[0] if outgoing is not None else 0) + dwell - direct_minutes
+                    ),
+                    distance_change_meters=round(incoming_dist + outgoing_dist - direct_dist),
+                ),
+            )
+        )
+
+    return additions
 
 
 @router.post("/api/places/nearby", response_model=NearbyPlacesResponse)

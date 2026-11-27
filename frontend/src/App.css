@@ -3892,11 +3892,99 @@ a.explore-edit-filters {
 /* Travel tag */
 
 .qp-travel-tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 14px;
   margin: 0;
   padding: 8px 16px 12px;
   font-size: 12px;
   color: var(--text);
   border-top: 1px solid var(--border);
+}
+
+/* Editing a quest: remove on each card, add between cards and at the end.
+   None of these sit on the photo. */
+
+.qp-stop-remove,
+.qp-add-inline {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Quieter than Directions: it is the one control here that takes away. */
+.qp-stop-remove {
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.qp-stop-remove:hover {
+  color: var(--accent);
+}
+
+.qp-add-inline {
+  padding: 5px 12px;
+  border: 1px dashed rgba(199, 82, 42, 0.5);
+  background: none;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.qp-add-inline:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.qp-add-wrap {
+  position: relative;
+  margin-top: 16px;
+}
+
+.qp-add-stop {
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--radius-card);
+  border: 1.5px dashed rgba(199, 82, 42, 0.5);
+  background: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.qp-add-stop:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.qp-stop-remove:focus-visible,
+.qp-add-inline:focus-visible,
+.qp-add-stop:focus-visible,
+.swap-kind-chip:focus-visible,
+.swap-sheet-retry:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.qp-add-full {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text);
 }
 
 .qp-mark-done-btn {
@@ -4014,6 +4102,73 @@ a.explore-edit-filters {
 
 .swap-sheet-error {
   color: var(--accent);
+}
+
+/* The sheet takes focus when it opens; its controls show their own rings. */
+.swap-sheet:focus {
+  outline: none;
+}
+
+.swap-kind-row {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.swap-kind-chip {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-h);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.swap-kind-chip--active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+/* On a short screen the chips take one scrolling line, so the places and the
+   confirm button still fit. */
+@media (max-height: 700px) {
+  .swap-kind-row {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding: 2px;
+  }
+}
+
+.swap-sheet-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.swap-sheet-retry {
+  align-self: flex-start;
+  min-height: 36px;
+  margin-top: 8px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .swap-alt-list {
@@ -6388,6 +6543,8 @@ a.explore-edit-filters {
 }
 
 .saved-toast-action {
+  flex-shrink: 0;
+  white-space: nowrap;
   border: 0;
   background: var(--accent);
   color: #fff;
