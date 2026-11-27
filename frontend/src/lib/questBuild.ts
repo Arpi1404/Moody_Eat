@@ -266,6 +266,7 @@ export function buildCustomQuest(opts: {
     occasion,
     stops,
     created_by: creator,
+    origin: 'custom',
     total_duration_minutes: questDuration(stops),
     total_cost_estimate: costTierFromTotal(midTotal),
     est_total_per_person_min_inr: totalMin,

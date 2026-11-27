@@ -27,7 +27,7 @@ declare global {
 
 const isDev = import.meta.env.DEV
 
-function doNotTrackEnabled(): boolean {
+export function doNotTrackEnabled(): boolean {
   if (typeof navigator === 'undefined') return false
   const flag =
     navigator.doNotTrack ??

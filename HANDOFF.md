@@ -67,6 +67,7 @@ Instrumented via Umami.
 backend/
   quest_generator.py        # the engine: scoring, viability, scheduling, weather gating
   quest_store.py            # shared-quest store (short links, view counts): SQLite on /data, or Firestore via QUEST_STORE_BACKEND
+  swap_log.py               # which place was swapped for which, and for what occasion (place ids only; same two backends)
   quest_templates.py        # stop-sequence templates per occasion (ordered type fallbacks)
   price_inference.py        # price signal chain + INR band tables
   curated_quests.py         # city registry: 3 cities x 6 hand-authored quests, lookups by name / quest id
@@ -74,6 +75,7 @@ backend/
   scripts/lookup_place.py   # venue name -> ready-to-paste place(...) with real Place ID, rating, hours
   scripts/verify_curated.py # asks Google: every curated stop still open, 4.0+, pin within 500 m
   scripts/export_curated.py # writes frontend/scripts/curated-snapshot.json for the guide pages
+  scripts/swap_report.py    # most replaced / most chosen places from the swap log
   models.py                 # Pydantic models incl. QuestGenerationRequest
   routes.py                 # /api/quest/generate, /alternatives, /places/nearby, curated
   services/
@@ -355,6 +357,54 @@ verified in a real browser before push.
       each quest was written from general knowledge and checked against
       Google for existence, rating and hours, not walked by a local.
 
+17. **Swap log: our own taste data (Nov 2026).** The engine picks by
+    rating, popularity, price and distance and knows nothing about taste. A
+    confirmed swap is someone saying "not this place, that one, for this
+    kind of outing", so each one is now kept.
+    - **What is stored** (`backend/swap_log.py`, collection/table
+      `swap_events`): the replaced and the chosen Google place id, the ids
+      the swap sheet offered in the order shown, the position of the chosen
+      one, occasion, stop category, budget, stop position and count, the
+      stop's start time, and who built the quest (`quest_origin`). Place ids
+      are the one piece of Places content Google lets us keep indefinitely;
+      names and ratings are deliberately not stored.
+    - **What is not stored:** quest id, IP address, coordinates, titles,
+      creator names, any free text. A test pins the exact field set
+      (`test_nothing_about_the_person_or_quest_is_stored`) — adding a field
+      should mean changing that test on purpose.
+    - **`Quest.origin`** (`generated` | `curated` | `custom`, absent on
+      older quests) is new and travels with the quest, so a swap can be read
+      as a vote against the engine's pick, an editor's pick, or the
+      person's own. The engine, the curated registry and `buildCustomQuest`
+      set it. The guide snapshot was not re-exported; the next
+      `export_curated` run will add `"origin": "curated"` to each quest.
+    - **Sending** (`frontend/src/lib/swapLog.ts`): posted after the swap has
+      been applied, nothing waits on it, every failure is ignored. Skipped
+      when the browser sends Do Not Track or Global Privacy Control — turn
+      DNT on in your own browser to keep your testing out of the data (it
+      also keeps you out of Umami). The privacy page says all of this.
+    - **Endpoint:** `POST /api/quest/swap-log` → 204. Validates strictly
+      (422), caps the body (413), answers 503 if the store fails so the
+      loss shows in request metrics. Own rate-limit allowance of 20 a minute
+      per client, separate from searches.
+    - **Reading it:** `python -m scripts.swap_report [--occasion date]`
+      (local SQLite by default; for production set
+      `QUEST_STORE_BACKEND=firestore FIRESTORE_PROJECT=<id>` after
+      `gcloud auth application-default login`). It prints Google Maps links,
+      since only ids are kept.
+    - **Deploy order:** the frontend may go first — until the backend is
+      deployed its posts get a 404 that is ignored, and nothing is
+      collected.
+    - **Not done / caveats.** The data is collected, not used: nothing in
+      ranking reads it yet. Anyone can post to the endpoint, so before
+      these counts change what people are shown they need a guard against
+      one source voting many times (the rate limit is per instance and in
+      memory). The first option in a list is chosen more for being first —
+      `chosen_rank` is there to correct for it. Opening the swap sheet and
+      closing it without choosing (a dislike with no replacement) is not
+      recorded, and neither is a removed stop, because stops cannot be
+      removed yet. The Umami `stop_swapped` event is unchanged.
+
 Also merged during this period (by the owner, not this engagement):
 **`51645a2`** — dark editorial share-card redesign PR + `/api/quest-og`
 crawler preview function.
@@ -408,7 +458,7 @@ events unchanged.
 
 ### Commands
 ```
-# backend tests (155)         # frontend
+# backend tests (201)         # frontend
 cd backend                     cd frontend
 venv\Scripts\python -m pytest  npm run build   # also generates dist/guides/
                                npm run lint    # must stay at 0 problems
