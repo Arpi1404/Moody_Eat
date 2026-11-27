@@ -87,6 +87,7 @@ _TEXT_SEARCH_FIELD_MASK = ",".join(
         "places.rating",
         "places.userRatingCount",
         "places.types",
+        "places.primaryType",
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
