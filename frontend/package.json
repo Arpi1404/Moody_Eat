@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "postbuild": "node scripts/generate-guides.mjs",
     "lint": "eslint .",
+    "test": "node --test tests/nameSearchArea.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
