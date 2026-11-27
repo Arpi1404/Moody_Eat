@@ -84,9 +84,26 @@ def test_text_becomes_one_clean_line():
     assert quest.stops[0].why_this_place == expected
 
 
-def test_emoji_that_are_made_of_several_parts_survive():
-    family = "\U0001F468\u200d\U0001F469\u200d\U0001F467"
-    assert tidy_text(f"For the {family}") == f"For the {family}"
+@pytest.mark.parametrize("hidden", ["\u200b", "\u200c", "\u200d", "\u2060", "\ufeff"])
+def test_zero_width_characters_are_removed(hidden):
+    # Removed, not turned into spaces: the word they were hiding in is whole.
+    assert tidy_text(f"ex{hidden}ample.com{hidden} {hidden}now") == "example.com now"
+    assert tidy_text(hidden * 3) == ""
+    # Beside only one emoji, a joiner joins nothing.
+    assert tidy_text(f"\U0001F525{hidden} hot{hidden}\U0001F525") == "\U0001F525 hot\U0001F525"
+
+
+@pytest.mark.parametrize(
+    "emoji",
+    [
+        "\U0001F468\u200d\U0001F469\u200d\U0001F467",  # family
+        "\U0001F3F3\ufe0f\u200d\U0001F308",  # rainbow flag
+        "\U0001F468\U0001F3FD\u200d\U0001F4BB",  # with a skin tone
+        "\u2764\ufe0f\u200d\U0001F525",  # heart on fire
+    ],
+)
+def test_emoji_made_of_joined_parts_stay_whole(emoji):
+    assert tidy_text(f"For {emoji} only") == f"For {emoji} only"
 
 
 def test_the_markers_are_optional():

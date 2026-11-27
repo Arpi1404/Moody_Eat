@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadSource } from './loadSource.mjs'
 
+const { tidyText, withoutLinks } = await loadSource('lib/creatorText.ts')
 const { buildCustomQuest, insertStopAfter, removeStop, reorderStops, replaceStop } =
   await loadSource('lib/questBuild.ts')
 
@@ -75,4 +76,47 @@ test('a stop that replaces a noted one carries no creator marker', () => {
   const after = replaceStop(quest(), 2, newStop(quest(), 'd'))
   assert.equal(lineOf(after, 'd').why_this_place, 'Automatic line for the new place.')
   assert.ok(!lineOf(after, 'd').note_by_creator)
+})
+
+test('zero-width characters are removed, not turned into spaces', () => {
+  for (const hidden of ['\u200b', '\u200c', '\u200d', '\u2060', '\ufeff']) {
+    assert.equal(
+      tidyText(`ex${hidden}ample.com${hidden} ${hidden}now`),
+      'example.com now',
+    )
+    assert.equal(tidyText(hidden.repeat(3)), '')
+    // Beside only one emoji, a joiner joins nothing.
+    assert.equal(tidyText(`\u{1F525}${hidden} hot${hidden}\u{1F525}`), '\u{1F525} hot\u{1F525}')
+  }
+})
+
+test('emoji made of joined parts stay whole', () => {
+  for (const emoji of [
+    '\u{1F468}\u200d\u{1F469}\u200d\u{1F467}', // family
+    '\u{1F3F3}\ufe0f\u200d\u{1F308}', // rainbow flag
+    '\u{1F468}\u{1F3FD}\u200d\u{1F4BB}', // with a skin tone
+    '\u2764\ufe0f\u200d\u{1F525}', // heart on fire
+  ]) {
+    assert.equal(tidyText(`For ${emoji} only`), `For ${emoji} only`)
+  }
+})
+
+test('a hidden character cannot slip a web address past the chat filter', () => {
+  assert.equal(
+    withoutLinks(tidyText('see spam\u200b-example.c\u2060om today')),
+    'see (link removed) today',
+  )
+})
+
+test('a note of only invisible characters is no note', () => {
+  const built = buildCustomQuest({
+    places: [place('a', 0)],
+    occasion: 'solo',
+    dayPart: 'morning',
+    area: '',
+    intro: '\u200b\ufeff',
+    notes: { a: '\u2060 \u200c' },
+  })
+  assert.ok(!built.narrative_by_creator)
+  assert.ok(!built.stops[0].note_by_creator)
 })

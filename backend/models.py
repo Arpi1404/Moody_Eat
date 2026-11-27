@@ -1,4 +1,5 @@
 import re
+import unicodedata
 import uuid
 from datetime import datetime, time
 from enum import Enum
@@ -24,9 +25,30 @@ _UNSAFE_TEXT_RE = re.compile(
 )
 
 
+# Characters that take no room: they can hide inside a word or a web address,
+# or make an empty note look written.
+_ZERO_WIDTH_RE = re.compile("[\u200b-\u200d\u2060\ufeff]")
+
+
+def _is_emoji_part(char: str) -> bool:
+    return 0x1F000 <= ord(char) <= 0x1FAFF or unicodedata.category(char) == "So"
+
+
+def _drop_zero_width(match: re.Match) -> str:
+    """Remove one zero-width character, unless it is the joiner holding the
+    parts of one emoji together, such as a family or a flag."""
+    text, at = match.string, match.start()
+    if match.group() == "\u200d" and 0 < at < len(text) - 1:
+        before, after = text[at - 1], text[at + 1]
+        if (before == "\ufe0f" or _is_emoji_part(before)) and _is_emoji_part(after):
+            return match.group()
+    return ""
+
+
 def tidy_text(value: str) -> str:
-    """One trimmed line: no control characters, single spaces."""
-    return " ".join(_UNSAFE_TEXT_RE.sub(" ", value).split())
+    """One trimmed line: no control or zero-width characters, single spaces."""
+    text = _ZERO_WIDTH_RE.sub(_drop_zero_width, value)
+    return " ".join(_UNSAFE_TEXT_RE.sub(" ", text).split())
 
 
 def _unset_marker(value: object) -> bool:
