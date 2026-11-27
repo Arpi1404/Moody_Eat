@@ -167,7 +167,7 @@ export function SwapSheet({
               : 'Preview a new stop, then confirm when the timeline feels right.'}
           </p>
           {dropsNote && !adding && (
-            <p className="swap-sheet-note">
+            <p className="swap-sheet-lost-note">
               The personal note on this stop is about {stopName}. Swapping
               removes it.
             </p>
