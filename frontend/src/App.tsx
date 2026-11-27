@@ -33,7 +33,8 @@ import { TopNav } from './components/TopNav'
 import './App.css'
 
 const HIDE_TOPNAV_PREFIXES = ['/landing', '/dev/']
-const HIDE_BOTTOMNAV_PREFIXES = ['/quest/', '/q/', '/landing', '/dev/']
+// Pages with a fixed bar of their own at the bottom: the nav would sit on it.
+const HIDE_BOTTOMNAV_PREFIXES = ['/create', '/quest/', '/q/', '/landing', '/dev/']
 const HIDE_FOOTER_PREFIXES = ['/landing', '/quest/', '/q/', '/dev/']
 
 function TopNavGate() {
