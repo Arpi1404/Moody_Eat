@@ -1,6 +1,7 @@
 """Search by name on the build-your-own page. Offline: no call reaches Google."""
 
 import logging
+from collections import Counter
 from types import SimpleNamespace
 
 import pytest
@@ -11,7 +12,11 @@ from config import Settings
 from deps import get_nearby_places_service
 from main import app, origins
 from services.google_places import GooglePlacesProvider
-from services.nearby_places_service import NearbyPlacesService
+from services.nearby_places_service import (
+    _NAME_SEARCH_TYPE_DENYLIST,
+    _TYPE_DENYLIST,
+    NearbyPlacesService,
+)
 from services.places_exceptions import (
     FeatureUnavailableError,
     LocationNotFoundError,
@@ -176,7 +181,7 @@ async def test_a_place_google_gives_no_status_for_is_kept():
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"types": ["lodging", "restaurant"]},
+        {"types": ["gym", "restaurant"]},
         {"types": ["veterinary_care", "park"]},
         {"name": "Sharma Enterprises"},
         {"name": "Bright Coaching Classes"},
@@ -185,6 +190,41 @@ async def test_a_place_google_gives_no_status_for_is_kept():
 )
 async def test_the_type_and_name_denylists_apply(overrides):
     assert await _names(FakeProvider([_place(**overrides)])) == []
+
+
+_HOTEL_AND_TAKEAWAY = [
+    ["lodging", "point_of_interest", "establishment"],
+    ["hotel", "lodging", "restaurant", "food"],
+    ["meal_takeaway", "restaurant", "food"],
+]
+
+
+@pytest.mark.parametrize("types", _HOTEL_AND_TAKEAWAY)
+async def test_a_hotel_or_a_takeaway_restaurant_can_be_found_by_name(types):
+    assert await _names(FakeProvider([_place("Grand Tea Lounge", types=types)])) == [
+        "Grand Tea Lounge"
+    ]
+
+
+@pytest.mark.parametrize("types", _HOTEL_AND_TAKEAWAY)
+def test_nearby_search_still_leaves_them_out(types):
+    kept = NearbyPlacesService._quality_filter(
+        [_place("Grand Tea Lounge", types=types)],
+        requested_place_type="restaurant",
+        drop_counts=Counter(),
+    )
+    assert kept == []
+
+
+def test_name_search_lets_only_those_two_types_back_in():
+    assert _TYPE_DENYLIST - _NAME_SEARCH_TYPE_DENYLIST == {"lodging", "meal_takeaway"}
+    assert _NAME_SEARCH_TYPE_DENYLIST < _TYPE_DENYLIST
+
+
+@pytest.mark.parametrize("denied", sorted(_NAME_SEARCH_TYPE_DENYLIST))
+async def test_every_other_denied_type_still_applies(denied):
+    # Even on a place that is also a hotel.
+    assert await _names(FakeProvider([_place(types=["lodging", denied])])) == []
 
 
 @pytest.mark.parametrize(
@@ -277,6 +317,18 @@ async def test_a_typed_area_is_geocoded_as_typed():
     result = await _service(fake).search_by_name(text="wave", area=" Park Street ")
     assert fake.geocoded == ["Park Street"]
     assert result.resolved_location.name == "Indiranagar, Bengaluru, India"
+
+
+async def test_a_second_search_of_an_area_needs_no_geocode():
+    # What the page does: the coordinates in the first answer anchor the next
+    # search of the same typed area.
+    fake = FakeProvider([_place()])
+    service = _service(fake)
+    first = await service.search_by_name(text="wave", area="Indiranagar")
+    anchor = first.resolved_location
+    await service.search_by_name(text="toit", lat=anchor.lat, lng=anchor.lng)
+    assert fake.geocoded == ["Indiranagar"]
+    assert fake.searches == [("wave", LAT, LNG), ("toit", LAT, LNG)]
 
 
 async def test_results_are_not_cached():

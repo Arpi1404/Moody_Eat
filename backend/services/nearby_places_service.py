@@ -124,6 +124,12 @@ _NOISY_TYPE_THRESHOLDS = {
 # Search by name (build-your-own). The caller named the place they want, so
 # there is no rating or review-count bar here.
 _NAME_SEARCH_MAX_RESULTS = 8
+# Two entries of the type denylist keep nearby search from suggesting places
+# nobody asked for, but hide places someone asks for by name: a hotel known for
+# its restaurant or its high tea is often listed only as the hotel, and Google
+# tags many proper restaurants as takeaway too. The rest of the list (services,
+# shops, clinics, schools) still applies.
+_NAME_SEARCH_TYPE_DENYLIST = _TYPE_DENYLIST - {"lodging", "meal_takeaway"}
 # A match farther than this is not "near" the chosen area, and a quest stop
 # there could not be walked or driven to as part of one outing.
 _NAME_SEARCH_MAX_DISTANCE_M = 50_000.0
@@ -387,7 +393,7 @@ class NearbyPlacesService:
         if place.business_status and place.business_status != "OPERATIONAL":
             return False
         place_types = {t.casefold() for t in (place.types or [])}
-        if place_types & (_TYPE_DENYLIST | _NOT_A_VENUE_TYPES):
+        if place_types & (_NAME_SEARCH_TYPE_DENYLIST | _NOT_A_VENUE_TYPES):
             return False
         if _NAME_DENYLIST_RE.search(place.name):
             return False
