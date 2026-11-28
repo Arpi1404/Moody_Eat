@@ -38,6 +38,7 @@ from quest_templates import (
     MAX_STOPS,
     MEAL,
     PLANS,
+    SWEET_PRIMARY_TYPES,
     TREAT,
     TemplateStop,
 )
@@ -154,6 +155,11 @@ _MEAL_NOT_BEFORE: dict[DayPart, tuple[int, int]] = {
 # at most. A longer gap than this is left alone and the meal starts early:
 # an hour and a half over one coffee is not a plan either.
 _LINGER_MAX_MIN: int = 30
+# A park, a zoo or a game of bowling stretches further than a coffee: up to an
+# hour more, so that a family morning out reaches lunch at 12:00 rather than a
+# kitchen that is not open yet at 11:30.
+_LINGER_MAX_MIN_OUTING: int = 60
+_LINGER_OUTING_CATEGORIES = frozenset({StopCategory.activity, StopCategory.attraction})
 _LINGER_STEP_MIN: int = 5
 
 # ── Scoring weights per budget tier ──────────────────────────────────────────
@@ -732,17 +738,22 @@ def _wait_for_meal_hour(arrive: time, not_before: time | None, max_wait_min: int
     return min(gap, max_wait_min)
 
 
-def _linger_room(place: PlaceItem, start: time, end: time) -> int:
+def _linger_room(
+    place: PlaceItem,
+    start: time,
+    end: time,
+    limit: int = _LINGER_MAX_MIN,
+) -> int:
     """How much longer a visit can run before the place closes, in minutes.
 
-    Capped at _LINGER_MAX_MIN. Unknown hours do not hold a plan back, the same
-    as everywhere else: they count as room to stay.
+    Capped at `limit`. Unknown hours do not hold a plan back, the same as
+    everywhere else: they count as room to stay.
     """
     if place.open_24h_today:
-        return _LINGER_MAX_MIN
+        return limit
     if _parse_hhmm(place.opens_today) is None or _parse_hhmm(place.closes_today) is None:
-        return _LINGER_MAX_MIN
-    for extra in range(_LINGER_MAX_MIN, 0, -_LINGER_STEP_MIN):
+        return limit
+    for extra in range(limit, 0, -_LINGER_STEP_MIN):
         if _slot_fits_hours(place, start, _add_min(end, extra)):
             return extra
     return 0
@@ -1210,11 +1221,16 @@ def _swap_kind(stop: Stop, place_type: str, occasion: Occasion) -> TemplateStop 
     """
     if stop.category == StopCategory.restaurant:
         return MEAL
-    if stop.category == StopCategory.cafe:
+    sweet = (stop.place.primary_type or "").casefold() in SWEET_PRIMARY_TYPES
+    if stop.category == StopCategory.cafe and not sweet:
         return CAFE
     if stop.category == StopCategory.bar:
         return DRINKS
-    if stop.category == StopCategory.other and place_type in ("bakery", "cafe"):
+    # A dessert stop: "other" on quests made before dessert read as a café,
+    # "cafe" at a bakery or sweet shop since.
+    if (stop.category == StopCategory.other and place_type in ("bakery", "cafe")) or (
+        stop.category == StopCategory.cafe and sweet
+    ):
         return TREAT if occasion == Occasion.family else DESSERT
     return None
 
@@ -1282,7 +1298,15 @@ async def assemble_quest(
         max_wait_min = 0
         if tmpl.role == "meal" and meal_not_before is not None and slots:
             not_before = meal_not_before
-            max_wait_min = _linger_room(slots[-1].place, slots[-1].start, slots[-1].end)
+            before = slots[-1]
+            max_wait_min = _linger_room(
+                before.place,
+                before.start,
+                before.end,
+                _LINGER_MAX_MIN_OUTING
+                if before.tmpl.category in _LINGER_OUTING_CATEGORIES
+                else _LINGER_MAX_MIN,
+            )
 
         picked = await _fill_stop(
             tmpl,

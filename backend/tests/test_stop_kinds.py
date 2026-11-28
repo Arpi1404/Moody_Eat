@@ -280,8 +280,9 @@ def test_addition_after_the_last_stop_has_no_onward_leg() -> None:
     best = res.json()[0]
     assert best["travel_to_next_minutes"] is None
     assert best["travel_mode"] is None
-    assert best["category"] == "other"
-    assert _dwell_of(best) == 30
+    # Dessert reads as a café (it showed as "Spot"), with a café's 40 minutes.
+    assert best["category"] == "cafe"
+    assert _dwell_of(best) == 40
 
 
 def test_addition_needs_a_kind() -> None:

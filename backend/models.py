@@ -320,7 +320,7 @@ class StopKind(str, Enum):
 STOP_KIND_SEARCHES: dict[StopKind, tuple[str, StopCategory]] = {
     StopKind.meal: ("restaurant", StopCategory.restaurant),
     StopKind.coffee: ("cafe", StopCategory.cafe),
-    StopKind.dessert: ("bakery", StopCategory.other),
+    StopKind.dessert: ("bakery", StopCategory.cafe),
     StopKind.drinks: ("bar", StopCategory.bar),
     StopKind.walk: ("park", StopCategory.attraction),
     StopKind.sights: ("tourist_attraction", StopCategory.attraction),

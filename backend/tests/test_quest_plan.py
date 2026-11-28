@@ -192,11 +192,15 @@ def test_every_plan_has_one_meal_at_most_and_only_dessert_or_drinks_after_it() -
     for occasion in Occasion:
         for day_part in DayPart:
             plan = PLANS[occasion][day_part]
-            assert len(plan.sequence) == MAX_STOPS
+            # Every plan holds four stops, except a family night (see
+            # test_only_a_family_night_is_shorter).
+            assert len(plan.sequence) == (
+                3 if (occasion, day_part) == (Occasion.family, DayPart.night) else MAX_STOPS
+            )
             assert sorted(map(id, plan.keep)) == sorted(map(id, plan.sequence))
             for count in range(1, MAX_STOPS + 1):
                 stops = plan.stops(count)
-                assert len(stops) == count
+                assert len(stops) == min(count, len(plan.sequence))
                 # The worst a sparse area can do: every spare is called on,
                 # each added at the end.
                 for order in (stops, stops + plan.spares(count)):
@@ -214,7 +218,7 @@ def test_four_stop_date_is_one_meal_not_a_run_of_food_stops(fake_narrative) -> N
     night = _quest(PoolProvider(_city()), _request(Occasion.date, DayPart.night, 4))
     evening = _quest(PoolProvider(_city()), _request(Occasion.date, DayPart.evening, 4))
 
-    assert _names(night) == ["Garden Bistro", "Sweet Patisserie", "Corner Pub", "Old Fort"]
+    assert _names(night) == ["Garden Bistro", "Sweet Patisserie", "Strike Lanes", "Corner Pub"]
     assert _names(evening) == ["Lake Park", "Corner Coffee", "Garden Bistro", "Sweet Patisserie"]
     for quest in (night, evening):
         categories = [stop.category for stop in quest.stops]
@@ -249,7 +253,7 @@ def test_friends_night_is_one_dinner_then_play_then_drinks(fake_narrative) -> No
         (Occasion.family, DayPart.evening, 3, ["Lake Park", "Garden Bistro", "Sweet Patisserie"]),
         (Occasion.solo, DayPart.evening, 3, ["Lake Park", "City Gallery", "Corner Coffee"]),
         # Night: dinner first, then dessert or drinks.
-        (Occasion.date, DayPart.night, 3, ["Garden Bistro", "Sweet Patisserie", "Old Fort"]),
+        (Occasion.date, DayPart.night, 3, ["Garden Bistro", "Sweet Patisserie", "Corner Pub"]),
         (Occasion.friends, DayPart.night, 2, ["Garden Bistro", "Corner Pub"]),
         (Occasion.family, DayPart.night, 2, ["Garden Bistro", "Sweet Patisserie"]),
     ],
@@ -411,9 +415,10 @@ def test_morning_lunch_waits_for_noon(fake_narrative) -> None:
 
     park, lunch = quest.stops
     assert _names(quest) == ["Lake Park", "Garden Bistro"]
-    # An hour in the park would end at 11:00; it runs to 11:30 instead.
-    assert park.time_block_end == time(11, 30)
-    assert lunch.time_block_start == time(11, 31)
+    # An hour in the park would end at 11:00; a park can stretch by an hour,
+    # so lunch starts at noon.
+    assert park.time_block_end == time(11, 59)
+    assert lunch.time_block_start == time(12, 0)
 
 
 def test_request_without_a_day_part_keeps_the_occasions_own_time_and_order(
@@ -424,7 +429,7 @@ def test_request_without_a_day_part_keeps_the_occasions_own_time_and_order(
 
     # A date with no day part starts at 19:00, which is dinner time already.
     assert date.stops[0].time_block_start == time(19, 0)
-    assert _names(date) == ["Garden Bistro", "Sweet Patisserie", "Old Fort"]
+    assert _names(date) == ["Garden Bistro", "Sweet Patisserie", "Corner Pub"]
     assert date.title == "An Evening Date in Govindpuram"
     assert solo.stops[0].time_block_start == time(10, 0)
     assert _names(solo) == ["Lake Park", "Corner Coffee", "City Gallery"]
