@@ -35,6 +35,7 @@ import {
 import { shareCardFontEmbedCss } from '../lib/shareFonts'
 import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
+import { QuestIntro } from './QuestIntro'
 import { ShareableQuestCard } from './ShareableQuestCard'
 import '../App.css'
 
@@ -1169,7 +1170,7 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
             <span aria-hidden>✦</span> made by {quest.created_by}
           </p>
         )}
-        {quest.narrative && <p className="qp-narrative">{quest.narrative}</p>}
+        {quest.narrative && <QuestIntro key={quest.id} text={quest.narrative} />}
         {daysNotice && (
           <p
             className={`qp-closed-note${daysNotice.today ? ' qp-closed-note--today' : ''}`}

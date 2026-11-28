@@ -98,7 +98,7 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
     if (positions.length === 1) {
       map.setView(positions[0], 15)
     } else {
-      map.fitBounds(L.latLngBounds(positions), { padding: [32, 32] })
+      map.fitBounds(L.latLngBounds(positions), { padding: [24, 24] })
     }
   }, [map, positions])
   return null
@@ -293,6 +293,10 @@ function StopCard({
           {index + 1}
         </span>
         <div className="qp-stop-content">
+          {/* Above the name, so when and where are read together. */}
+          <p className="qp-stop-when">
+            {formatTime(stop.time_block_start)} – {formatTime(stop.time_block_end)}
+          </p>
           <p className="qp-stop-name">
             <PlaceLink place={stop.place} surface="quest" />
           </p>
@@ -309,9 +313,6 @@ function StopCard({
           )}
           <p className="qp-stop-why">{stop.why_this_place}</p>
           <div className="qp-stop-meta">
-            <span className="qp-stop-time-chip">
-              {formatTime(stop.time_block_start)} – {formatTime(stop.time_block_end)}
-            </span>
             {priceEstimate && (
               <span
                 className="qp-stop-price-chip"
