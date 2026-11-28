@@ -77,7 +77,9 @@ _DWELL_STRETCH_CAP: float = 2.0
 # Requests at or above this many hours get a fourth stop, since three stops
 # can't plausibly fill a "6+ hr" outing even at maximum stretch.
 _LONG_QUEST_HOURS: float = 5.5
-_DEFAULT_STOP_COUNT: int = 3
+# What a request with no stop_count gets. The planner sheet starts at the same
+# number (HomePage's stopCount), so the two should move together.
+_DEFAULT_STOP_COUNT: int = 2
 
 # ── Quest start time per occasion (hour, minute, 24-h) ───────────────────────
 
