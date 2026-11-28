@@ -265,6 +265,9 @@ class QuestViabilityProvider:
             "park": [
                 RawPlace("park", "Open Garden", "Road", 0.006, 0.0, 4.4, ["park"], 700),
             ],
+            "bar": [
+                RawPlace("bar", "Late Bar", "Road", 0.007, 0.0, 4.4, ["bar"], 900),
+            ],
         }
         return by_type.get(place_type, [])
 
@@ -282,6 +285,7 @@ class QuestViabilityProvider:
             "worship": PlaceHours("04:30", "23:00", False),
             "escape": PlaceHours("10:00", "23:00", False),
             "park": PlaceHours("06:00", "22:30", False),
+            "bar": PlaceHours("12:00", "01:00", False),
         }
         return hours[provider_id]
 
@@ -305,7 +309,10 @@ def test_assemble_quest_skips_closed_and_mood_wrong_candidates(monkeypatch) -> N
     quest = asyncio.run(assemble_quest(req, service))
 
     names = [stop.place.name for stop in quest.stops]
-    assert names == ["Open Date Bistro", "Late Bakery", "Open Garden"]
+    # A date at 19:00 with no day part follows the night plan: dinner,
+    # dessert, then a bar. No sight after dinner, so the temple and the escape
+    # room are never even considered.
+    assert names == ["Open Date Bistro", "Late Bakery", "Late Bar"]
     assert "closed_rest" in provider.hours_requested
     assert "worship" not in provider.hours_requested
     assert "escape" not in provider.hours_requested
@@ -395,6 +402,7 @@ class DayPartProvider:
             "amusement_park": [RawPlace("funfair", "Night Funfair", "Road", 0.003, 0.0, 4.4, ["amusement_park"], 500)],
             "museum": [RawPlace("museum", "Indoor Museum", "Road", 0.005, 0.0, 4.5, ["museum"], 800)],
             "bakery": [RawPlace("bakery", "Allday Bakery", "Road", 0.004, 0.0, 4.4, ["bakery"], 400)],
+            "bowling_alley": [RawPlace("lanes", "Late Lanes", "Road", 0.006, 0.0, 4.5, ["bowling_alley"], 700)],
         }
         return by_type.get(place_type, [])
 
@@ -405,6 +413,7 @@ class DayPartProvider:
             "funfair": PlaceHours("10:00", "23:00", False),
             "museum": PlaceHours("09:00", "21:00", False),
             "bakery": PlaceHours("08:00", "23:59", False),
+            "lanes": PlaceHours("11:00", "23:30", False),
         }
         return hours[provider_id]
 
@@ -440,10 +449,10 @@ def test_day_part_changes_start_time_and_filters_closed_places(monkeypatch) -> N
     assert "Sunset Park" in afternoon_names
     assert afternoon.stops[0].time_block_start == time(13, 0)
 
-    # Night: the park closed at 19:00 — the engine must fall through to the
-    # late-open funfair instead of planning a visit to a closed park.
+    # Night: a family night is indoors after dinner (bowling or a film), so
+    # neither the park (shut at 19:00) nor the funfair is planned.
     assert "Sunset Park" not in night_names
-    assert "Night Funfair" in night_names
+    assert night_names == ["Family Diner", "Allday Bakery", "Late Lanes"]
     assert night.stops[0].time_block_start == time(20, 0)
 
 
@@ -647,6 +656,7 @@ class StopCountProvider:
             "cafe": [RawPlace("cafe", "Coffee Spot", "Road", 0.003, 0.0, 4.6, ["cafe"], 500)],
             "tourist_attraction": [RawPlace("sight", "City Sight", "Road", 0.004, 0.0, 4.5, ["tourist_attraction"], 900)],
             "bar": [RawPlace("bar", "Nightcap Spot", "Road", 0.005, 0.0, 4.4, ["bar"], 700)],
+            "bowling_alley": [RawPlace("lanes", "Lanes Spot", "Road", 0.006, 0.0, 4.5, ["bowling_alley"], 700)],
         }
         return by_type.get(place_type, [])
 
@@ -682,9 +692,13 @@ def test_stop_count_selector_trims_and_extends_template(monkeypatch) -> None:
     # 1 stop is the occasion's anchor; 2 keeps the core pair (dinner + dessert).
     assert [s.place.name for s in _quest(1).stops] == ["Dinner Spot"]
     assert [s.place.name for s in _quest(2).stops] == ["Dinner Spot", "Dessert Spot"]
-    # The fourth stop is a drink, not a second cafe after dessert.
+    # Three stops end at a bar; the fourth is bowling before it, not a sight
+    # that shut hours ago.
+    assert [s.place.name for s in _quest(3).stops] == [
+        "Dinner Spot", "Dessert Spot", "Nightcap Spot",
+    ]
     assert [s.place.name for s in _quest(4).stops] == [
-        "Dinner Spot", "Dessert Spot", "Nightcap Spot", "City Sight",
+        "Dinner Spot", "Dessert Spot", "Lanes Spot", "Nightcap Spot",
     ]
 
 
@@ -731,14 +745,14 @@ def test_assemble_quest_surfaces_inr_estimates_and_totals(monkeypatch) -> None:
 
     quest = asyncio.run(assemble_quest(req, service))
 
-    bistro, bakery, park = quest.stops
+    bistro, bakery, bar = quest.stops
     assert bistro.est_cost_per_person_min_inr == 400
     assert bistro.est_cost_per_person_max_inr == 800
     assert bistro.price_source == "google_price_range"
     assert bakery.est_cost_per_person_min_inr == 100
-    # The park has no price signal and must not fabricate one.
-    assert park.est_cost_per_person_min_inr is None
-    assert park.price_source is None
+    # The bar has no price signal and must not fabricate one.
+    assert bar.est_cost_per_person_min_inr is None
+    assert bar.price_source is None
     # Quest totals sum only the priced stops.
     assert quest.est_total_per_person_min_inr == 500
     assert quest.est_total_per_person_max_inr == 1000

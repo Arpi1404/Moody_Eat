@@ -152,6 +152,14 @@ PLAY_FAMILY = TypeFamily(
         "movie_theater", "shopping_mall",
     }),
 )
+# Indoors and open late: what is still open after dinner. No parks, sights or
+# malls, which are shut or shutting by then.
+_LATE_PLAY = frozenset({
+    "bowling_alley", "amusement_center", "video_arcade", "karaoke",
+    "comedy_club", "ice_skating_rink", "movie_theater",
+})
+NIGHT_PLAY_FAMILY = TypeFamily(primary=_LATE_PLAY)
+FILM_FAMILY = TypeFamily(primary=frozenset({"movie_theater"}))
 FAMILY_FUN_FAMILY = TypeFamily(
     primary=_PLAY | _OUTDOORS | _CULTURE | _WORSHIP | frozenset({
         "playground", "indoor_playground", "shopping_mall",
@@ -212,14 +220,17 @@ CAFE = TemplateStop(
     role="coffee",
     family=CAFE_FAMILY,
 )
+# A dessert stop is a bakery, a dessert shop or a cafe, so it reads as a café
+# on the site, the label the site gives a bakery anyway. ("other" showed as
+# "Spot".)
 DESSERT = TemplateStop(
-    category=StopCategory.other,
+    category=StopCategory.cafe,
     places_types=("bakery", "cafe"),
     role="dessert",
     family=DESSERT_FAMILY,
 )
 TREAT = TemplateStop(
-    category=StopCategory.other,
+    category=StopCategory.cafe,
     places_types=("bakery", "cafe", "shopping_mall"),
     role="dessert",
     family=TREAT_FAMILY,
@@ -282,6 +293,29 @@ PLAY = TemplateStop(
     family=PLAY_FAMILY,
     avoid_names=_FOR_CHILDREN_RE,
 )
+# Something to do after dinner: bowling or an arcade first, a late film when
+# there is neither.
+NIGHT_PLAY = TemplateStop(
+    category=StopCategory.activity,
+    places_types=("bowling_alley", "movie_theater"),
+    role="activity",
+    family=NIGHT_PLAY_FAMILY,
+    avoid_names=_FOR_CHILDREN_RE,
+)
+# The same for a family: a play area for children is the point here.
+FAMILY_NIGHT_PLAY = TemplateStop(
+    category=StopCategory.activity,
+    places_types=("bowling_alley", "movie_theater"),
+    role="activity",
+    family=NIGHT_PLAY_FAMILY,
+)
+# A night out alone: a film.
+LATE_SHOW = TemplateStop(
+    category=StopCategory.activity,
+    places_types=("movie_theater",),
+    role="activity",
+    family=FILM_FAMILY,
+)
 FAMILY_FUN = TemplateStop(
     category=StopCategory.activity,
     places_types=(
@@ -301,6 +335,10 @@ FAMILY_MORE = TemplateStop(
     role="activity",
     family=FAMILY_FUN_FAMILY,
 )
+
+# What a dessert stop's place mainly is, when it is not a cafe. Used to tell a
+# dessert stop from a coffee stop once both read as a café.
+SWEET_PRIMARY_TYPES = _SWEET_TYPES | _COUNTER_TYPES
 
 # Roles that involve eating or drinking. A plan has at most one "meal", and
 # the only food after it is dessert or drinks.
@@ -361,7 +399,16 @@ def _plan(
 #              dinner time (the generator holds it to about 7pm). A one- or
 #              two-stop date, and a one-stop family outing, are dinner-led
 #              instead and start at 7pm (the owner's call, 27 Nov 2026).
-#   night      dinner first, then dessert or drinks
+#   night      dinner first, then dessert or drinks. Nothing that keeps
+#              daylight hours: no parks, sights, galleries, museums or
+#              libraries after dinner, only places open late (bars, dessert,
+#              cafes, bowling, a film). A family night is three stops at most.
+#
+# The rule behind every shape: a stop kind is only scheduled at an hour when
+# the places it searches for are usually open. Parks, sights and galleries
+# keep to the day and early evening (start by about 18:00), restaurants serve
+# from late morning, and after 20:00 only food, drink and late indoor play
+# remain. tests/test_plan_hours.py checks every shape against that.
 PLANS: dict[Occasion, dict[DayPart, DayPlan]] = {
     Occasion.date: {
         DayPart.morning: _plan(
@@ -378,8 +425,8 @@ PLANS: dict[Occasion, dict[DayPart, DayPlan]] = {
             },
         ),
         DayPart.night: _plan(
-            DINNER, DESSERT, NIGHTCAP, SIGHT,
-            keep=(DINNER, DESSERT, SIGHT, NIGHTCAP),
+            DINNER, DESSERT, NIGHT_PLAY, NIGHTCAP,
+            keep=(DINNER, DESSERT, NIGHTCAP, NIGHT_PLAY),
         ),
     },
     Occasion.friends: {
@@ -394,10 +441,15 @@ PLANS: dict[Occasion, dict[DayPart, DayPlan]] = {
         DayPart.evening: _plan(
             PLAY, DINNER, DESSERT, DRINKS,
             keep=(DRINKS, PLAY, DINNER, DESSERT),
+            # Two stops in the evening: something to do, then dinner at 19:00.
+            # Activity-then-drinks left an evening out with no meal in it.
+            short={2: ((PLAY, DINNER), (DRINKS,))},
         ),
+        # After dinner, bowling or a film: not the mall, theme park or sight
+        # the daytime activity falls back to, which are shut by 21:00.
         DayPart.night: _plan(
-            DINNER, PLAY, DESSERT, DRINKS,
-            keep=(DRINKS, DINNER, PLAY, DESSERT),
+            DINNER, NIGHT_PLAY, DESSERT, DRINKS,
+            keep=(DRINKS, DINNER, NIGHT_PLAY, DESSERT),
         ),
     },
     Occasion.solo: {
@@ -407,10 +459,17 @@ PLANS: dict[Occasion, dict[DayPart, DayPlan]] = {
         ),
         DayPart.afternoon: _plan(CAFE, QUIET, SOLO_SIGHT, STROLL),
         DayPart.evening: _plan(
-            STROLL, QUIET, SOLO_SIGHT, CAFE,
-            keep=(CAFE, STROLL, QUIET, SOLO_SIGHT),
+            # The fourth stop is dinner, not a sight: a sight reached at 18:30
+            # is closing or shut.
+            STROLL, QUIET, CAFE, DINNER,
+            keep=(CAFE, STROLL, QUIET, DINNER),
         ),
-        DayPart.night: _plan(CAFE, QUIET, SOLO_SIGHT, STROLL),
+        # A late café or dessert place, dinner, a film, a bar: what is open.
+        # (It was a coffee, then a park, gallery or library at 20:40.)
+        DayPart.night: _plan(
+            DINNER, LATE_SHOW, DESSERT, NIGHTCAP,
+            keep=(DESSERT, DINNER, LATE_SHOW, NIGHTCAP),
+        ),
     },
     Occasion.family: {
         DayPart.morning: _plan(
@@ -426,7 +485,10 @@ PLANS: dict[Occasion, dict[DayPart, DayPlan]] = {
             keep=(FAMILY_FUN, DINNER, TREAT, FAMILY_MORE),
             short={1: ((DINNER,), (FAMILY_FUN,))},
         ),
-        DayPart.night: _plan(DINNER, TREAT, FAMILY_FUN, FAMILY_MORE),
+        # Shorter and indoors: dinner, a treat, then bowling or a film. A park
+        # or zoo is shut after dinner, and a fourth stop would run a family
+        # out past 23:00.
+        DayPart.night: _plan(DINNER, TREAT, FAMILY_NIGHT_PLAY),
     },
 }
 
