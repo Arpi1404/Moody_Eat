@@ -7848,3 +7848,163 @@ button.hero-plan:focus-visible,
   .hero-plan--loading .hero-plan-photo,
   .hero-plan--loading .hero-plan-bar { animation: none; }
 }
+
+
+/* ── Quest page: the first stop sits higher ────────────────────────────── */
+
+.qp-intro {
+  margin-bottom: 18px;
+}
+
+.qp-intro .qp-narrative {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.qp-intro .qp-narrative--short {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.qp-intro-toggle {
+  min-height: 28px;
+  padding: 2px 12px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.qp-intro-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* The notes under the intro now start from its bottom margin. */
+.qp-intro + .qp-closed-note,
+.qp-intro + .qp-soft-note,
+.qp-closed-note + .qp-soft-note {
+  margin-top: -6px;
+}
+
+.qp-closed-note,
+.qp-soft-note {
+  margin-bottom: 14px;
+}
+
+.qp-map-wrap {
+  height: 190px;
+  margin-bottom: 16px;
+}
+
+.qp-help {
+  margin: -10px 0 2px;
+}
+
+.qp-help-link {
+  min-height: 32px;
+}
+
+.qp-stop-when {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .qp-page {
+    padding-top: 10px;
+  }
+
+  /* /create uses this class too. */
+  .qp-page .qp-back {
+    margin-bottom: 8px;
+  }
+
+  .qp-header {
+    margin-bottom: 12px;
+  }
+
+  .qp-title-input {
+    margin-bottom: 10px;
+  }
+
+  .qp-byline {
+    margin: -6px 0 8px;
+  }
+
+  .qp-intro {
+    margin-bottom: 12px;
+  }
+
+  .qp-closed-note,
+  .qp-soft-note {
+    margin-bottom: 10px;
+  }
+
+  .qp-closed-note--today,
+  .qp-soft-note {
+    padding: 8px 12px;
+    line-height: 1.4;
+  }
+
+  .qp-intro + .qp-closed-note,
+  .qp-intro + .qp-soft-note,
+  .qp-closed-note + .qp-soft-note {
+    margin-top: -2px;
+  }
+
+  .qp-map-wrap {
+    height: 128px;
+    margin-bottom: 10px;
+  }
+
+  .qp-help {
+    margin: -6px 0 0;
+  }
+
+  .qp-create-banner {
+    margin: 0 0 10px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .qp-create-banner-title {
+    font-size: 14px;
+  }
+
+  /* Over the byline's pull-up, which has no chips above it here. */
+  .qp-create-banner + .qp-byline {
+    margin-top: 0;
+  }
+}
+
+/* A laptop screen is wide but short. */
+@media (min-width: 601px) and (max-height: 860px) {
+  .qp-page {
+    padding-top: 16px;
+  }
+
+  /* /create uses this class too. */
+  .qp-page .qp-back {
+    margin-bottom: 10px;
+  }
+
+  .qp-map-wrap {
+    height: 140px;
+  }
+
+  .qp-stop-hero {
+    height: 130px;
+  }
+}
