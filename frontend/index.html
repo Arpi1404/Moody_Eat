@@ -29,16 +29,21 @@
         history.replaceState(history.state, '', location.pathname)
       })()
     </script>
-    <!-- Umami, cookie-free analytics. Runs only on the production hosts, and
-         keeps query strings and #fragments out of recorded URLs: share links
-         and search pages carry quest titles and typed areas there. -->
+    <!-- Umami, cookie-free analytics. The tracker is a fixed copy served from
+         our own site (see the top of public/site-events.js); events go to
+         Umami Cloud at data-host-url. Runs only on the production hosts, sends
+         nothing when the browser asks not to be tracked, and keeps query
+         strings and #fragments out of recorded URLs: share links and search
+         pages carry quest titles and typed areas there. -->
     <script
       defer
-      src="https://cloud.umami.is/script.js"
+      src="/site-events.js"
+      data-host-url="https://gateway.umami.is"
       data-website-id="4f8f2eac-9e9d-44e9-a11a-e68ad70bdf6f"
       data-domains="moodyeat.in,www.moodyeat.in"
       data-exclude-search="true"
       data-exclude-hash="true"
+      data-do-not-track="true"
     ></script>
     <title>MoodyEat — Tell us the mood. We'll handle the plans.</title>
     <meta
