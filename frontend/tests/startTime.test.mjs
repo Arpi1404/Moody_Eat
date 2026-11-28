@@ -84,3 +84,16 @@ test('times read as a person says them', () => {
   assert.equal(timeLabel('19:30'), '7:30 pm')
   assert.equal(timeLabel('22:00'), '10 pm')
 })
+
+test('a quest names its day: today, tomorrow, else weekday and date', async () => {
+  const { questDayLabel } = await loadSource('lib/startTime.ts')
+  assert.equal(questDayLabel('2026-11-28', at(9)), 'Today')
+  assert.equal(questDayLabel('2026-11-29', at(23, 59)), 'Tomorrow')
+  assert.equal(questDayLabel('2026-12-03', at(9)), 'Thu 3 Dec')
+  // A day already gone is still named, not called "Today".
+  assert.equal(questDayLabel('2026-11-27', at(9)), 'Fri 27 Nov')
+  // Quests from before the field, or a bad value: no label.
+  assert.equal(questDayLabel(undefined, at(9)), null)
+  assert.equal(questDayLabel(null, at(9)), null)
+  assert.equal(questDayLabel('next week', at(9)), null)
+})

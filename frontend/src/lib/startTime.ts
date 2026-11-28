@@ -147,3 +147,17 @@ export function keepStartValid(now: Date, start: Start): Start {
   if (choices.length > 0) return { offset: start.offset, time: choices[choices.length - 1] }
   return { offset: start.offset + 1, time: start.time }
 }
+
+/** What a quest page calls the outing's day: "Today", "Tomorrow", otherwise
+ * "Thu 3 Dec". `iso` is "YYYY-MM-DD"; null for anything else. */
+export function questDayLabel(iso: string | null | undefined, now: Date): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '')
+  if (!match) return null
+  const day = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  if (Number.isNaN(day.getTime())) return null
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const offset = Math.round((day.getTime() - today.getTime()) / 86_400_000)
+  if (offset === 0) return 'Today'
+  if (offset === 1) return 'Tomorrow'
+  return `${WEEKDAYS[day.getDay()]} ${day.getDate()} ${MONTHS[day.getMonth()]}`
+}
