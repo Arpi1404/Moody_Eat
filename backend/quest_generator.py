@@ -34,6 +34,7 @@ from models import (
 from quest_templates import (
     CAFE,
     DESSERT,
+    DINNER_FAMILY,
     DRINKS,
     MAX_STOPS,
     MEAL,
@@ -279,6 +280,45 @@ _VIABILITY_CHECK_LIMIT: int = 8
 # reuses the cached wide result, so picks are unchanged.
 _SPARSE_PLACE_TYPES = frozenset({"zoo", "aquarium"})
 
+# ── Meals chosen by what is wanted ────────────────────────────────────────────
+# A type search for `restaurant` is ranked by size, so a date's dinner went to
+# the area's busiest chain. For a date's meal the first search is instead a
+# Text Search phrased by what the meal is for, which returns the places people
+# go to for that. It replaces the `restaurant` type search; it does not add
+# one, unless it finds too little and the stop falls back to that search.
+#
+# Only dates: for friends a busy, popular place is usually what is wanted, and
+# a solo meal is rarely about the room. Text Search also has its own daily cap
+# (1,000 requests), half that of Nearby Search.
+_INTENT_QUERIES: dict[tuple[Occasion, str], dict[CostEstimate, str]] = {
+    (Occasion.date, "dinner"): {
+        CostEstimate.cheap: "affordable cozy restaurant for a dinner date",
+        CostEstimate.mid: "romantic restaurant for a dinner date",
+        CostEstimate.splurge: "fine dining restaurant for a romantic dinner",
+    },
+    (Occasion.date, "lunch"): {
+        CostEstimate.cheap: "affordable cozy restaurant for a lunch date",
+        CostEstimate.mid: "nice restaurant for a lunch date",
+        CostEstimate.splurge: "upscale restaurant for a lunch date",
+    },
+}
+# Text Search leans towards the area but answers from well outside it: only
+# places this close to the searched spot count, the reach of the first type
+# search tier.
+_INTENT_MAX_DISTANCE_M: float = 3_000.0
+# Fewer usable places than this and the stop searches by type as before.
+_INTENT_MIN_USABLE: int = 3
+# How much Google's order counts: the best match gains this much score over
+# the twentieth. About the gap between a 4.3 and a 4.6 rating, so the intent
+# leads among places of similar standing without overriding budget or rating.
+_INTENT_RANK_WEIGHT: float = 0.06
+_INTENT_RANK_SPAN: int = 20
+# Shuffle ("show me another") draws from a wider band in an intent pool. Every
+# place in it was returned for what the meal is for, and the pool is small and
+# spread out in price, so the type search's 0.045 band left most areas with
+# one possible dinner.
+_INTENT_VARIETY_SCORE_EPSILON: float = 0.09
+
 # ── Mood-specific hard rejects ────────────────────────────────────────────────
 
 _SOCIAL_EVENING_CUTOFF_MIN: int = 17 * 60
@@ -502,6 +542,10 @@ def _score_breakdown(
         + weights["route_fit"] * route_fit
         + weights["confidence"] * confidence
     )
+    if place.intent_rank is not None:
+        total += _INTENT_RANK_WEIGHT * max(
+            0.0, 1.0 - place.intent_rank / _INTENT_RANK_SPAN
+        )
     return ScoreBreakdown(
         total=total,
         quality=quality,
@@ -580,7 +624,10 @@ def _variety_shuffle(
         _score(p, cost, prev_lat, prev_lng, popularity_cap=popularity_cap)
         for p in ranked
     ]
-    cutoff = scores[0] - _VARIETY_SCORE_EPSILON
+    from_intent = all(p.intent_rank is not None for p in ranked)
+    cutoff = scores[0] - (
+        _INTENT_VARIETY_SCORE_EPSILON if from_intent else _VARIETY_SCORE_EPSILON
+    )
     group_end = 1
     while group_end < len(ranked) and scores[group_end] >= cutoff:
         group_end += 1
@@ -977,6 +1024,53 @@ class _CandidatePick(NamedTuple):
     wait_min: int = 0
 
 
+def _intent_query(tmpl: TemplateStop, req: QuestGenerationRequest) -> str | None:
+    """The Text Search phrase for this stop, or None to search by type."""
+    if tmpl.role != "meal":
+        return None
+    meal = "dinner" if tmpl.family is DINNER_FAMILY else "lunch"
+    queries = _INTENT_QUERIES.get((req.occasion, meal))
+    return queries.get(req.cost_estimate) if queries else None
+
+
+async def _intent_candidates(
+    service: NearbyPlacesService,
+    tmpl: TemplateStop,
+    req: QuestGenerationRequest,
+    place_type: str,
+) -> list[PlaceItem] | None:
+    """Strong places for a meal from a search by intent, or None when the
+    stop should search by type as before (no phrase for it, a failed search,
+    or too few usable places)."""
+    query = _intent_query(tmpl, req)
+    if query is None:
+        return None
+    try:
+        found = await service.search_by_intent(
+            location=req.location,
+            text=query,
+            place_type=place_type,
+            max_distance_m=_INTENT_MAX_DISTANCE_M,
+        )
+    except PlacesProviderError as exc:
+        logger.warning("intent_search_failed err_type=%s", exc.__class__.__name__)
+        return None
+    strong = [p for p in found if _is_strong(p)]
+    usable = [
+        p for p in strong
+        if tmpl.suits(p.name, p.primary_type, p.types)
+        and p.provider_id not in req.exclude_place_ids
+    ]
+    if len(usable) < _INTENT_MIN_USABLE:
+        logger.info(
+            "intent_search_fallback role=%s found=%d usable=%d",
+            tmpl.role, len(found), len(usable),
+        )
+        return None
+    logger.info("intent_search_used role=%s usable=%d", tmpl.role, len(usable))
+    return strong
+
+
 async def _fill_stop(
     tmpl: TemplateStop,
     place_types: tuple[str, ...],
@@ -1034,8 +1128,15 @@ async def _fill_stop(
             hours_memo=hours_memo,
         )
 
-    for place_type in place_types:
-        candidates = await _search_with_expansion(service, req.location, place_type)
+    intent_pool: list[PlaceItem] | None = None
+    if place_types:
+        intent_pool = await _intent_candidates(service, tmpl, req, place_types[0])
+
+    for index, place_type in enumerate(place_types):
+        if index == 0 and intent_pool is not None:
+            candidates = intent_pool
+        else:
+            candidates = await _search_with_expansion(service, req.location, place_type)
         pools[place_type] = candidates
         if not candidates:
             logger.info(

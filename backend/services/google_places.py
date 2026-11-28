@@ -391,9 +391,13 @@ class GooglePlacesProvider(PlacesProvider):
         text: str,
         lat: float,
         lng: float,
+        included_type: str | None = None,
+        bias_radius_m: float | None = None,
     ) -> list[RawPlace]:
-        """Places matching a typed name, in Google's relevance order.
+        """Places matching a typed name or a phrase, in Google's relevance order.
 
+        `included_type` keeps the results to one Google type ("restaurant").
+        `bias_radius_m` narrows the circle matches lean towards (default 5 km).
         One billed Text Search request per call; there are no session tokens.
         """
         if not self._settings.use_new_places_api:
@@ -406,10 +410,13 @@ class GooglePlacesProvider(PlacesProvider):
             "locationBias": {
                 "circle": {
                     "center": {"latitude": lat, "longitude": lng},
-                    "radius": _TEXT_SEARCH_BIAS_RADIUS_M,
+                    "radius": float(bias_radius_m or _TEXT_SEARCH_BIAS_RADIUS_M),
                 }
             },
         }
+        if included_type:
+            payload["includedType"] = included_type
+            payload["strictTypeFiltering"] = True
         data = await self._post_json_new(
             _TEXT_SEARCH_URL_NEW, payload, _TEXT_SEARCH_FIELD_MASK
         )
