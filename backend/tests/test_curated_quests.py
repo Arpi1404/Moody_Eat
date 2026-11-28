@@ -22,7 +22,7 @@ from curated_quests import (
     find_quest,
 )
 from main import app
-from models import ClosedDay, Occasion, Quest
+from models import AUDIENCE_LINE_MAX, ClosedDay, Occasion, Quest
 
 EXPECTED_MIX = {Occasion.date: 2, Occasion.friends: 2, Occasion.solo: 1, Occasion.family: 1}
 MAX_KM_FROM_CENTRE = 40
@@ -209,6 +209,48 @@ def test_a_closed_day_goes_with_its_place_instead_of_refusing_the_quest(keep) ->
     stops = quest.model_dump(mode="json")["stops"]
     edited = _rebuilt(quest, stops=[stops[i] for i in keep])
     assert edited.closed_days is None
+
+
+# ── What a catalogue card says ──
+
+
+def test_every_quest_says_who_it_is_for_in_one_short_line_of_its_own() -> None:
+    lines = [q.audience_line for c in CURATED_CITIES for q in c.quests]
+    assert all(lines)
+    assert all(len(line) <= AUDIENCE_LINE_MAX for line in lines)
+    assert len(set(lines)) == len(lines)
+
+
+def test_a_chosen_lead_photo_names_one_of_the_quests_stops() -> None:
+    chosen = {
+        q.title: q.stops[q.photo_stop.stop_index].place.name
+        for c in CURATED_CITIES
+        for q in c.quests
+        if q.photo_stop
+    }
+    assert chosen == {"Jubilee Hills, Slow Burn": "Olive Bistro & Bar"}
+
+
+def test_the_card_fields_are_left_out_when_unset() -> None:
+    quest = _quest("HITEC City Game Night")
+    assert "photo_stop" not in quest.model_dump(mode="json")
+    bare = _rebuilt(quest, audience_line=None)
+    assert "audience_line" not in bare.model_dump_json()
+
+
+def test_a_lead_photo_follows_its_stop_and_goes_with_it() -> None:
+    quest = _quest("Jubilee Hills, Slow Burn")
+    stops = quest.model_dump(mode="json")["stops"]
+    moved = _rebuilt(quest, stops=[stops[1], stops[0], stops[2]])
+    assert moved.photo_stop.stop_index == 0
+    assert _rebuilt(quest, stops=[stops[0]]).photo_stop is None
+    with pytest.raises(ValueError, match="photo_stop names stop 5"):
+        _rebuilt(quest, photo_stop={"stop_index": 5})
+
+
+def test_an_overlong_audience_line_is_refused() -> None:
+    with pytest.raises(ValueError):
+        _rebuilt(_quest("HITEC City Game Night"), audience_line="x" * (AUDIENCE_LINE_MAX + 1))
 
 
 # ── Endpoints ──

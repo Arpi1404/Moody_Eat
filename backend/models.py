@@ -349,14 +349,44 @@ Weekday = Literal[
 ]
 
 
-class ClosedDay(BaseModel):
+class StopRef(BaseModel):
+    """One of a quest's own stops, pointed at by its position."""
+
+    stop_index: int = Field(ge=0, le=9)
+    # Filled in from that stop. A saved copy can have its stops removed,
+    # swapped or reordered, and the reference has to stay with the place.
+    place_id: Optional[str] = Field(default=None, max_length=400)
+
+
+class ClosedDay(StopRef):
     """A weekday a catalogue quest does not work, and the stop that is why."""
 
     day: Weekday
-    stop_index: int = Field(ge=0, le=9)
-    # Filled in from that stop. A saved copy can have its stops removed,
-    # swapped or reordered, and the entry has to stay with the place.
-    place_id: Optional[str] = Field(default=None, max_length=400)
+
+
+# One line saying who a catalogue quest is for.
+AUDIENCE_LINE_MAX = 70
+
+
+def _follow_stop(ref: StopRef, place_ids: list[str], field: str) -> Optional[StopRef]:
+    """Where a reference points in these stops, or None when its place has gone.
+
+    A reference written without a place id must name a stop that exists. One
+    that has a place id came back from a browser, where the stops may have
+    changed since: it moves with its place. Refusing the quest instead would
+    stop an edited copy from being shared.
+    """
+    index = ref.stop_index
+    if ref.place_id is None:
+        if index >= len(place_ids):
+            raise ValueError(
+                f"{field} names stop {index}, but the quest has {len(place_ids)} stops."
+            )
+    elif index >= len(place_ids) or place_ids[index] != ref.place_id:
+        if ref.place_id not in place_ids:
+            return None
+        index = place_ids.index(ref.place_id)
+    return ref.model_copy(update={"stop_index": index, "place_id": place_ids[index]})
 
 
 class Stop(BaseModel):
@@ -431,34 +461,29 @@ class Quest(BaseModel):
         default=None, max_length=70, exclude_if=_unset_marker
     )
 
-    @model_validator(mode="after")
-    def closed_days_follow_their_stops(self) -> "Quest":
-        """An entry written without a place id must name a stop that exists.
+    # For catalogue cards: one line on who the quest is for, and the stop whose
+    # photo leads it (the first stop when unset). Both absent from the JSON
+    # when unset.
+    audience_line: Optional[str] = Field(default=None, exclude_if=_unset_marker)
+    photo_stop: Optional[StopRef] = Field(default=None, exclude_if=_unset_marker)
 
-        One that has a place id came back from a browser, where the stops may
-        have changed since: it moves with its place, and goes when the place
-        has gone. Refusing the quest instead would stop an edited copy from
-        being shared.
-        """
-        if not self.closed_days:
+    @field_validator("audience_line")
+    @classmethod
+    def audience_line_fits(cls, v: Optional[str]) -> Optional[str]:
+        return None if v is None else _fitting_text(v, AUDIENCE_LINE_MAX)
+
+    @model_validator(mode="after")
+    def stop_references_follow_their_stops(self) -> "Quest":
+        if not self.closed_days and not self.photo_stop:
             return self
         place_ids = [stop.place.provider_id for stop in self.stops]
+        if self.photo_stop:
+            self.photo_stop = _follow_stop(self.photo_stop, place_ids, "photo_stop")
         kept: dict[tuple[str, int], ClosedDay] = {}
-        for entry in self.closed_days:
-            index = entry.stop_index
-            if entry.place_id is None:
-                if index >= len(place_ids):
-                    raise ValueError(
-                        f"closed_days names stop {index}, but the quest has "
-                        f"{len(place_ids)} stops."
-                    )
-            elif index >= len(place_ids) or place_ids[index] != entry.place_id:
-                if entry.place_id not in place_ids:
-                    continue
-                index = place_ids.index(entry.place_id)
-            kept[(entry.day, index)] = entry.model_copy(
-                update={"stop_index": index, "place_id": place_ids[index]}
-            )
+        for entry in self.closed_days or []:
+            found = _follow_stop(entry, place_ids, "closed_days")
+            if found:
+                kept[(found.day, found.stop_index)] = found
         self.closed_days = list(kept.values()) or None
         return self
 

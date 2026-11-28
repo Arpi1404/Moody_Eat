@@ -114,6 +114,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For two who'd rather wander the old city than book a table.",
           "created_by": null,
           "origin": "curated",
           "narrative": "The old city after work, before the rush. Climb Charminar in the last hour before it closes, when the stone goes amber, then walk ten minutes up towards Madina for biryani at Shadab — the un-gentrified one, shared tables, and you'll understand why Hyderabadis argue about which place is best. Walk it off on the way back and finish with Irani chai and Osmania biscuits at Nimrah, standing a few steps from the monument you started at.",
@@ -230,9 +231,14 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For a date night that doesn't try too hard.",
+          "photo_stop": {
+            "stop_index": 1,
+            "place_id": "ChIJBdTHClGRyzsRjU5SWqXEeJk"
+          },
           "created_by": null,
           "origin": "curated",
-          "narrative": "The version of date night that doesn't try too hard. Start on the Durgam Cheruvu lakefront while the light goes and the cable bridge switches on across the water. Olive is a few minutes around the lake — whitewashed walls and a terrace over the water; order the wood-fired pizza and a glass of wine because that's what the place is for. Then Conçu, where the desserts are the reason you skipped tiramisu earlier.",
+          "narrative": "The version of date night that doesn't try too hard. Start on the Durgam Cheruvu lakefront as the evening settles in and the cable bridge lights up across the water. Olive is a few minutes around the lake — whitewashed walls and a terrace over the water; order the wood-fired pizza and a glass of wine because that's what the place is for. Then Conçu, where the desserts are the reason you skipped tiramisu earlier.",
           "created_at": "2026-05-05T18:00:00"
         },
         {
@@ -347,6 +353,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For the group that can never agree on what to do.",
           "created_by": null,
           "origin": "curated",
           "narrative": "For the group that says 'let's just hang' but never agrees on what. Smaaash takes care of the first hour and a half — bowling, arcade machines, VR; whoever loses pays for the first round. Am Aha is one floor down: Telugu food done properly, with a bar, which settles the where-do-we-eat argument before it starts. Finish a short walk from the mall at Akan, a brewpub with house beers and enough room that nobody has to stand.",
@@ -462,6 +469,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For friends after the classics on a budget.",
           "created_by": null,
           "origin": "curated",
           "narrative": "The Hyderabad starter pack, on a budget. Paradise's Secunderabad flagship is the one — go early and you skip the worst of the queue. Order the biryani and come hungry. Then Lumbini Park for the walk you owe yourself after that quantity of rice, with the Buddha statue lit up out on the water and boats running to it. End at Mozamjahi Market, where Famous has been scooping hand-churned fruit ice cream under the clock tower for decades.",
@@ -578,6 +586,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For time alone with good coffee, green paths and chai.",
           "created_by": null,
           "origin": "curated",
           "narrative": "A solo route built around the small luxuries Hyderabad does well: good coffee, public greenery, neighbourhood chai. Roastery for an hour with a book — the garden tables are forgiving and nobody rushes you out. KBR is actual forest in the middle of the city; peacocks if you're lucky. Niloufer's tea is the unfussy reward — you stand at the counter, you don't sit, you watch the city do its evening commute.",
@@ -693,6 +702,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For families, from kids who run to grandparents who sit.",
           "created_by": null,
           "origin": "curated",
           "narrative": "Two halves of the same dynasty in one afternoon. Start at the Qutb Shahi tombs, where the domes sit in gardens wide enough for kids to run and grandparents to find a bench. Then Golconda itself: clap under the entrance portico and the sound carries to the top of the hill — the one piece of history children remember. Climb while the light softens; the gates shut at five. Dinner is a short drive away in Tolichowki, at Pista House, with biryani sized for a hungry table.",
@@ -817,11 +827,12 @@
           "weather_note": null,
           "closed_days": [
             {
-              "day": "monday",
               "stop_index": 1,
-              "place_id": "ChIJaaWjpN0VrjsRAsmfiafDlN4"
+              "place_id": "ChIJaaWjpN0VrjsRAsmfiafDlN4",
+              "day": "monday"
             }
           ],
+          "audience_line": "For two who'd share vegetarian plates, stall to stall.",
           "created_by": null,
           "origin": "curated",
           "narrative": "South Bangalore, the way the city did date night before the breweries arrived. Walk Lalbagh in the last hour of light — the Glass House loop, then up the rock for the view — and come out by the main gate to MTR, where the coffee arrives in a silver tumbler and the rava idli is the house invention. Split one dosa, not two, because the real eating is ten minutes away at VV Puram: a single all-vegetarian lane where you graze stall to stall and argue about who found the better holige.",
@@ -937,11 +948,12 @@
           "weather_note": null,
           "closed_days": [
             {
-              "day": "monday",
               "stop_index": 2,
-              "place_id": "ChIJk1UT0hoXrjsRnVPEieFPPfQ"
+              "place_id": "ChIJk1UT0hoXrjsRnVPEieFPPfQ",
+              "day": "monday"
             }
           ],
+          "audience_line": "For bookish couples who want the whole evening on foot.",
           "created_by": null,
           "origin": "curated",
           "narrative": "A date with a built-in conversation starter: give yourselves an hour in Blossom and one rule — each of you buys the other a book. Carry them five minutes up to MG Road for dinner at Lupa, Manu Chandra's big, grown-up European room, where the menu rewards ordering slowly and sharing everything. Then walk it off down to Lavelle Road for Bar Spirit Forward, a bar that takes its cocktails more seriously than its lighting. The whole evening is walkable end to end, so nobody has to open a cab app.",
@@ -1057,6 +1069,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For friends who want tacos, beer and dessert, in that order.",
           "created_by": null,
           "origin": "curated",
           "narrative": "The Indiranagar loop every Bangalore friend group ends up running eventually, in the right order. Start with tacos at Chinita while you can still hear each other, then walk five minutes to Toit — floors of house beer and the loudest good mood on 100 Feet Road. When the table starts negotiating one more pitcher, call it and head down to Corner House, because a Death by Chocolate split four ways is how nights here are supposed to end.",
@@ -1173,6 +1186,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For the group that gets bored of just sitting.",
           "created_by": null,
           "origin": "curated",
           "narrative": "A plan for the group that gets bored of just sitting. Get to Truffles early, before the queue becomes the evening, and eat burgers the size of a decision. Then drive across to Breakout and let them lock you in a room for an hour — you'll learn who panics, who hoards clues, and who was secretly useful all along. The Bier Library is a seven-minute walk from the exit, which is exactly how long it takes to finish arguing about the last puzzle.",
@@ -1289,16 +1303,17 @@
           "weather_note": null,
           "closed_days": [
             {
-              "day": "monday",
               "stop_index": 0,
-              "place_id": "ChIJL2fQ53MWrjsRuN9D6aalLMY"
+              "place_id": "ChIJL2fQ53MWrjsRuN9D6aalLMY",
+              "day": "monday"
             },
             {
-              "day": "monday",
               "stop_index": 2,
-              "place_id": "ChIJIYetAv0XrjsRxgT8FROZk_o"
+              "place_id": "ChIJIYetAv0XrjsRxgT8FROZk_o",
+              "day": "monday"
             }
           ],
+          "audience_line": "For an early riser who wants a morning to themselves.",
           "created_by": null,
           "origin": "curated",
           "narrative": "A morning for nobody but you. Cubbon Park before nine is the city at its best — bamboo groves, joggers, dogs, and the red library building glowing through the trees. Walk out towards Lavelle Road for a dosa and filter coffee under the banyan at Airlines Hotel, where no one will hurry you. Then take a short ride up to Champaca, the kind of bookshop that chooses its shelves carefully, and stay until you've read the first chapter of something.",
@@ -1418,11 +1433,12 @@
           "weather_note": null,
           "closed_days": [
             {
-              "day": "friday",
               "stop_index": 2,
-              "place_id": "ChIJNdCK6PIVrjsR3I4feeftf-0"
+              "place_id": "ChIJNdCK6PIVrjsR3I4feeftf-0",
+              "day": "friday"
             }
           ],
+          "audience_line": "For families up early who'd rather walk than drive.",
           "created_by": null,
           "origin": "curated",
           "narrative": "Old Bangalore in one easy morning, and nobody has to get in a car between stops. Start at the Bull Temple, where the Nandi is carved from a single enormous boulder and the kids will want to walk all the way around it. Bugle Rock is next door — ancient rock, big trees, room to run — and it shuts at ten, so go before breakfast, not after. Then walk down to Gandhi Bazaar for the reason half the city crosses town: Vidyarthi Bhavan's thick, crisp masala dosa, delivered by waiters carrying a stack of plates up one arm.",
@@ -1545,6 +1561,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For a date that wants a plan, not a queue.",
           "created_by": null,
           "origin": "curated",
           "narrative": "CyberHub is easy to do badly: wander in at eight, join a queue, settle for whichever chain has a table. Do it in this order instead. A drink first at Olly, because dinner is dry — Burma Burma is vegetarian and pours no alcohol, and it's still one of the best tables in the complex. Split the samosa soup, the tea leaf salad and a khow suey, then walk it off across the courtyard to The Big Chill's dessert counter for a slice of something you'll pretend to share.",
@@ -1660,6 +1677,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For the night you both agreed to make an effort.",
           "created_by": null,
           "origin": "curated",
           "narrative": "The night you both agreed to make an effort. Start slow at Quill and Canvas in South Point Mall — a bookshop with an art gallery attached, and the quickest way to find out what the other person actually likes. Then cross Golf Course Road to Two Horizon Center for dinner at Comorin: regional Indian comfort food from the people behind Indian Accent, with a fraction of the ceremony. Whisky Samba is a few doors down for the nightcap, so the car stays parked until you leave.",
@@ -1778,6 +1796,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For beer drinkers who want the whole night on foot.",
           "created_by": null,
           "origin": "curated",
           "narrative": "Sector 29 is Gurgaon's brewery strip, and the names on it change faster than anyone can keep up with — these two haven't needed to. Line your stomach first at Roots, the cafe in the park on the edge of Leisure Valley, because nobody makes good decisions on an empty one. Then Downtown for the first round of fresh beer and a proper dinner, and Open Tap a few doors along for the comparison round. The whole night is on foot, which matters by the third pint.",
@@ -1893,6 +1912,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For friends who want serious cocktails, then live music.",
           "created_by": null,
           "origin": "curated",
           "narrative": "A night with a plot. Start in the Sector 15 market at Cocktails and Dreams Speakeasy, Yangdup Lama's bar and still the one other Gurgaon bars get measured against — sit at the counter and let them make what they want to make. Walk ten minutes to 32nd Avenue, split pizzas at COMO, and be at The Piano Man next door before the band starts. It's the one room on the strip where people stop talking to listen.",
@@ -2008,11 +2028,12 @@
           "weather_note": null,
           "closed_days": [
             {
-              "day": "monday",
               "stop_index": 2,
-              "place_id": "ChIJEy4Nq-IZDTkR-S0-YZmI7jU"
+              "place_id": "ChIJEy4Nq-IZDTkR-S0-YZmI7jU",
+              "day": "monday"
             }
           ],
+          "audience_line": "For going alone: quiet trails, slow breakfast, old cameras.",
           "created_by": null,
           "origin": "curated",
           "narrative": "The Gurgaon most people drive past. Be at Aravali Biodiversity Park by half past seven — an old mining site replanted with the native forest that used to cover these hills, with trails long enough that the city noise actually drops out. Walk over to Fig on MG Road for coffee and a slow breakfast with whatever you're reading. Then Museo Camera when it opens at eleven: a museum of cameras and photography that rewards going alone, at your own pace, with nobody asking if you're done yet.",
@@ -2161,6 +2182,7 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "audience_line": "For families with kids who need to bounce before they sit.",
           "created_by": null,
           "origin": "curated",
           "narrative": "A family evening that keeps moving, so nobody ends up bored in a food court. Start at SkyJumper on Sohna Road, where more than a hundred trampolines take the edge off the kids before anyone asks them to sit still. A short drive south, Airia Mall settles the family rivalry over a game of bowling at Smaaash — the one sport grandparents and eight-year-olds lose at equally. Then across to Joy Street for pizza at Tossin, and one last stop at Dach & Nona, because an evening like this is supposed to end with ice cream.",
