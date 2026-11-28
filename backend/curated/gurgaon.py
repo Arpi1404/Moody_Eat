@@ -159,7 +159,7 @@ QUESTS: list[Quest] = [
     ),
     Quest(
         id=uuid.UUID("20000000-0000-4000-8000-000000000021"),
-        title="Brunch, Then a Drive to Old Engines",
+        title="Brunch, Then Vintage Wheels",
         audience_line="For a daytime date that doesn't mind an hour on the road.",
         occasion=Occasion.date,
         total_duration_minutes=270,
@@ -385,7 +385,7 @@ QUESTS: list[Quest] = [
                 StopCategory.activity,
                 time(16, 30),
                 time(17, 45),
-                "Book the half-past-four slot ahead of time. Games run about an hour, which leaves a few minutes to compare theories before the slow evening drive to dinner.",
+                "Book ahead for a start around half past four. Games run about an hour, which leaves a few minutes to compare theories before the slow evening drive to dinner.",
                 travel_to_next_minutes=30,
             ),
             stop(

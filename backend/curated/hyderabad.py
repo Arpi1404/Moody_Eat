@@ -158,7 +158,7 @@ QUESTS: list[Quest] = [
     ),
     Quest(
         id=uuid.UUID("10000000-0000-4000-8000-000000000021"),
-        title="White Marble, Then the Noon Clock",
+        title="White Marble to Noon Clock",
         audience_line="For a date that starts early and is done soon after noon.",
         occasion=Occasion.date,
         total_duration_minutes=255,
@@ -433,7 +433,7 @@ QUESTS: list[Quest] = [
                 StopCategory.cafe,
                 time(21, 45),
                 time(22, 30),
-                "One tub each, or two to fight over. It closes at eleven, so don't let dinner run long, and finish the post-mortem on the way out.",
+                "One each, or two to fight over. It closes at eleven, so don't let dinner run long, and finish the post-mortem on the way out.",
             ),
         ],
     ),

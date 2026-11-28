@@ -377,7 +377,7 @@ QUESTS: list[Quest] = [
     ),
     Quest(
         id=uuid.UUID("30000000-0000-4000-8000-000000000012"),
-        title="Malleshwaram: Dosa, Lake, Ice Cream",
+        title="Dosa, Lake, Ice Cream",
         audience_line="For friends who'd rather walk and eat than settle into a bar.",
         occasion=Occasion.friends,
         total_duration_minutes=195,

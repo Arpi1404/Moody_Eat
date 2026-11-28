@@ -255,7 +255,7 @@
         },
         {
           "id": "10000000-0000-4000-8000-000000000021",
-          "title": "White Marble, Then the Noon Clock",
+          "title": "White Marble to Noon Clock",
           "occasion": "date",
           "stops": [
             {
@@ -737,7 +737,7 @@
               "time_block_end": "22:30:00",
               "travel_to_next_minutes": null,
               "travel_mode": null,
-              "why_this_place": "One tub each, or two to fight over. It closes at eleven, so don't let dinner run long, and finish the post-mortem on the way out.",
+              "why_this_place": "One each, or two to fight over. It closes at eleven, so don't let dinner run long, and finish the post-mortem on the way out.",
               "est_cost_per_person_min_inr": null,
               "est_cost_per_person_max_inr": null,
               "price_source": null
@@ -1640,7 +1640,7 @@
         },
         {
           "id": "30000000-0000-4000-8000-000000000012",
-          "title": "Malleshwaram: Dosa, Lake, Ice Cream",
+          "title": "Dosa, Lake, Ice Cream",
           "occasion": "friends",
           "stops": [
             {
@@ -2282,7 +2282,7 @@
         },
         {
           "id": "20000000-0000-4000-8000-000000000021",
-          "title": "Brunch, Then a Drive to Old Engines",
+          "title": "Brunch, Then Vintage Wheels",
           "occasion": "date",
           "stops": [
             {
@@ -2656,7 +2656,7 @@
               "time_block_end": "17:45:00",
               "travel_to_next_minutes": 30,
               "travel_mode": "driving",
-              "why_this_place": "Book the half-past-four slot ahead of time. Games run about an hour, which leaves a few minutes to compare theories before the slow evening drive to dinner.",
+              "why_this_place": "Book ahead for a start around half past four. Games run about an hour, which leaves a few minutes to compare theories before the slow evening drive to dinner.",
               "est_cost_per_person_min_inr": null,
               "est_cost_per_person_max_inr": null,
               "price_source": null

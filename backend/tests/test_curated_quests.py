@@ -169,9 +169,9 @@ CLOSED_DAYS = {
     ],
     "Basavanagudi: Bull Temple to Butter Dosa": [("friday", "Vidyarthi Bhavan")],
     "Aravali Trails, Then Cameras": [("monday", "Museo Camera")],
-    "White Marble, Then the Noon Clock": [("friday", "Salar Jung Museum")],
+    "White Marble to Noon Clock": [("friday", "Salar Jung Museum")],
     "Modern Art, Then a Long Lunch": [("monday", "National Gallery of Modern Art")],
-    "Brunch, Then a Drive to Old Engines": [("monday", "Heritage Transport Museum")],
+    "Brunch, Then Vintage Wheels": [("monday", "Heritage Transport Museum")],
 }
 
 
@@ -259,7 +259,7 @@ def test_a_chosen_lead_photo_names_one_of_the_quests_stops() -> None:
     }
     assert chosen == {
         "Jubilee Hills, Slow Burn": "Olive Bistro & Bar",
-        "Malleshwaram: Dosa, Lake, Ice Cream": "Sankey Tank",
+        "Dosa, Lake, Ice Cream": "Sankey Tank",
     }
 
 
