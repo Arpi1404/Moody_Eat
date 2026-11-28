@@ -30,47 +30,16 @@
                 "provider_id": "ChIJm5MaboqXyzsR-xPxquRpWss",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "16:30:00",
               "time_block_end": "17:30:00",
-              "travel_to_next_minutes": 10,
+              "travel_to_next_minutes": 3,
               "travel_mode": "walking",
               "why_this_place": "Go up before the 5:30 close — from the first-floor gallery you look straight down the four roads the monument was built to anchor. An hour is plenty.",
-              "est_cost_per_person_min_inr": null,
-              "est_cost_per_person_max_inr": null,
-              "price_source": null
-            },
-            {
-              "place": {
-                "name": "Hotel Shadab",
-                "address": "Madina Circle, High Court Road, Ghansi Bazaar, Hyderabad 500002",
-                "lat": 17.3689,
-                "lng": 78.4755,
-                "distance_meters": 0.0,
-                "rating": 4.0,
-                "user_ratings_total": 91246,
-                "price_level": null,
-                "price_range_start_inr": null,
-                "price_range_end_inr": null,
-                "business_status": "OPERATIONAL",
-                "types": [
-                  "indian_restaurant",
-                  "restaurant"
-                ],
-                "primary_type": null,
-                "provider_id": "ChIJKyxGIoiXyzsRPY8PASGdTW0",
-                "opens_today": null,
-                "closes_today": null,
-                "open_24h_today": false
-              },
-              "category": "restaurant",
-              "time_block_start": "17:40:00",
-              "time_block_end": "19:00:00",
-              "travel_to_next_minutes": 11,
-              "travel_mode": "walking",
-              "why_this_place": "The Old City's default answer for biryani — crowded, quick, and unbothered by trends. Order the mutton biryani and share it; portions are built for two.",
               "est_cost_per_person_min_inr": null,
               "est_cost_per_person_max_inr": null,
               "price_source": null
@@ -96,20 +65,57 @@
                 "provider_id": "ChIJ1Z7b5_mXyzsR_6g6Az9fWjk",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
-              "time_block_start": "19:11:00",
-              "time_block_end": "19:50:00",
+              "time_block_start": "17:35:00",
+              "time_block_end": "18:25:00",
+              "travel_to_next_minutes": 16,
+              "travel_mode": "walking",
+              "why_this_place": "Stand at the counter for Irani chai and Osmania biscuits — the tables are the slower way to do it. You drink it looking straight at Charminar. Go easy on the biscuits; dinner is next.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Hotel Shadab",
+                "address": "Madina Circle, High Court Road, Ghansi Bazaar, Hyderabad 500002",
+                "lat": 17.3689,
+                "lng": 78.4755,
+                "distance_meters": 0.0,
+                "rating": 4.0,
+                "user_ratings_total": 91246,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "indian_restaurant",
+                  "restaurant"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJKyxGIoiXyzsRPY8PASGdTW0",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "restaurant",
+              "time_block_start": "19:00:00",
+              "time_block_end": "20:20:00",
               "travel_to_next_minutes": null,
               "travel_mode": null,
-              "why_this_place": "Stand at the counter for Irani chai and Osmania biscuits — the tables are the slower way to do it. You drink it looking straight at Charminar.",
+              "why_this_place": "The Old City's default answer for biryani — crowded, quick, and unbothered by trends. Order the mutton biryani and share it; portions are built for two.",
               "est_cost_per_person_min_inr": null,
               "est_cost_per_person_max_inr": null,
               "price_source": null
             }
           ],
-          "total_duration_minutes": 200,
+          "total_duration_minutes": 230,
           "total_cost_estimate": "cheap",
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
@@ -117,7 +123,7 @@
           "audience_line": "For two who'd rather wander the old city than book a table.",
           "created_by": null,
           "origin": "curated",
-          "narrative": "The old city after work, before the rush. Climb Charminar in the last hour before it closes, when the stone goes amber, then walk ten minutes up towards Madina for biryani at Shadab — the un-gentrified one, shared tables, and you'll understand why Hyderabadis argue about which place is best. Walk it off on the way back and finish with Irani chai and Osmania biscuits at Nimrah, standing a few steps from the monument you started at.",
+          "narrative": "The old city after work, before the rush. Climb Charminar in the last hour before it closes, when the stone goes amber, then come down for Irani chai and Osmania biscuits at Nimrah, standing a few steps from the monument you have just climbed. Take your time walking up towards Madina, and finish with biryani at Shadab — the un-gentrified one, shared tables, and you'll understand why Hyderabadis argue about which place is best.",
           "created_at": "2026-05-05T18:00:00"
         },
         {
@@ -146,7 +152,9 @@
                 "provider_id": "ChIJzaa0JS2RyzsR1O23hu3H7dU",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "18:00:00",
@@ -180,7 +188,9 @@
                 "provider_id": "ChIJBdTHClGRyzsRjU5SWqXEeJk",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "19:00:00",
@@ -213,7 +223,9 @@
                 "provider_id": "ChIJZ3mAREiRyzsRIxCCJu8JwzU",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
               "time_block_start": "20:48:00",
@@ -239,6 +251,138 @@
           "created_by": null,
           "origin": "curated",
           "narrative": "The version of date night that doesn't try too hard. Start on the Durgam Cheruvu lakefront as the evening settles in and the cable bridge lights up across the water. Olive is a few minutes around the lake — whitewashed walls and a terrace over the water; order the wood-fired pizza and a glass of wine because that's what the place is for. Then Conçu, where the desserts are the reason you skipped tiramisu earlier.",
+          "created_at": "2026-05-05T18:00:00"
+        },
+        {
+          "id": "10000000-0000-4000-8000-000000000021",
+          "title": "White Marble to Noon Clock",
+          "occasion": "date",
+          "stops": [
+            {
+              "place": {
+                "name": "Birla Mandir",
+                "address": "Naubat Pahad, Khairtabad, Hyderabad 500004",
+                "lat": 17.4062,
+                "lng": 78.4691,
+                "distance_meters": 0.0,
+                "rating": 4.7,
+                "user_ratings_total": 57837,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "hindu_temple",
+                  "place_of_worship",
+                  "tourist_attraction"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJBcAk0V2XyzsRjing1vqfQ1k",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "attraction",
+              "time_block_start": "08:00:00",
+              "time_block_end": "09:00:00",
+              "travel_to_next_minutes": 15,
+              "travel_mode": "driving",
+              "why_this_place": "A white marble temple above the lake. Shoes come off at the entrance and phones go into the free lockers, so it is an hour of actually looking. Go early, before the stone warms up underfoot.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Minerva Coffee Shop",
+                "address": "3-6-199/1, Himayatnagar, Hyderabad 500029",
+                "lat": 17.4012,
+                "lng": 78.4854,
+                "distance_meters": 0.0,
+                "rating": 4.2,
+                "user_ratings_total": 12050,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "south_indian_restaurant",
+                  "vegetarian_restaurant",
+                  "coffee_shop"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJybdPGt2ZyzsRhnkXr9gvKcM",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "restaurant",
+              "time_block_start": "09:15:00",
+              "time_block_end": "10:05:00",
+              "travel_to_next_minutes": 25,
+              "travel_mode": "driving",
+              "why_this_place": "A dependable South Indian vegetarian kitchen, open from seven. Share a dosa and a plate of idli with your coffee and take your time — the museum is a couple of hours on your feet.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Salar Jung Museum",
+                "address": "Darulshifa, Hyderabad 500002",
+                "lat": 17.3716,
+                "lng": 78.4802,
+                "distance_meters": 0.0,
+                "rating": 4.4,
+                "user_ratings_total": 78577,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "art_museum",
+                  "museum",
+                  "tourist_attraction"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJu9dj4oeXyzsRQaBpm0uTOzU",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "attraction",
+              "time_block_start": "10:30:00",
+              "time_block_end": "12:15:00",
+              "travel_to_next_minutes": null,
+              "travel_mode": null,
+              "why_this_place": "Find the Veiled Rebecca on the ground floor, then head for the musical clock well before noon, because the crowd gathers early. Leave bags at the cloakroom. Closed Fridays.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            }
+          ],
+          "total_duration_minutes": 255,
+          "total_cost_estimate": "cheap",
+          "est_total_per_person_min_inr": null,
+          "est_total_per_person_max_inr": null,
+          "weather_note": null,
+          "closed_days": [
+            {
+              "stop_index": 2,
+              "place_id": "ChIJu9dj4oeXyzsRQaBpm0uTOzU",
+              "day": "friday"
+            }
+          ],
+          "audience_line": "For a date that starts early and is done soon after noon.",
+          "created_by": null,
+          "origin": "curated",
+          "narrative": "A date that's done soon after noon. Start early at Birla Mandir, white marble on a hill, and look out over Hussain Sagar before the day heats up. Come down to Himayatnagar for dosas and coffee at Minerva, long enough to sit and talk. Then Salar Jung, which opens at ten: wander the galleries without trying to see them all, but be at the musical clock before noon, when a little figure comes out to strike the hour and the whole hall stops to watch.",
           "created_at": "2026-05-05T18:00:00"
         },
         {
@@ -268,7 +412,9 @@
                 "provider_id": "ChIJj9g7iFeRyzsRbTszJRXfmk8",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "activity",
               "time_block_start": "18:00:00",
@@ -302,7 +448,9 @@
                 "provider_id": "ChIJ9VO8kviRyzsRGOR_Ak74IA8",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "19:34:00",
@@ -335,7 +483,9 @@
                 "provider_id": "ChIJAXLLciCRyzsROQZN8vHIprw",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "21:16:00",
@@ -385,12 +535,14 @@
                 "provider_id": "ChIJG_3xjA-ayzsRFh3aJZ-Rbjg",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "17:45:00",
               "time_block_end": "19:00:00",
-              "travel_to_next_minutes": 15,
+              "travel_to_next_minutes": 25,
               "travel_mode": "driving",
               "why_this_place": "The original — Paradise started here in 1953, and the newer branches across town are tidier but not the same. Order the mutton biryani, not the chicken.",
               "est_cost_per_person_min_inr": null,
@@ -418,11 +570,13 @@
                 "provider_id": "ChIJpeyxLF-XyzsRXBhk5vcfEmU",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
-              "time_block_start": "19:15:00",
-              "time_block_end": "20:20:00",
+              "time_block_start": "19:30:00",
+              "time_block_end": "20:30:00",
               "travel_to_next_minutes": 12,
               "travel_mode": "driving",
               "why_this_place": "The lakeside park closest to the Buddha statue — take the boat out if the queue is short, otherwise the promenade does the job. Closes at 9, so don't linger over the biryani.",
@@ -451,11 +605,13 @@
                 "provider_id": "ChIJ____P32XyzsRr9xZqE9F7RU",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
-              "time_block_start": "20:32:00",
-              "time_block_end": "21:15:00",
+              "time_block_start": "20:42:00",
+              "time_block_end": "21:25:00",
               "travel_to_next_minutes": null,
               "travel_mode": null,
               "why_this_place": "Hand-churned fruit flavours — sitaphal or mango when they're in season — eaten standing in the market courtyard. Open past midnight, and cheap enough that everyone gets two.",
@@ -464,7 +620,7 @@
               "price_source": null
             }
           ],
-          "total_duration_minutes": 210,
+          "total_duration_minutes": 220,
           "total_cost_estimate": "cheap",
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
@@ -473,6 +629,129 @@
           "created_by": null,
           "origin": "curated",
           "narrative": "The Hyderabad starter pack, on a budget. Paradise's Secunderabad flagship is the one — go early and you skip the worst of the queue. Order the biryani and come hungry. Then Lumbini Park for the walk you owe yourself after that quantity of rice, with the Buddha statue lit up out on the water and boats running to it. End at Mozamjahi Market, where Famous has been scooping hand-churned fruit ice cream under the clock tower for decades.",
+          "created_at": "2026-05-05T18:00:00"
+        },
+        {
+          "id": "10000000-0000-4000-8000-000000000022",
+          "title": "Locked In on Road 36",
+          "occasion": "friends",
+          "stops": [
+            {
+              "place": {
+                "name": "Mystery Rooms",
+                "address": "SVM Mall, Road 36, Jubilee Hills, Hyderabad 500033",
+                "lat": 17.4316,
+                "lng": 78.4066,
+                "distance_meters": 0.0,
+                "rating": 4.7,
+                "user_ratings_total": 4588,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "amusement_center"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJo4s60UmRyzsRKYZvlISkk3s",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "activity",
+              "time_block_start": "19:15:00",
+              "time_block_end": "20:30:00",
+              "travel_to_next_minutes": 7,
+              "travel_mode": "walking",
+              "why_this_place": "Book your slot before you go, and pick a room the least patient person can live with. Games run about an hour; arrive a few minutes early for the briefing. Look for it on the third floor.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Chutneys",
+                "address": "Road 36, Jubilee Hills, Hyderabad 500033",
+                "lat": 17.4296,
+                "lng": 78.4096,
+                "distance_meters": 0.0,
+                "rating": 4.1,
+                "user_ratings_total": 14279,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "south_indian_restaurant",
+                  "vegetarian_restaurant",
+                  "restaurant"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJ_T_4fjaRyzsRzEy4bqcxFsM",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "restaurant",
+              "time_block_start": "20:40:00",
+              "time_block_end": "21:40:00",
+              "travel_to_next_minutes": 5,
+              "travel_mode": "walking",
+              "why_this_place": "All vegetarian, and the steamed dosa is the thing to try. Order a few plates for the middle of the table and taste every chutney before anyone picks a favourite.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Cream Stone",
+                "address": "Sami Complex, Jubilee Hills, Hyderabad 500033",
+                "lat": 17.4307,
+                "lng": 78.4079,
+                "distance_meters": 0.0,
+                "rating": 4.3,
+                "user_ratings_total": 2641,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "ice_cream_shop",
+                  "dessert_restaurant",
+                  "cafe"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJ91yvFUiRyzsRu0xxJudkYGI",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "cafe",
+              "time_block_start": "21:45:00",
+              "time_block_end": "22:30:00",
+              "travel_to_next_minutes": null,
+              "travel_mode": null,
+              "why_this_place": "One each, or two to fight over. It closes at eleven, so don't let dinner run long, and finish the post-mortem on the way out.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            }
+          ],
+          "total_duration_minutes": 195,
+          "total_cost_estimate": "mid",
+          "est_total_per_person_min_inr": null,
+          "est_total_per_person_max_inr": null,
+          "weather_note": null,
+          "audience_line": "For friends who'd rather crack a puzzle than sit at a bar.",
+          "created_by": null,
+          "origin": "curated",
+          "narrative": "A late start for friends who'd rather do something than sit over drinks. Begin at Mystery Rooms, where you get about an hour to work your way out of a locked room and everyone finds out who takes charge. Head along Road 36 to Chutneys for steamed dosas and the row of chutneys the place is named for, which gives you a table to argue about the last clue. Then Cream Stone, close by, for ice cream before it shuts at eleven.",
           "created_at": "2026-05-05T18:00:00"
         },
         {
@@ -501,7 +780,9 @@
                 "provider_id": "ChIJWUl-wiqXyzsRud1hDiZM0aM",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
               "time_block_start": "15:30:00",
@@ -535,12 +816,14 @@
                 "provider_id": "ChIJZe78QtKWyzsRA7_hetcQNG4",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "16:38:00",
               "time_block_end": "18:00:00",
-              "travel_to_next_minutes": 18,
+              "travel_to_next_minutes": 35,
               "travel_mode": "driving",
               "why_this_place": "A walking loop through real forest, peacocks included. Evening entry runs 4 to 6:30pm, so this is the one stop with a clock on it.",
               "est_cost_per_person_min_inr": null,
@@ -568,11 +851,13 @@
                 "provider_id": "ChIJVy0-aGiXyzsRWMiIWZ1fC30",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
-              "time_block_start": "18:18:00",
-              "time_block_end": "19:00:00",
+              "time_block_start": "18:35:00",
+              "time_block_end": "19:20:00",
               "travel_to_next_minutes": null,
               "travel_mode": null,
               "why_this_place": "Stand at the counter for Irani chai and Osmania biscuits — the standing crowd is the regulars. Open till 1am, so there's no hurry getting across town.",
@@ -581,7 +866,7 @@
               "price_source": null
             }
           ],
-          "total_duration_minutes": 210,
+          "total_duration_minutes": 230,
           "total_cost_estimate": "mid",
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
@@ -618,7 +903,9 @@
                 "provider_id": "ChIJEadvQpeWyzsR9dHNyw6hS4A",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "13:45:00",
@@ -651,7 +938,9 @@
                 "provider_id": "ChIJj6mupo6WyzsRWjNa1t_sdms",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "15:13:00",
@@ -684,7 +973,9 @@
                 "provider_id": "ChIJkb1NjRCXyzsR3qnUdAZWi-0",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "17:13:00",
@@ -741,7 +1032,9 @@
                 "provider_id": "ChIJHdPykcEVrjsRIr4v35kLEY4",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "16:45:00",
@@ -774,7 +1067,9 @@
                 "provider_id": "ChIJaaWjpN0VrjsRAsmfiafDlN4",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "18:10:00",
@@ -807,7 +1102,9 @@
                 "provider_id": "ChIJH-raknwVrjsRoJppMsw-y2U",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "19:07:00",
@@ -863,7 +1160,9 @@
                 "provider_id": "ChIJq6qa730WrjsRuZg7TTRYPow",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "activity",
               "time_block_start": "18:00:00",
@@ -896,7 +1195,9 @@
                 "provider_id": "ChIJwWzHW5cXrjsRSUYk6pvrsjU",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "19:11:00",
@@ -928,7 +1229,9 @@
                 "provider_id": "ChIJk1UT0hoXrjsRnVPEieFPPfQ",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "21:10:00",
@@ -960,6 +1263,137 @@
           "created_at": "2026-05-05T18:00:00"
         },
         {
+          "id": "30000000-0000-4000-8000-000000000011",
+          "title": "Modern Art, Then a Long Lunch",
+          "occasion": "date",
+          "stops": [
+            {
+              "place": {
+                "name": "National Gallery of Modern Art",
+                "address": "49 Palace Road, Vasanth Nagar, Bengaluru 560001",
+                "lat": 12.9894,
+                "lng": 77.5881,
+                "distance_meters": 0.0,
+                "rating": 4.4,
+                "user_ratings_total": 2229,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "art_museum",
+                  "art_gallery",
+                  "tourist_attraction"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJqZQybIEWrjsRezNLL4Ju2Gk",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "attraction",
+              "time_block_start": "11:00:00",
+              "time_block_end": "12:35:00",
+              "travel_to_next_minutes": 25,
+              "travel_mode": "driving",
+              "why_this_place": "Give the garden as much time as the galleries; the sculptures outside are worth it. Open by eleven from Tuesday to Sunday, and closed on Mondays.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "The Only Place",
+                "address": "Museum Road, Ashok Nagar, Bengaluru 560025",
+                "lat": 12.9716,
+                "lng": 77.6127,
+                "distance_meters": 0.0,
+                "rating": 4.2,
+                "user_ratings_total": 8883,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "steak_house",
+                  "american_restaurant",
+                  "restaurant"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJhUwCoH4WrjsRXHFQjoJQxzQ",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "restaurant",
+              "time_block_start": "13:00:00",
+              "time_block_end": "14:20:00",
+              "travel_to_next_minutes": 17,
+              "travel_mode": "walking",
+              "why_this_place": "Known for its steaks and apple pie, so order one big thing each and share the pie. Lunch stops a little after three and the doors don't reopen until seven.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Lakeview Milk Bar",
+                "address": "89 MG Road, Bengaluru 560001",
+                "lat": 12.9759,
+                "lng": 77.6038,
+                "distance_meters": 0.0,
+                "rating": 4.1,
+                "user_ratings_total": 12407,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "ice_cream_shop",
+                  "dessert_shop"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJXxn4iXwWrjsR7mjtEslOP8I",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "cafe",
+              "time_block_start": "14:40:00",
+              "time_block_end": "15:15:00",
+              "travel_to_next_minutes": null,
+              "travel_mode": null,
+              "why_this_place": "Order one sundae and two spoons. It stays open late into the night, so there's no clock on the end of this one.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            }
+          ],
+          "total_duration_minutes": 255,
+          "total_cost_estimate": "mid",
+          "est_total_per_person_min_inr": null,
+          "est_total_per_person_max_inr": null,
+          "weather_note": null,
+          "closed_days": [
+            {
+              "stop_index": 0,
+              "place_id": "ChIJqZQybIEWrjsRezNLL4Ju2Gk",
+              "day": "monday"
+            }
+          ],
+          "audience_line": "For a daytime date with time to look, eat and linger.",
+          "created_by": null,
+          "origin": "curated",
+          "narrative": "A daytime date with room to linger. Start at eleven at the National Gallery of Modern Art, a white mansion with sculpture standing in its garden — walk the galleries, then the lawn, and tell each other what you'd take home. Ride across town to The Only Place, an old-school steakhouse whose story goes back to 1965, for a lunch nobody needs to rush. Then stroll up to MG Road and finish at Lakeview Milk Bar, which has been serving ice cream since the 1930s.",
+          "created_at": "2026-05-05T18:00:00"
+        },
+        {
           "id": "30000000-0000-4000-8000-000000000003",
           "title": "Indiranagar: Tacos, Toit, Death by Chocolate",
           "occasion": "friends",
@@ -985,7 +1419,9 @@
                 "provider_id": "ChIJGe0PTrsWrjsRwiOUSdxHiq0",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "18:30:00",
@@ -1018,7 +1454,9 @@
                 "provider_id": "ChIJc0JAFaUWrjsRRXSXJPX7YFo",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "19:51:00",
@@ -1051,7 +1489,9 @@
                 "provider_id": "ChIJcUFZIqcXrjsRgmngcu1QQVk",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
               "time_block_start": "21:52:00",
@@ -1101,7 +1541,9 @@
                 "provider_id": "ChIJdz4L2VEUrjsRvSsPGCwDl2I",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "18:15:00",
@@ -1134,7 +1576,9 @@
                 "provider_id": "ChIJO87U12kUrjsRNiANLOxsCdo",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "activity",
               "time_block_start": "19:42:00",
@@ -1168,7 +1612,9 @@
                 "provider_id": "ChIJsaosImcVrjsRPP5rNvYTmLc",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "21:07:00",
@@ -1190,6 +1636,133 @@
           "created_by": null,
           "origin": "curated",
           "narrative": "A plan for the group that gets bored of just sitting. Get to Truffles early, before the queue becomes the evening, and eat burgers the size of a decision. Then drive across to Breakout and let them lock you in a room for an hour — you'll learn who panics, who hoards clues, and who was secretly useful all along. The Bier Library is a seven-minute walk from the exit, which is exactly how long it takes to finish arguing about the last puzzle.",
+          "created_at": "2026-05-05T18:00:00"
+        },
+        {
+          "id": "30000000-0000-4000-8000-000000000012",
+          "title": "Dosa, Lake, Ice Cream",
+          "occasion": "friends",
+          "stops": [
+            {
+              "place": {
+                "name": "CTR (Central Tiffin Room)",
+                "address": "7th Cross Road, Malleshwaram, Bengaluru 560003",
+                "lat": 12.9982,
+                "lng": 77.5695,
+                "distance_meters": 0.0,
+                "rating": 4.3,
+                "user_ratings_total": 37912,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "south_indian_restaurant",
+                  "vegetarian_restaurant",
+                  "restaurant"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJ82NqvCUWrjsRC33A4yTYQWk",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "restaurant",
+              "time_block_start": "16:00:00",
+              "time_block_end": "16:50:00",
+              "travel_to_next_minutes": 24,
+              "travel_mode": "walking",
+              "why_this_place": "The benne masala dosa is the order: crisp, with butter doing the heavy lifting. The room is small and the queue is part of it, so arrive as it reopens at four.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Sankey Tank",
+                "address": "Sankey Tank, Malleshwaram, Bengaluru 560080",
+                "lat": 13.0093,
+                "lng": 77.5741,
+                "distance_meters": 0.0,
+                "rating": 4.5,
+                "user_ratings_total": 4217,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "lake",
+                  "park"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJzVAUlTIWrjsRJgrhXgyf-Gs",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "attraction",
+              "time_block_start": "17:15:00",
+              "time_block_end": "18:15:00",
+              "travel_to_next_minutes": 16,
+              "travel_mode": "walking",
+              "why_this_place": "Take the waterside path at an easy pace and find somewhere to stop where the view opens up. Get there while it's still light — that's when the lake earns the walk.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Naturals Ice Cream",
+                "address": "Margosa Road, Malleshwaram, Bengaluru 560003",
+                "lat": 13.0036,
+                "lng": 77.5695,
+                "distance_meters": 0.0,
+                "rating": 4.5,
+                "user_ratings_total": 2760,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "ice_cream_shop",
+                  "dessert_shop"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJmYCoOioWrjsR9NYCA-BbgPY",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "cafe",
+              "time_block_start": "18:35:00",
+              "time_block_end": "19:15:00",
+              "travel_to_next_minutes": null,
+              "travel_mode": null,
+              "why_this_place": "A scoop each, plus one flavour for the table that nobody has tried. Start with the fruit ones. It's open till eleven, so nobody has to eat on the move.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            }
+          ],
+          "total_duration_minutes": 195,
+          "total_cost_estimate": "cheap",
+          "est_total_per_person_min_inr": null,
+          "est_total_per_person_max_inr": null,
+          "weather_note": null,
+          "audience_line": "For friends who'd rather walk and eat than settle into a bar.",
+          "photo_stop": {
+            "stop_index": 1,
+            "place_id": "ChIJzVAUlTIWrjsRJgrhXgyf-Gs"
+          },
+          "created_by": null,
+          "origin": "curated",
+          "narrative": "An evening for friends who'd rather walk and eat than settle into a bar. Be at CTR as the doors reopen at four, for a benne masala dosa from a kitchen that has been at it since the 1920s. Then walk it off up to Sankey Tank and take the path by the water while the day cools, which is when the good conversations happen. Come back down Margosa Road to Naturals for ice cream, and argue over whose flavour won.",
           "created_at": "2026-05-05T18:00:00"
         },
         {
@@ -1217,7 +1790,9 @@
                 "provider_id": "ChIJL2fQ53MWrjsRuN9D6aalLMY",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "07:30:00",
@@ -1250,7 +1825,9 @@
                 "provider_id": "ChIJ1Wpce3kWrjsRnJRhLAVNM4M",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "09:12:00",
@@ -1283,7 +1860,9 @@
                 "provider_id": "ChIJIYetAv0XrjsRxgT8FROZk_o",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "activity",
               "time_block_start": "10:25:00",
@@ -1346,7 +1925,9 @@
                 "provider_id": "ChIJX9XqWswVrjsRRH3ymQ8yCDQ",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "07:45:00",
@@ -1379,7 +1960,9 @@
                 "provider_id": "ChIJmwJpvowVrjsR0JVGQxxLHms",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "08:28:00",
@@ -1413,7 +1996,9 @@
                 "provider_id": "ChIJNdCK6PIVrjsR3I4feeftf-0",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "09:21:00",
@@ -1476,7 +2061,9 @@
                 "provider_id": "ChIJt7k-XjgZDTkRz4b0XF5ozDk",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "18:00:00",
@@ -1510,7 +2097,9 @@
                 "provider_id": "ChIJF6QrXDgZDTkRXOymqHJU35o",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "19:08:00",
@@ -1543,7 +2132,9 @@
                 "provider_id": "ChIJ_6-KOpwfDTkRd-BEi_zLNfM",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
               "time_block_start": "20:43:00",
@@ -1593,7 +2184,9 @@
                 "provider_id": "ChIJO4lOY9wYDTkR1eNa4RQG2E8",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "activity",
               "time_block_start": "18:15:00",
@@ -1626,7 +2219,9 @@
                 "provider_id": "ChIJPdvhrs0ZDTkRJQws-tJOEKw",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "19:07:00",
@@ -1659,7 +2254,9 @@
                 "provider_id": "ChIJbTc5i7UYDTkRSEKSd63it4U",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "20:52:00",
@@ -1681,6 +2278,101 @@
           "created_by": null,
           "origin": "curated",
           "narrative": "The night you both agreed to make an effort. Start slow at Quill and Canvas in South Point Mall — a bookshop with an art gallery attached, and the quickest way to find out what the other person actually likes. Then cross Golf Course Road to Two Horizon Center for dinner at Comorin: regional Indian comfort food from the people behind Indian Accent, with a fraction of the ceremony. Whisky Samba is a few doors down for the nightcap, so the car stays parked until you leave.",
+          "created_at": "2026-05-05T18:00:00"
+        },
+        {
+          "id": "20000000-0000-4000-8000-000000000021",
+          "title": "Brunch, Then Vintage Wheels",
+          "occasion": "date",
+          "stops": [
+            {
+              "place": {
+                "name": "DiGhent Cafe",
+                "address": "Cross Point Mall, opposite Galleria Market, DLF Phase 4, Gurugram 122009",
+                "lat": 28.4683,
+                "lng": 77.083,
+                "distance_meters": 0.0,
+                "rating": 4.4,
+                "user_ratings_total": 2824,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "belgian_restaurant",
+                  "cafe",
+                  "breakfast_restaurant"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJa5bce94YDTkRGM1q2A3zsUU",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "restaurant",
+              "time_block_start": "11:00:00",
+              "time_block_end": "12:10:00",
+              "travel_to_next_minutes": 60,
+              "travel_mode": "driving",
+              "why_this_place": "Come hungry enough for brunch, and split a waffle rather than ordering two — there's an hour in the car next. Aim to leave soon after noon.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Heritage Transport Museum",
+                "address": "Bilaspur-Taoru Road, off NH 48, Taoru, Haryana 122105",
+                "lat": 28.2529,
+                "lng": 76.9243,
+                "distance_meters": 0.0,
+                "rating": 4.6,
+                "user_ratings_total": 3876,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "museum",
+                  "tourist_attraction"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJV5IVICI6DTkRoeLV9HB7uHA",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "attraction",
+              "time_block_start": "13:15:00",
+              "time_block_end": "15:30:00",
+              "travel_to_next_minutes": null,
+              "travel_mode": null,
+              "why_this_place": "Plan on at least two hours, and take turns choosing which hall comes next. Sort out your ride home before you go in. Closed Mondays, and it shuts at seven.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            }
+          ],
+          "total_duration_minutes": 270,
+          "total_cost_estimate": "mid",
+          "est_total_per_person_min_inr": null,
+          "est_total_per_person_max_inr": null,
+          "weather_note": null,
+          "closed_days": [
+            {
+              "stop_index": 1,
+              "place_id": "ChIJV5IVICI6DTkRoeLV9HB7uHA",
+              "day": "monday"
+            }
+          ],
+          "audience_line": "For a daytime date that doesn't mind an hour on the road.",
+          "created_by": null,
+          "origin": "curated",
+          "narrative": "A daytime date that gets you properly out of town. Eat first, at DiGhent opposite Galleria Market, a Belgian cafe where sharing a waffle is a reasonable way to start a long conversation. Then head south to the Heritage Transport Museum near Taoru: about an hour on the road, which is time for a playlist each. Inside are vintage cars, old buses and trains, even aircraft, with enough of it to fill the afternoon. Pick a day with no early evening plans.",
           "created_at": "2026-05-05T18:00:00"
         },
         {
@@ -1710,7 +2402,9 @@
                 "provider_id": "ChIJ0WNzy-IYDTkRmSJmV7yXnPw",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
               "time_block_start": "17:30:00",
@@ -1744,7 +2438,9 @@
                 "provider_id": "ChIJ-yw62ZgZDTkRU2-mfRo2OGc",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "18:38:00",
@@ -1778,7 +2474,9 @@
                 "provider_id": "ChIJg8Bhyv0YDTkRhp9dG7jYfBo",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "20:32:00",
@@ -1828,7 +2526,9 @@
                 "provider_id": "ChIJIbYc908YDTkRT6nYkAzAAzc",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "18:30:00",
@@ -1861,7 +2561,9 @@
                 "provider_id": "ChIJkTk5C-EZDTkR4xVMNDKDWaU",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "19:50:00",
@@ -1894,7 +2596,9 @@
                 "provider_id": "ChIJM_anaxQZDTkR9VXoQw3rakU",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "bar",
               "time_block_start": "21:07:00",
@@ -1916,6 +2620,127 @@
           "created_by": null,
           "origin": "curated",
           "narrative": "A night with a plot. Start in the Sector 15 market at Cocktails and Dreams Speakeasy, Yangdup Lama's bar and still the one other Gurgaon bars get measured against — sit at the counter and let them make what they want to make. Walk ten minutes to 32nd Avenue, split pizzas at COMO, and be at The Piano Man next door before the band starts. It's the one room on the strip where people stop talking to listen.",
+          "created_at": "2026-05-05T18:00:00"
+        },
+        {
+          "id": "20000000-0000-4000-8000-000000000022",
+          "title": "Puzzle Room, Then Dosas",
+          "occasion": "friends",
+          "stops": [
+            {
+              "place": {
+                "name": "Mystery Rooms Golf Course Road",
+                "address": "Golf Course Road, DLF Phase 1, Gurugram 122002",
+                "lat": 28.4647,
+                "lng": 77.0954,
+                "distance_meters": 0.0,
+                "rating": 4.7,
+                "user_ratings_total": 3018,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "amusement_center"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJT3qGkQgZDTkR-eyLhGnwK_Q",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "activity",
+              "time_block_start": "16:30:00",
+              "time_block_end": "17:45:00",
+              "travel_to_next_minutes": 30,
+              "travel_mode": "driving",
+              "why_this_place": "Book ahead for a start around half past four. Games run about an hour, which leaves a few minutes to compare theories before the slow evening drive to dinner.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "Carnatic Cafe",
+                "address": "32nd Avenue, Sector 15, Gurugram 122001",
+                "lat": 28.4624,
+                "lng": 77.0505,
+                "distance_meters": 0.0,
+                "rating": 4.3,
+                "user_ratings_total": 5878,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "south_indian_restaurant",
+                  "vegetarian_restaurant",
+                  "cafe"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJGZNNBuYZDTkRL5JX3k88-kE",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "restaurant",
+              "time_block_start": "18:20:00",
+              "time_block_end": "19:35:00",
+              "travel_to_next_minutes": 3,
+              "travel_mode": "walking",
+              "why_this_place": "Order dosas and a few things to pass around, with filter coffee to finish. It fills up in the evening and there can be a wait, so don't linger on the way over.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            },
+            {
+              "place": {
+                "name": "32nd Avenue",
+                "address": "NH 48, Sector 15, Gurugram 122001",
+                "lat": 28.4617,
+                "lng": 77.0501,
+                "distance_meters": 0.0,
+                "rating": 4.6,
+                "user_ratings_total": 28900,
+                "price_level": null,
+                "price_range_start_inr": null,
+                "price_range_end_inr": null,
+                "business_status": "OPERATIONAL",
+                "types": [
+                  "tourist_attraction"
+                ],
+                "primary_type": null,
+                "provider_id": "ChIJYxeFb08YDTkRDNXoZQqcpVU",
+                "opens_today": null,
+                "closes_today": null,
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
+              },
+              "category": "attraction",
+              "time_block_start": "19:40:00",
+              "time_block_end": "20:30:00",
+              "travel_to_next_minutes": null,
+              "travel_mode": null,
+              "why_this_place": "An open-air street of cafes and shops that's free to wander. Pick up a dessert and do a slow lap — it stays open late, so the evening ends when the group does.",
+              "est_cost_per_person_min_inr": null,
+              "est_cost_per_person_max_inr": null,
+              "price_source": null
+            }
+          ],
+          "total_duration_minutes": 240,
+          "total_cost_estimate": "mid",
+          "est_total_per_person_min_inr": null,
+          "est_total_per_person_max_inr": null,
+          "weather_note": null,
+          "audience_line": "For friends who'd rather argue over dosas than another round.",
+          "created_by": null,
+          "origin": "curated",
+          "narrative": "A friends plan that never needs a pitcher. Start at Mystery Rooms on Golf Course Road and spend an hour finding out who reads the clues and who just rattles the furniture. Then drive across to 32nd Avenue for dinner at Carnatic Cafe: South Indian, all vegetarian, and easy to order for a crowd. When the plates are cleared, step outside and walk the open-air lane, picking up something sweet on the way.",
           "created_at": "2026-05-05T18:00:00"
         },
         {
@@ -1944,7 +2769,9 @@
                 "provider_id": "ChIJ8beaD9YfDTkRLQF3QzM6QyY",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "07:30:00",
@@ -1976,7 +2803,9 @@
                 "provider_id": "ChIJjZ5VkrsZDTkR0Y3IHIU8yAE",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
               "time_block_start": "09:10:00",
@@ -2008,7 +2837,9 @@
                 "provider_id": "ChIJEy4Nq-IZDTkR-S0-YZmI7jU",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "attraction",
               "time_block_start": "11:00:00",
@@ -2065,7 +2896,9 @@
                 "provider_id": "ChIJrWQPWEXnDDkR9Qs0C1tJd_4",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "activity",
               "time_block_start": "15:30:00",
@@ -2098,7 +2931,9 @@
                 "provider_id": "ChIJN_co5HMjDTkRp6zmZGWOKCg",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "activity",
               "time_block_start": "17:00:00",
@@ -2131,7 +2966,9 @@
                 "provider_id": "ChIJ86Qv_wkjDTkRxLAEP8grZl0",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "restaurant",
               "time_block_start": "18:07:00",
@@ -2164,7 +3001,9 @@
                 "provider_id": "ChIJqVkfl3IjDTkRwxZ8KoHXRZ0",
                 "opens_today": null,
                 "closes_today": null,
-                "open_24h_today": false
+                "open_24h_today": false,
+                "phone": null,
+                "website": null
               },
               "category": "cafe",
               "time_block_start": "19:25:00",

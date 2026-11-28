@@ -1,4 +1,4 @@
-"""Hand-curated quests served from the home page — six per city.
+"""Hand-curated quests served from the home page — eight per city.
 
 The quests themselves live in `curated/<city>.py`; this module is the
 registry the API, the verifier and the guide export read from.
@@ -14,7 +14,9 @@ Adding a city
    guide snapshot with `python -m scripts.export_curated`.
 
 Curation rules (enforced by tests/test_curated_quests.py and the verifier):
-    * Exactly six quests per city: two date, two friends, one solo, one family.
+    * Exactly eight quests per city: three date, three friends, one solo, one
+      family. At least one friends quest has no brewery or bar stop, and at
+      least one date does not start in the early evening.
     * No venue appears twice within a city.
     * No place rated under 4.0, none permanently closed.
     * Each `why_this_place` justifies *this* venue over nearby alternatives.
@@ -28,7 +30,7 @@ from dataclasses import dataclass
 from curated import bangalore, gurgaon, hyderabad
 from models import Quest
 
-QUESTS_PER_CITY = 6
+QUESTS_PER_CITY = 8
 
 
 def _curated(quests: list[Quest]) -> list[Quest]:

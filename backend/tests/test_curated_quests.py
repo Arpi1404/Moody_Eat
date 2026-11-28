@@ -24,7 +24,7 @@ from curated_quests import (
 from main import app
 from models import AUDIENCE_LINE_MAX, ClosedDay, Occasion, Quest
 
-EXPECTED_MIX = {Occasion.date: 2, Occasion.friends: 2, Occasion.solo: 1, Occasion.family: 1}
+EXPECTED_MIX = {Occasion.date: 3, Occasion.friends: 3, Occasion.solo: 1, Occasion.family: 1}
 MAX_KM_FROM_CENTRE = 40
 MAX_WAIT_MINUTES = 30
 
@@ -78,7 +78,7 @@ def test_quest_ids_are_unique_across_cities() -> None:
 
 
 @per_city
-def test_city_has_six_quests_in_the_agreed_mix(city: CuratedCity) -> None:
+def test_city_has_eight_quests_in_the_agreed_mix(city: CuratedCity) -> None:
     assert len(city.quests) == QUESTS_PER_CITY
     assert Counter(q.occasion for q in city.quests) == EXPECTED_MIX
     titles = [q.title for q in city.quests]
@@ -130,6 +130,32 @@ def test_schedules_add_up(city: CuratedCity) -> None:
         assert quest.total_duration_minutes == span, quest.title
 
 
+# ── Who the catalogue serves ──
+
+# Google's tags for a place that is somewhere to drink.
+DRINKING_TYPES = {"bar", "pub", "brewpub", "brewery", "wine_bar", "night_club", "bar_and_grill"}
+
+
+@per_city
+def test_a_friends_quest_has_no_brewery_or_bar_stop(city: CuratedCity) -> None:
+    dry = [
+        q.title
+        for q in city.quests
+        if q.occasion == Occasion.friends
+        and all(
+            s.category != "bar" and not DRINKING_TYPES & set(s.place.types or [])
+            for s in q.stops
+        )
+    ]
+    assert dry
+
+
+@per_city
+def test_a_date_does_not_start_in_the_early_evening(city: CuratedCity) -> None:
+    starts = [q.stops[0].time_block_start for q in city.quests if q.occasion == Occasion.date]
+    assert any(start < time(16, 0) or start >= time(19, 0) for start in starts)
+
+
 # ── Closed days ──
 
 # What a check against Google found on 28 Nov 2026. `verify_curated` is what
@@ -143,6 +169,9 @@ CLOSED_DAYS = {
     ],
     "Basavanagudi: Bull Temple to Butter Dosa": [("friday", "Vidyarthi Bhavan")],
     "Aravali Trails, Then Cameras": [("monday", "Museo Camera")],
+    "White Marble to Noon Clock": [("friday", "Salar Jung Museum")],
+    "Modern Art, Then a Long Lunch": [("monday", "National Gallery of Modern Art")],
+    "Brunch, Then Vintage Wheels": [("monday", "Heritage Transport Museum")],
 }
 
 
@@ -228,7 +257,10 @@ def test_a_chosen_lead_photo_names_one_of_the_quests_stops() -> None:
         for q in c.quests
         if q.photo_stop
     }
-    assert chosen == {"Jubilee Hills, Slow Burn": "Olive Bistro & Bar"}
+    assert chosen == {
+        "Jubilee Hills, Slow Burn": "Olive Bistro & Bar",
+        "Dosa, Lake, Ice Cream": "Sankey Tank",
+    }
 
 
 def test_the_card_fields_are_left_out_when_unset() -> None:
