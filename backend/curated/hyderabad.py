@@ -10,13 +10,14 @@ import uuid
 from datetime import time
 
 from curated.builders import CREATED_AT, place, stop
-from models import CostEstimate, Occasion, Quest, StopCategory, TravelMode
+from models import CostEstimate, Occasion, Quest, StopCategory, StopRef, TravelMode
 
 QUESTS: list[Quest] = [
     # ── DATE ──
     Quest(
         id=uuid.UUID("10000000-0000-4000-8000-000000000001"),
         title="Charminar to Chai: Old City Wander",
+        audience_line="For two who'd rather wander the old city than book a table.",
         occasion=Occasion.date,
         total_duration_minutes=200,
         total_cost_estimate=CostEstimate.cheap,
@@ -87,16 +88,20 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("10000000-0000-4000-8000-000000000002"),
         title="Jubilee Hills, Slow Burn",
+        audience_line="For a date night that doesn't try too hard.",
         occasion=Occasion.date,
         total_duration_minutes=220,
         total_cost_estimate=CostEstimate.mid,
         narrative=(
             "The version of date night that doesn't try too hard. Start on the Durgam Cheruvu "
-            "lakefront while the light goes and the cable bridge switches on across the water. "
+            "lakefront as the evening settles in and the cable bridge lights up across the water. "
             "Olive is a few minutes around the lake — whitewashed walls and a terrace over the "
             "water; order the wood-fired pizza and a glass of wine because that's what the place "
             "is for. Then Conçu, where the desserts are the reason you skipped tiramisu earlier."
         ),
+        # The lakefront's first photo on Google is a board of walking-pass
+        # prices; Olive's is its terrace.
+        photo_stop=StopRef(stop_index=1),
         created_at=CREATED_AT,
         stops=[
             stop(
@@ -155,6 +160,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("10000000-0000-4000-8000-000000000004"),
         title="HITEC City Game Night",
+        audience_line="For the group that can never agree on what to do.",
         occasion=Occasion.friends,
         total_duration_minutes=270,
         total_cost_estimate=CostEstimate.mid,
@@ -224,6 +230,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("10000000-0000-4000-8000-000000000006"),
         title="Paradise, Promenade, Repeat",
+        audience_line="For friends after the classics on a budget.",
         occasion=Occasion.friends,
         total_duration_minutes=210,
         total_cost_estimate=CostEstimate.cheap,
@@ -293,6 +300,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("10000000-0000-4000-8000-000000000007"),
         title="Banjara Quiet Hours",
+        audience_line="For time alone with good coffee, green paths and chai.",
         occasion=Occasion.solo,
         total_duration_minutes=210,
         total_cost_estimate=CostEstimate.mid,
@@ -361,6 +369,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("10000000-0000-4000-8000-00000000000a"),
         title="Golconda Afternoon, Tolichowki Dinner",
+        audience_line="For families, from kids who run to grandparents who sit.",
         occasion=Occasion.family,
         total_duration_minutes=300,
         total_cost_estimate=CostEstimate.mid,

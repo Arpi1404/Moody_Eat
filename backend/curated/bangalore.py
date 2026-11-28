@@ -17,6 +17,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("30000000-0000-4000-8000-000000000001"),
         title="Lalbagh Light, Food Street Night",
+        audience_line="For two who'd share vegetarian plates, stall to stall.",
         occasion=Occasion.date,
         total_duration_minutes=210,
         total_cost_estimate=CostEstimate.cheap,
@@ -89,6 +90,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("30000000-0000-4000-8000-000000000002"),
         title="Church Street, One Book Each",
+        audience_line="For bookish couples who want the whole evening on foot.",
         occasion=Occasion.date,
         total_duration_minutes=270,
         total_cost_estimate=CostEstimate.splurge,
@@ -163,6 +165,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("30000000-0000-4000-8000-000000000003"),
         title="Indiranagar: Tacos, Toit, Death by Chocolate",
+        audience_line="For friends who want tacos, beer and dessert, in that order.",
         occasion=Occasion.friends,
         total_duration_minutes=240,
         total_cost_estimate=CostEstimate.mid,
@@ -232,6 +235,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("30000000-0000-4000-8000-000000000004"),
         title="Koramangala: Burgers, Locked Rooms, Beer",
+        audience_line="For the group that gets bored of just sitting.",
         occasion=Occasion.friends,
         total_duration_minutes=270,
         total_cost_estimate=CostEstimate.mid,
@@ -302,6 +306,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("30000000-0000-4000-8000-000000000005"),
         title="Cubbon Park, Then a Bookshop",
+        audience_line="For an early riser who wants a morning to themselves.",
         occasion=Occasion.solo,
         total_duration_minutes=255,
         total_cost_estimate=CostEstimate.cheap,
@@ -376,6 +381,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("30000000-0000-4000-8000-000000000006"),
         title="Basavanagudi: Bull Temple to Butter Dosa",
+        audience_line="For families up early who'd rather walk than drive.",
         occasion=Occasion.family,
         total_duration_minutes=165,
         total_cost_estimate=CostEstimate.cheap,

@@ -20,6 +20,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("20000000-0000-4000-8000-000000000011"),
         title="CyberHub, in the Right Order",
+        audience_line="For a date that wants a plan, not a queue.",
         occasion=Occasion.date,
         total_duration_minutes=200,
         total_cost_estimate=CostEstimate.mid,
@@ -90,6 +91,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("20000000-0000-4000-8000-000000000012"),
         title="Golf Course Road, Dressed Up",
+        audience_line="For the night you both agreed to make an effort.",
         occasion=Occasion.date,
         total_duration_minutes=240,
         total_cost_estimate=CostEstimate.splurge,
@@ -160,6 +162,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("20000000-0000-4000-8000-000000000013"),
         title="Sector 29, Two Breweries Deep",
+        audience_line="For beer drinkers who want the whole night on foot.",
         occasion=Occasion.friends,
         total_duration_minutes=300,
         total_cost_estimate=CostEstimate.mid,
@@ -230,6 +233,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("20000000-0000-4000-8000-000000000014"),
         title="Speakeasy, Pizza, Piano",
+        audience_line="For friends who want serious cocktails, then live music.",
         occasion=Occasion.friends,
         total_duration_minutes=285,
         total_cost_estimate=CostEstimate.splurge,
@@ -301,6 +305,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("20000000-0000-4000-8000-000000000015"),
         title="Aravali Trails, Then Cameras",
+        audience_line="For going alone: quiet trails, slow breakfast, old cameras.",
         occasion=Occasion.solo,
         total_duration_minutes=300,
         total_cost_estimate=CostEstimate.cheap,
@@ -374,6 +379,7 @@ QUESTS: list[Quest] = [
     Quest(
         id=uuid.UUID("20000000-0000-4000-8000-000000000016"),
         title="Sohna Road: Jump, Bowl, Pizza",
+        audience_line="For families with kids who need to bounce before they sit.",
         occasion=Occasion.family,
         total_duration_minutes=270,
         total_cost_estimate=CostEstimate.mid,
