@@ -1,6 +1,6 @@
-"""Hyderabad — six hand-authored quests against real venues.
+"""Hyderabad — eight hand-authored quests against real venues.
 
-Two date, two friends, one solo, one family; no venue appears twice. Every
+Three date, three friends, one solo, one family; no venue appears twice. Every
 provider_id is a real Google Place ID, and the coordinates, ratings, review
 counts and opening hours were read from each venue's Google listing in
 November 2026 (re-check with `python -m scripts.verify_curated --city hyderabad`).
@@ -10,7 +10,7 @@ import uuid
 from datetime import time
 
 from curated.builders import CREATED_AT, place, stop
-from models import CostEstimate, Occasion, Quest, StopCategory, StopRef, TravelMode
+from models import ClosedDay, CostEstimate, Occasion, Quest, StopCategory, StopRef, TravelMode
 
 QUESTS: list[Quest] = [
     # ── DATE ──
@@ -19,15 +19,15 @@ QUESTS: list[Quest] = [
         title="Charminar to Chai: Old City Wander",
         audience_line="For two who'd rather wander the old city than book a table.",
         occasion=Occasion.date,
-        total_duration_minutes=200,
+        total_duration_minutes=230,
         total_cost_estimate=CostEstimate.cheap,
         narrative=(
             "The old city after work, before the rush. Climb Charminar in the last hour before "
-            "it closes, when the stone goes amber, then walk ten minutes up towards Madina for "
-            "biryani at Shadab — the un-gentrified one, shared tables, and you'll understand why "
-            "Hyderabadis argue about which place is best. Walk it off on the way back and finish "
-            "with Irani chai and Osmania biscuits at Nimrah, standing a few steps from the "
-            "monument you started at."
+            "it closes, when the stone goes amber, then come down for Irani chai and Osmania "
+            "biscuits at Nimrah, standing a few steps from the monument you have just climbed. "
+            "Take your time walking up towards Madina, and finish with biryani at Shadab — the "
+            "un-gentrified one, shared tables, and you'll understand why Hyderabadis argue about "
+            "which place is best."
         ),
         created_at=CREATED_AT,
         stops=[
@@ -46,25 +46,7 @@ QUESTS: list[Quest] = [
                 time(16, 30),
                 time(17, 30),
                 "Go up before the 5:30 close — from the first-floor gallery you look straight down the four roads the monument was built to anchor. An hour is plenty.",
-                travel_to_next_minutes=10,
-                travel_mode=TravelMode.walking,
-            ),
-            stop(
-                place(
-                    "ChIJKyxGIoiXyzsRPY8PASGdTW0",
-                    "Hotel Shadab",
-                    "Madina Circle, High Court Road, Ghansi Bazaar, Hyderabad 500002",
-                    17.3689,
-                    78.4755,
-                    4.0,
-                    ["indian_restaurant", "restaurant"],
-                    user_ratings_total=91246,
-                ),
-                StopCategory.restaurant,
-                time(17, 40),
-                time(19, 0),
-                "The Old City's default answer for biryani — crowded, quick, and unbothered by trends. Order the mutton biryani and share it; portions are built for two.",
-                travel_to_next_minutes=11,
+                travel_to_next_minutes=3,
                 travel_mode=TravelMode.walking,
             ),
             stop(
@@ -79,9 +61,27 @@ QUESTS: list[Quest] = [
                     user_ratings_total=1712,
                 ),
                 StopCategory.cafe,
-                time(19, 11),
-                time(19, 50),
-                "Stand at the counter for Irani chai and Osmania biscuits — the tables are the slower way to do it. You drink it looking straight at Charminar.",
+                time(17, 35),
+                time(18, 25),
+                "Stand at the counter for Irani chai and Osmania biscuits — the tables are the slower way to do it. You drink it looking straight at Charminar. Go easy on the biscuits; dinner is next.",
+                travel_to_next_minutes=12,
+                travel_mode=TravelMode.walking,
+            ),
+            stop(
+                place(
+                    "ChIJKyxGIoiXyzsRPY8PASGdTW0",
+                    "Hotel Shadab",
+                    "Madina Circle, High Court Road, Ghansi Bazaar, Hyderabad 500002",
+                    17.3689,
+                    78.4755,
+                    4.0,
+                    ["indian_restaurant", "restaurant"],
+                    user_ratings_total=91246,
+                ),
+                StopCategory.restaurant,
+                time(19, 0),
+                time(20, 20),
+                "The Old City's default answer for biryani — crowded, quick, and unbothered by trends. Order the mutton biryani and share it; portions are built for two.",
             ),
         ],
     ),
@@ -153,6 +153,77 @@ QUESTS: list[Quest] = [
                 time(20, 48),
                 time(21, 40),
                 "The neighbourhood's most reliable patisserie counter — pick two desserts from the display and split them. Open till midnight, so there's no need to rush dinner.",
+            ),
+        ],
+    ),
+    Quest(
+        id=uuid.UUID("10000000-0000-4000-8000-000000000021"),
+        title="White Marble, Then the Noon Clock",
+        audience_line="For a date that starts early and is done soon after noon.",
+        occasion=Occasion.date,
+        total_duration_minutes=255,
+        total_cost_estimate=CostEstimate.cheap,
+        narrative=(
+            "A date that's done soon after noon. Start early at Birla Mandir, white marble on a hill, and "
+            "look out over Hussain Sagar before the day heats up. Come down to Himayatnagar for dosas and "
+            "coffee at Minerva, long enough to sit and talk. Then Salar Jung, which opens at ten: wander "
+            "the galleries without trying to see them all, but be at the musical clock before noon, when "
+            "a little figure comes out to strike the hour and the whole hall stops to watch."
+        ),
+        closed_days=[
+            ClosedDay(day="friday", stop_index=2),
+        ],
+        created_at=CREATED_AT,
+        stops=[
+            stop(
+                place(
+                    "ChIJBcAk0V2XyzsRjing1vqfQ1k",
+                    "Birla Mandir",
+                    "Naubat Pahad, Khairtabad, Hyderabad 500004",
+                    17.4062,
+                    78.4691,
+                    4.7,
+                    ["hindu_temple", "place_of_worship", "tourist_attraction"],
+                    user_ratings_total=57837,
+                ),
+                StopCategory.attraction,
+                time(8, 0),
+                time(9, 0),
+                "A white marble temple above the lake. Shoes come off at the entrance and phones go into the free lockers, so it is an hour of actually looking. Go early, before the stone warms up underfoot.",
+                travel_to_next_minutes=15,
+            ),
+            stop(
+                place(
+                    "ChIJybdPGt2ZyzsRhnkXr9gvKcM",
+                    "Minerva Coffee Shop",
+                    "3-6-199/1, Himayatnagar, Hyderabad 500029",
+                    17.4012,
+                    78.4854,
+                    4.2,
+                    ["south_indian_restaurant", "vegetarian_restaurant", "coffee_shop"],
+                    user_ratings_total=12050,
+                ),
+                StopCategory.restaurant,
+                time(9, 15),
+                time(10, 5),
+                "A dependable South Indian vegetarian kitchen, open from seven. Share a dosa and a plate of idli with your coffee and take your time — the museum is a couple of hours on your feet.",
+                travel_to_next_minutes=25,
+            ),
+            stop(
+                place(
+                    "ChIJu9dj4oeXyzsRQaBpm0uTOzU",
+                    "Salar Jung Museum",
+                    "Darulshifa, Hyderabad 500002",
+                    17.3716,
+                    78.4802,
+                    4.4,
+                    ["art_museum", "museum", "tourist_attraction"],
+                    user_ratings_total=78577,
+                ),
+                StopCategory.attraction,
+                time(10, 30),
+                time(12, 15),
+                "Find the Veiled Rebecca on the ground floor, then head for the musical clock well before noon, because the crowd gathers early. Leave bags at the cloakroom. Closed Fridays.",
             ),
         ],
     ),
@@ -232,7 +303,7 @@ QUESTS: list[Quest] = [
         title="Paradise, Promenade, Repeat",
         audience_line="For friends after the classics on a budget.",
         occasion=Occasion.friends,
-        total_duration_minutes=210,
+        total_duration_minutes=220,
         total_cost_estimate=CostEstimate.cheap,
         narrative=(
             "The Hyderabad starter pack, on a budget. Paradise's Secunderabad flagship is the one "
@@ -259,7 +330,7 @@ QUESTS: list[Quest] = [
                 time(17, 45),
                 time(19, 0),
                 "The original — Paradise started here in 1953, and the newer branches across town are tidier but not the same. Order the mutton biryani, not the chicken.",
-                travel_to_next_minutes=15,
+                travel_to_next_minutes=25,
             ),
             stop(
                 place(
@@ -273,8 +344,8 @@ QUESTS: list[Quest] = [
                     user_ratings_total=78327,
                 ),
                 StopCategory.attraction,
-                time(19, 15),
-                time(20, 20),
+                time(19, 30),
+                time(20, 30),
                 "The lakeside park closest to the Buddha statue — take the boat out if the queue is short, otherwise the promenade does the job. Closes at 9, so don't linger over the biryani.",
                 travel_to_next_minutes=12,
             ),
@@ -290,9 +361,79 @@ QUESTS: list[Quest] = [
                     user_ratings_total=19258,
                 ),
                 StopCategory.cafe,
-                time(20, 32),
-                time(21, 15),
+                time(20, 42),
+                time(21, 25),
                 "Hand-churned fruit flavours — sitaphal or mango when they're in season — eaten standing in the market courtyard. Open past midnight, and cheap enough that everyone gets two.",
+            ),
+        ],
+    ),
+    Quest(
+        id=uuid.UUID("10000000-0000-4000-8000-000000000022"),
+        title="Locked In on Road 36",
+        audience_line="For friends who'd rather crack a puzzle than sit at a bar.",
+        occasion=Occasion.friends,
+        total_duration_minutes=195,
+        total_cost_estimate=CostEstimate.mid,
+        narrative=(
+            "A late start for friends who'd rather do something than sit over drinks. Begin at Mystery "
+            "Rooms, where you get about an hour to work your way out of a locked room and everyone finds "
+            "out who takes charge. Head along Road 36 to Chutneys for steamed dosas and the row of "
+            "chutneys the place is named for, which gives you a table to argue about the last clue. Then "
+            "Cream Stone, close by, for ice cream before it shuts at eleven."
+        ),
+        created_at=CREATED_AT,
+        stops=[
+            stop(
+                place(
+                    "ChIJo4s60UmRyzsRKYZvlISkk3s",
+                    "Mystery Rooms",
+                    "SVM Mall, Road 36, Jubilee Hills, Hyderabad 500033",
+                    17.4316,
+                    78.4066,
+                    4.7,
+                    ["amusement_center"],
+                    user_ratings_total=4588,
+                ),
+                StopCategory.activity,
+                time(19, 15),
+                time(20, 30),
+                "Book your slot before you go, and pick a room the least patient person can live with. Games run about an hour; arrive a few minutes early for the briefing. Look for it on the third floor.",
+                travel_to_next_minutes=7,
+                travel_mode=TravelMode.walking,
+            ),
+            stop(
+                place(
+                    "ChIJ_T_4fjaRyzsRzEy4bqcxFsM",
+                    "Chutneys",
+                    "Road 36, Jubilee Hills, Hyderabad 500033",
+                    17.4296,
+                    78.4096,
+                    4.1,
+                    ["south_indian_restaurant", "vegetarian_restaurant", "restaurant"],
+                    user_ratings_total=14279,
+                ),
+                StopCategory.restaurant,
+                time(20, 40),
+                time(21, 40),
+                "All vegetarian, and the steamed dosa is the thing to try. Order a few plates for the middle of the table and taste every chutney before anyone picks a favourite.",
+                travel_to_next_minutes=5,
+                travel_mode=TravelMode.walking,
+            ),
+            stop(
+                place(
+                    "ChIJ91yvFUiRyzsRu0xxJudkYGI",
+                    "Cream Stone",
+                    "Sami Complex, Jubilee Hills, Hyderabad 500033",
+                    17.4307,
+                    78.4079,
+                    4.3,
+                    ["ice_cream_shop", "dessert_restaurant", "cafe"],
+                    user_ratings_total=2641,
+                ),
+                StopCategory.cafe,
+                time(21, 45),
+                time(22, 30),
+                "One tub each, or two to fight over. It closes at eleven, so don't let dinner run long, and finish the post-mortem on the way out.",
             ),
         ],
     ),
@@ -302,7 +443,7 @@ QUESTS: list[Quest] = [
         title="Banjara Quiet Hours",
         audience_line="For time alone with good coffee, green paths and chai.",
         occasion=Occasion.solo,
-        total_duration_minutes=210,
+        total_duration_minutes=230,
         total_cost_estimate=CostEstimate.mid,
         narrative=(
             "A solo route built around the small luxuries Hyderabad does well: good coffee, public "
@@ -345,7 +486,7 @@ QUESTS: list[Quest] = [
                 time(16, 38),
                 time(18, 0),
                 "A walking loop through real forest, peacocks included. Evening entry runs 4 to 6:30pm, so this is the one stop with a clock on it.",
-                travel_to_next_minutes=18,
+                travel_to_next_minutes=35,
             ),
             stop(
                 place(
@@ -359,8 +500,8 @@ QUESTS: list[Quest] = [
                     user_ratings_total=25611,
                 ),
                 StopCategory.cafe,
-                time(18, 18),
-                time(19, 0),
+                time(18, 35),
+                time(19, 20),
                 "Stand at the counter for Irani chai and Osmania biscuits — the standing crowd is the regulars. Open till 1am, so there's no hurry getting across town.",
             ),
         ],

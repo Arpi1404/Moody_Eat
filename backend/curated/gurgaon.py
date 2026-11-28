@@ -1,12 +1,11 @@
-"""Gurgaon — six hand-authored quests against real venues.
+"""Gurgaon — eight hand-authored quests against real venues.
 
-Two date, two friends, one solo, one family; no venue appears twice. Place
+Three date, three friends, one solo, one family; no venue appears twice. Place
 names, addresses and coordinates are accurate, ratings and review counts
 reflect each venue's Google Maps profile at the time of writing, and every
 provider_id is a real Google Place ID (checked by scripts/verify_curated.py).
 
-Every stop is scheduled inside the venue's Saturday opening hours. Museo
-Camera is closed on Mondays.
+A quest that does not work every day of the week says so in `closed_days`.
 """
 
 import uuid
@@ -158,6 +157,61 @@ QUESTS: list[Quest] = [
             ),
         ],
     ),
+    Quest(
+        id=uuid.UUID("20000000-0000-4000-8000-000000000021"),
+        title="Brunch, Then a Drive to Old Engines",
+        audience_line="For a daytime date that doesn't mind an hour on the road.",
+        occasion=Occasion.date,
+        total_duration_minutes=270,
+        total_cost_estimate=CostEstimate.mid,
+        narrative=(
+            "A daytime date that gets you properly out of town. Eat first, at DiGhent opposite Galleria "
+            "Market, a Belgian cafe where sharing a waffle is a reasonable way to start a long "
+            "conversation. Then head south to the Heritage Transport Museum near Taoru: about an hour on "
+            "the road, which is time for a playlist each. Inside are vintage cars, old buses and trains, "
+            "even aircraft, with enough of it to fill the afternoon. Pick a day with no early evening "
+            "plans."
+        ),
+        closed_days=[
+            ClosedDay(day="monday", stop_index=1),
+        ],
+        created_at=CREATED_AT,
+        stops=[
+            stop(
+                place(
+                    "ChIJa5bce94YDTkRGM1q2A3zsUU",
+                    "DiGhent Cafe",
+                    "Cross Point Mall, opposite Galleria Market, DLF Phase 4, Gurugram 122009",
+                    28.4683,
+                    77.0830,
+                    4.4,
+                    ["belgian_restaurant", "cafe", "breakfast_restaurant"],
+                    user_ratings_total=2824,
+                ),
+                StopCategory.restaurant,
+                time(11, 0),
+                time(12, 10),
+                "Come hungry enough for brunch, and split a waffle rather than ordering two — there's an hour in the car next. Aim to leave soon after noon.",
+                travel_to_next_minutes=60,
+            ),
+            stop(
+                place(
+                    "ChIJV5IVICI6DTkRoeLV9HB7uHA",
+                    "Heritage Transport Museum",
+                    "Bilaspur-Taoru Road, off NH 48, Taoru, Haryana 122105",
+                    28.2529,
+                    76.9243,
+                    4.6,
+                    ["museum", "tourist_attraction"],
+                    user_ratings_total=3876,
+                ),
+                StopCategory.attraction,
+                time(13, 15),
+                time(15, 30),
+                "Plan on at least two hours, and take turns choosing which hall comes next. Sort out your ride home before you go in. Closed Mondays, and it shuts at seven.",
+            ),
+        ],
+    ),
     # ── FRIENDS ──
     Quest(
         id=uuid.UUID("20000000-0000-4000-8000-000000000013"),
@@ -298,6 +352,75 @@ QUESTS: list[Quest] = [
                 time(21, 7),
                 time(23, 15),
                 "The only room on 32nd Avenue built around a stage, with a crowd that actually listens. Check the night's line-up and set time before you go, and book a table — walk-ins end up at the bar.",
+            ),
+        ],
+    ),
+    Quest(
+        id=uuid.UUID("20000000-0000-4000-8000-000000000022"),
+        title="Puzzle Room, Then Dosas",
+        audience_line="For friends who'd rather argue over dosas than another round.",
+        occasion=Occasion.friends,
+        total_duration_minutes=240,
+        total_cost_estimate=CostEstimate.mid,
+        narrative=(
+            "A friends plan that never needs a pitcher. Start at Mystery Rooms on Golf Course Road and "
+            "spend an hour finding out who reads the clues and who just rattles the furniture. Then drive "
+            "across to 32nd Avenue for dinner at Carnatic Cafe: South Indian, all vegetarian, and easy to "
+            "order for a crowd. When the plates are cleared, step outside and walk the open-air lane, "
+            "picking up something sweet on the way."
+        ),
+        created_at=CREATED_AT,
+        stops=[
+            stop(
+                place(
+                    "ChIJT3qGkQgZDTkR-eyLhGnwK_Q",
+                    "Mystery Rooms Golf Course Road",
+                    "Golf Course Road, DLF Phase 1, Gurugram 122002",
+                    28.4647,
+                    77.0954,
+                    4.7,
+                    ["amusement_center"],
+                    user_ratings_total=3018,
+                ),
+                StopCategory.activity,
+                time(16, 30),
+                time(17, 45),
+                "Book the half-past-four slot ahead of time. Games run about an hour, which leaves a few minutes to compare theories before the slow evening drive to dinner.",
+                travel_to_next_minutes=30,
+            ),
+            stop(
+                place(
+                    "ChIJGZNNBuYZDTkRL5JX3k88-kE",
+                    "Carnatic Cafe",
+                    "32nd Avenue, Sector 15, Gurugram 122001",
+                    28.4624,
+                    77.0505,
+                    4.3,
+                    ["south_indian_restaurant", "vegetarian_restaurant", "cafe"],
+                    user_ratings_total=5878,
+                ),
+                StopCategory.restaurant,
+                time(18, 20),
+                time(19, 35),
+                "Order dosas and a few things to pass around, with filter coffee to finish. It fills up in the evening and there can be a wait, so don't linger on the way over.",
+                travel_to_next_minutes=3,
+                travel_mode=TravelMode.walking,
+            ),
+            stop(
+                place(
+                    "ChIJYxeFb08YDTkRDNXoZQqcpVU",
+                    "32nd Avenue",
+                    "NH 48, Sector 15, Gurugram 122001",
+                    28.4617,
+                    77.0501,
+                    4.6,
+                    ["tourist_attraction"],
+                    user_ratings_total=28900,
+                ),
+                StopCategory.attraction,
+                time(19, 40),
+                time(20, 30),
+                "An open-air street of cafes and shops that's free to wander. Pick up a dessert and do a slow lap — it stays open late, so the evening ends when the group does.",
             ),
         ],
     ),

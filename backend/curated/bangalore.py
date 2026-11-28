@@ -1,16 +1,16 @@
-"""Bangalore — six hand-authored quests against real venues.
+"""Bangalore — eight hand-authored quests against real venues.
 
-Two date, two friends, one solo, one family; no venue appears twice. Place
-IDs, coordinates, ratings and review counts come from Google Places
-(scripts/lookup_place.py) and every stop is scheduled inside the venue's
-Saturday opening hours. Checked by scripts/verify_curated.py.
+Three date, three friends, one solo, one family; no venue appears twice. Place
+IDs, coordinates, ratings and review counts come from Google Places. A quest
+that does not work every day of the week says so in `closed_days`. Checked by
+scripts/verify_curated.py.
 """
 
 import uuid
 from datetime import time
 
 from curated.builders import CREATED_AT, place, stop
-from models import ClosedDay, CostEstimate, Occasion, Quest, StopCategory, TravelMode
+from models import ClosedDay, CostEstimate, Occasion, Quest, StopCategory, StopRef, TravelMode
 
 QUESTS: list[Quest] = [
     # ── DATE ──
@@ -161,6 +161,79 @@ QUESTS: list[Quest] = [
             ),
         ],
     ),
+    Quest(
+        id=uuid.UUID("30000000-0000-4000-8000-000000000011"),
+        title="Modern Art, Then a Long Lunch",
+        audience_line="For a daytime date with time to look, eat and linger.",
+        occasion=Occasion.date,
+        total_duration_minutes=255,
+        total_cost_estimate=CostEstimate.mid,
+        narrative=(
+            "A daytime date with room to linger. Start at eleven at the National Gallery of Modern Art, a "
+            "white mansion with sculpture standing in its garden — walk the galleries, then the lawn, and "
+            "tell each other what you'd take home. Ride across town to The Only Place, an old-school "
+            "steakhouse whose story goes back to 1965, for a lunch nobody needs to rush. Then stroll up "
+            "to MG Road and finish at Lakeview Milk Bar, which has been serving ice cream since the "
+            "1930s."
+        ),
+        closed_days=[
+            ClosedDay(day="monday", stop_index=0),
+        ],
+        created_at=CREATED_AT,
+        stops=[
+            stop(
+                place(
+                    "ChIJqZQybIEWrjsRezNLL4Ju2Gk",
+                    "National Gallery of Modern Art",
+                    "49 Palace Road, Vasanth Nagar, Bengaluru 560001",
+                    12.9894,
+                    77.5881,
+                    4.4,
+                    ["art_museum", "art_gallery", "tourist_attraction"],
+                    user_ratings_total=2229,
+                ),
+                StopCategory.attraction,
+                time(11, 0),
+                time(12, 35),
+                "Give the garden as much time as the galleries; the sculptures outside are worth it. Open by eleven from Tuesday to Sunday, and closed on Mondays.",
+                travel_to_next_minutes=25,
+            ),
+            stop(
+                place(
+                    "ChIJhUwCoH4WrjsRXHFQjoJQxzQ",
+                    "The Only Place",
+                    "Museum Road, Ashok Nagar, Bengaluru 560025",
+                    12.9716,
+                    77.6127,
+                    4.2,
+                    ["steak_house", "american_restaurant", "restaurant"],
+                    user_ratings_total=8883,
+                ),
+                StopCategory.restaurant,
+                time(13, 0),
+                time(14, 20),
+                "Known for its steaks and apple pie, so order one big thing each and share the pie. Lunch stops a little after three and the doors don't reopen until seven.",
+                travel_to_next_minutes=17,
+                travel_mode=TravelMode.walking,
+            ),
+            stop(
+                place(
+                    "ChIJXxn4iXwWrjsR7mjtEslOP8I",
+                    "Lakeview Milk Bar",
+                    "89 MG Road, Bengaluru 560001",
+                    12.9759,
+                    77.6038,
+                    4.1,
+                    ["ice_cream_shop", "dessert_shop"],
+                    user_ratings_total=12407,
+                ),
+                StopCategory.cafe,
+                time(14, 40),
+                time(15, 15),
+                "Order one sundae and two spoons. It stays open late into the night, so there's no clock on the end of this one.",
+            ),
+        ],
+    ),
     # ── FRIENDS ──
     Quest(
         id=uuid.UUID("30000000-0000-4000-8000-000000000003"),
@@ -299,6 +372,77 @@ QUESTS: list[Quest] = [
                 time(21, 7),
                 time(22, 45),
                 "A big brewery with house beers on tap and enough room that a group usually finds a table. Order a round of the wheat and something fried, and let the post-mortem begin.",
+            ),
+        ],
+    ),
+    Quest(
+        id=uuid.UUID("30000000-0000-4000-8000-000000000012"),
+        title="Malleshwaram: Dosa, Lake, Ice Cream",
+        audience_line="For friends who'd rather walk and eat than settle into a bar.",
+        occasion=Occasion.friends,
+        total_duration_minutes=195,
+        total_cost_estimate=CostEstimate.cheap,
+        narrative=(
+            "An evening for friends who'd rather walk and eat than settle into a bar. Be at CTR as the "
+            "doors reopen at four, for a benne masala dosa from a kitchen that has been at it since the "
+            "1920s. Then walk it off up to Sankey Tank and take the path by the water while the day "
+            "cools, which is when the good conversations happen. Come back down Margosa Road to Naturals "
+            "for ice cream, and argue over whose flavour won."
+        ),
+        photo_stop=StopRef(stop_index=1),
+        created_at=CREATED_AT,
+        stops=[
+            stop(
+                place(
+                    "ChIJ82NqvCUWrjsRC33A4yTYQWk",
+                    "CTR (Central Tiffin Room)",
+                    "7th Cross Road, Malleshwaram, Bengaluru 560003",
+                    12.9982,
+                    77.5695,
+                    4.3,
+                    ["south_indian_restaurant", "vegetarian_restaurant", "restaurant"],
+                    user_ratings_total=37912,
+                ),
+                StopCategory.restaurant,
+                time(16, 0),
+                time(16, 50),
+                "The benne masala dosa is the order: crisp, with butter doing the heavy lifting. The room is small and the queue is part of it, so arrive as it reopens at four.",
+                travel_to_next_minutes=22,
+                travel_mode=TravelMode.walking,
+            ),
+            stop(
+                place(
+                    "ChIJzVAUlTIWrjsRJgrhXgyf-Gs",
+                    "Sankey Tank",
+                    "Sankey Tank, Malleshwaram, Bengaluru 560080",
+                    13.0093,
+                    77.5741,
+                    4.5,
+                    ["lake", "park"],
+                    user_ratings_total=4217,
+                ),
+                StopCategory.attraction,
+                time(17, 15),
+                time(18, 15),
+                "Take the waterside path at an easy pace and find somewhere to stop where the view opens up. Get there while it's still light — that's when the lake earns the walk.",
+                travel_to_next_minutes=15,
+                travel_mode=TravelMode.walking,
+            ),
+            stop(
+                place(
+                    "ChIJmYCoOioWrjsR9NYCA-BbgPY",
+                    "Naturals Ice Cream",
+                    "Margosa Road, Malleshwaram, Bengaluru 560003",
+                    13.0036,
+                    77.5695,
+                    4.5,
+                    ["ice_cream_shop", "dessert_shop"],
+                    user_ratings_total=2760,
+                ),
+                StopCategory.cafe,
+                time(18, 35),
+                time(19, 15),
+                "A scoop each, plus one flavour for the table that nobody has tried. Start with the fruit ones. It's open till eleven, so nobody has to eat on the move.",
             ),
         ],
     ),
