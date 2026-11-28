@@ -52,6 +52,7 @@ from services.place_blurbs_service import generate_quest_narrative
 from services.places_exceptions import PlacesProviderError
 from services.places_provider import PlaceHours, hours_for_weekday
 from services.weather_service import OUTDOOR_TYPES, rain_expected
+from services.weather_service import feels_like_by_hour as place_feels_like
 from services.weather_service import utc_offset_minutes as place_utc_offset
 
 logger = logging.getLogger(__name__)
@@ -247,6 +248,18 @@ _DINNER_WINDOW: tuple[int, int] = (18 * 60, 22 * 60 + 30)
 # at 8 am is a fine morning; at 11 am it is not).
 _DAYLIGHT_LAST_START_MIN: int = 18 * 60 + 45
 _HEAT_WINDOW: tuple[int, int] = (10 * 60 + 30, 16 * 60)
+# ...but only on a hot day: a park is kept out of the window when the forecast
+# feels-like temperature for the stop's start hour, on the plan's day, is at
+# least this. With no forecast the park is kept out, as before this existed.
+_HOT_FEELS_LIKE_C: float = 27.0
+
+
+def _is_hot(feels_like: dict[int, float] | None, start_min: int) -> bool:
+    """Whether a stop starting at `start_min` is in the heat. Unknown is hot."""
+    if feels_like is None:
+        return True
+    temp = feels_like.get(start_min // 60)
+    return temp is None or temp >= _HOT_FEELS_LIKE_C
 _LINGER_STEP_MIN: int = 5
 
 # ── Scoring weights per budget tier ──────────────────────────────────────────
@@ -1493,15 +1506,19 @@ def _swap_kind(stop: Stop, place_type: str, occasion: Occasion) -> TemplateStop 
 
 # ── What the clock allows ─────────────────────────────────────────────────────
 
-def _avoid_for_the_hour(start_min: int) -> frozenset[str]:
+def _in_the_heat(start_min: int, hot: bool) -> bool:
+    return hot and _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]
+
+
+def _avoid_for_the_hour(start_min: int, hot: bool = True) -> frozenset[str]:
     """Primary types not taken for a stop starting at `start_min`, whatever
     was searched: open-air places in the midday heat and after dark."""
-    if start_min > _DAYLIGHT_LAST_START_MIN or _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]:
+    if start_min > _DAYLIGHT_LAST_START_MIN or _in_the_heat(start_min, hot):
         return OPEN_AIR_PRIMARY_TYPES
     return frozenset()
 
 
-def _types_for_the_hour(tmpl: TemplateStop, start_min: int) -> tuple[str, ...]:
+def _types_for_the_hour(tmpl: TemplateStop, start_min: int, hot: bool = True) -> tuple[str, ...]:
     """The stop's search types that suit a start at `start_min`.
 
     After _DAYLIGHT_LAST_START_MIN no park, sight, gallery or museum: a stop
@@ -1511,7 +1528,7 @@ def _types_for_the_hour(tmpl: TemplateStop, start_min: int) -> tuple[str, ...]:
     types = tmpl.places_types
     if start_min > _DAYLIGHT_LAST_START_MIN:
         return tuple(t for t in types if t not in DAYLIGHT_TYPES)
-    if _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]:
+    if _in_the_heat(start_min, hot):
         shaded = tuple(t for t in types if t not in OPEN_AIR_TYPES)
         if shaded:
             return shaded
@@ -1609,6 +1626,15 @@ async def assemble_quest(
     )
     rng = random.Random(req.variety_seed) if req.variety_seed is not None else None
 
+    # How hot it will feel, hour by hour, on the plan's day: decides whether
+    # parks are kept out of the midday window. Unknown counts as hot.
+    feels_like: dict[int, float] | None = None
+    if anchor is not None:
+        try:
+            feels_like = await place_feels_like(anchor.lat, anchor.lng, plan_day)
+        except Exception as exc:
+            logger.warning("feels_like_failed err_type=%s", exc.__class__.__name__)
+
     # Rain check for the quest window (fail-open: unknown weather = no change).
     rain_risk: bool | None = None
     if anchor is not None:
@@ -1629,7 +1655,8 @@ async def assemble_quest(
     async def _place_stop(tmpl: TemplateStop, *, any_hour: bool = False) -> bool:
         """Fill one stop at the end of the plan so far. False when nothing fits."""
         nonlocal prev_lat, prev_lng, cursor, outdoor_skipped
-        stop_place_types = _types_for_the_hour(tmpl, _minutes(cursor))
+        hot = _is_hot(feels_like, _minutes(cursor))
+        stop_place_types = _types_for_the_hour(tmpl, _minutes(cursor), hot)
         if not stop_place_types:
             logger.info("stop_skipped_for_hour role=%s start=%s", tmpl.role, cursor)
             return False
@@ -1685,8 +1712,8 @@ async def assemble_quest(
             )
 
         start_min = _minutes(cursor)
-        picked = await _fill(stop_place_types, _avoid_for_the_hour(start_min))
-        if picked is None and _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]:
+        picked = await _fill(stop_place_types, _avoid_for_the_hour(start_min, hot))
+        if picked is None and _in_the_heat(start_min, hot):
             # The heat is a preference, the dark is not: an area with nothing
             # but parks still gets its park at midday. Searches already made
             # are cached by the service, so this costs no new call unless the
