@@ -32,6 +32,11 @@ logger = logging.getLogger(__name__)
 NARRATIVE_TIMEOUT_SECONDS = 8.0
 # Blurbs are fetched after the places are already on screen, and are longer.
 BLURBS_TIMEOUT_SECONDS = 20.0
+# The intro's token ceiling. Its three sentences need far less than this: the
+# room is for a model that thinks before it answers, because providers can
+# count the thinking against the same ceiling, and not every model lets it be
+# turned off. With too little room the answer comes back empty or cut off.
+NARRATIVE_MAX_TOKENS = 800
 
 # How much of a provider's error message goes into a log line.
 _ERROR_SNIPPET_MAX = 200
@@ -424,7 +429,9 @@ Stops:
 
 Write exactly 2-3 sentences that set the scene for this outing. Be vivid and specific to {specific_to}. No marketing language, no bullet points, no headers — plain prose only."""
 
-    reply = await ask_model(model, prompt, 256, NARRATIVE_TIMEOUT_SECONDS)
+    reply = await ask_model(
+        model, prompt, NARRATIVE_MAX_TOKENS, NARRATIVE_TIMEOUT_SECONDS
+    )
     if reply.problem is None and len(reply.text) > NARRATIVE_MAX:
         reply = ModelReply(
             problem="too_long",
