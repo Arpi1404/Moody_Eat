@@ -7506,6 +7506,349 @@ a.explore-edit-filters {
   color: var(--text-h);
 }
 
+/* ── Home: the plan at the top, and what a catalogue card shows ────────── */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Every quest photo sits in a box of a fixed shape and fills it. */
+.quest-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* No photo of the place: the occasion's own picture, toned down. */
+.quest-photo--fallback {
+  opacity: 0.7;
+  filter: saturate(0.8);
+}
+
+.quest-stops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* One line each, cut short when a name is long: four stops stay four lines. */
+.quest-stop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.quest-stop-number {
+  flex: 0 0 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.quest-stop-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.home-hero .home-hero-title {
+  font-size: clamp(28px, 7.6vw, 56px);
+}
+
+.hero-plan {
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 760px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text-h);
+  font-family: var(--sans);
+  text-align: left;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+button.hero-plan {
+  cursor: pointer;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+button.hero-plan:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+button.hero-plan:focus-visible,
+.curated-quest-card:focus-visible,
+.home-hero-more:focus-visible,
+.home-cta-primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.hero-plan-photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 1;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.hero-plan-days {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(253, 248, 236, 0.95);
+  color: #8C5E12;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* The same height whatever is in it: two lines of title and four stops fit,
+   so nothing below moves when the quest arrives. */
+.hero-plan-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 216px;
+  min-width: 0;
+  padding: 12px 16px 14px;
+}
+
+.hero-plan-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hero-plan-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 22px;
+  letter-spacing: -0.01em;
+}
+
+.hero-plan-explain {
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.hero-plan-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0;
+}
+
+.hero-plan-facts {
+  font-weight: 600;
+}
+
+.hero-plan-open {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.hero-plan-bar {
+  display: block;
+  flex-shrink: 0;
+  width: 72%;
+  height: 14px;
+  margin: 2px 0;
+  border-radius: 7px;
+  background: var(--code-bg);
+}
+
+.hero-plan-bar--kicker {
+  width: 38%;
+  height: 10px;
+}
+
+.hero-plan-bar--title {
+  width: 88%;
+  height: 22px;
+}
+
+.hero-plan--loading .hero-plan-photo,
+.hero-plan--loading .hero-plan-bar {
+  animation: hero-plan-wait 1.4s ease-in-out infinite;
+}
+
+@keyframes hero-plan-wait {
+  50% { opacity: 0.55; }
+}
+
+.home-hero .home-cta-row {
+  align-items: center;
+  column-gap: 20px;
+  row-gap: 4px;
+  margin-top: 0;
+}
+
+.home-hero-more {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* A quiet line, not a second pill competing with the button. */
+.home-hero .home-hero-note {
+  margin-top: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .home-page .home-hero {
+    gap: 14px;
+    padding-top: 0;
+  }
+  .home-hero .home-hero-sub {
+    display: none;
+  }
+  .home-hero .home-cta-row {
+    align-self: stretch;
+  }
+  .home-hero .home-cta-primary {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .home-hero .home-hero-more {
+    flex: 1 1 100%;
+  }
+  .home-hero .home-hero-note {
+    align-self: center;
+  }
+}
+
+/* Wider screens have room to set the photo beside the plan. */
+@media (min-width: 720px) {
+  .hero-plan {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    align-items: stretch;
+  }
+  .hero-plan-photo {
+    aspect-ratio: 4 / 3;
+    align-self: center;
+    height: 100%;
+  }
+  .hero-plan-body {
+    height: 236px;
+    padding: 18px 20px;
+  }
+  .hero-plan-title {
+    font-size: 20px;
+    line-height: 24px;
+  }
+}
+
+/* The cards: a photo of a fixed shape, then the quest in words. */
+.curated-quest-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  font-family: var(--sans);
+}
+
+.curated-quest-image {
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+
+.curated-quest-body {
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px 16px;
+}
+
+.curated-quest-title,
+.curated-quest-for,
+.curated-quest-days {
+  display: block;
+}
+
+.curated-quest-for {
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: 0;
+  color: var(--text-h);
+}
+
+/* Lines the facts up along the bottom of cards in the same row. */
+.curated-quest-chips {
+  margin-top: auto;
+}
+
+/* A later .chip rule, for filter buttons, would make these 44px circles. */
+.curated-quest-card .chip {
+  min-height: 0;
+  line-height: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.hero-plan { transition: none; }
+  .hero-plan--loading .hero-plan-photo,
+  .hero-plan--loading .hero-plan-bar { animation: none; }
+}
+
 
 /* ── Quest page: the first stop sits higher ────────────────────────────── */
 

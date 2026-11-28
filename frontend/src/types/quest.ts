@@ -70,12 +70,16 @@ export type Weekday =
   | 'saturday'
   | 'sunday'
 
-/** A weekday a catalogue quest does not work, and the stop that is why. */
-export interface ClosedDay {
-  day: Weekday
+/** One of a quest's own stops. */
+export interface StopRef {
   stop_index: number
-  /** The place at that stop: the entry follows it if stops are moved. */
+  /** The place at that stop: the reference follows it if stops are moved. */
   place_id?: string | null
+}
+
+/** A weekday a catalogue quest does not work, and the stop that is why. */
+export interface ClosedDay extends StopRef {
+  day: Weekday
 }
 
 export interface Quest {
@@ -100,6 +104,10 @@ export interface Quest {
   origin?: QuestOrigin | null
   /** Catalogue quests only; absent when the quest works all week. */
   closed_days?: ClosedDay[] | null
+  /** Catalogue quests only: one line on who the quest is for. */
+  audience_line?: string | null
+  /** The stop whose photo leads the quest; the first when absent. */
+  photo_stop?: StopRef | null
   narrative: string
   /** ISO 8601 datetime string */
   created_at: string

@@ -160,11 +160,16 @@ async def test_an_overlong_model_written_intro_falls_back(monkeypatch):
 
         async def post(self, *args, **kwargs):
             return SimpleNamespace(
-                raise_for_status=lambda: None,
+                is_success=True,
+                status_code=200,
                 json=lambda: {"choices": [{"message": {"content": "y" * (NARRATIVE_MAX + 1)}}]},
             )
 
-    monkeypatch.setenv("OPENCODE_API_KEY", "test")
+    monkeypatch.setattr(
+        blurbs,
+        "configured_text_model",
+        lambda: blurbs.TextModel("https://model.test/v1/chat/completions", "m", "k" * 20),
+    )
     monkeypatch.setattr(blurbs.httpx, "AsyncClient", _Client)
     text = await blurbs.generate_quest_narrative(
         "Indiranagar", "date", "mid", 2, [{"name": "Toit", "category": "bar", "why": "w"}]

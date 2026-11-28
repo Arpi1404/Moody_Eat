@@ -306,6 +306,7 @@ class NearbyPlacesService:
                     types=raw.types,
                     primary_type=raw.primary_type,
                     provider_id=raw.provider_id,
+                    **_contact_and_hours(raw),
                 )
             )
 
@@ -370,6 +371,7 @@ class NearbyPlacesService:
                     types=raw.types,
                     primary_type=raw.primary_type,
                     provider_id=raw.provider_id,
+                    **_contact_and_hours(raw),
                 )
             )
             if len(places) == _NAME_SEARCH_MAX_RESULTS:
@@ -541,6 +543,18 @@ class NearbyPlacesService:
 
             strict.append(place)
         return strict
+
+
+def _contact_and_hours(raw: RawPlace) -> dict[str, object]:
+    """The PlaceItem fields that come with a search on Places API (New)."""
+    return {
+        "phone": raw.phone,
+        "website": raw.website,
+        "opening_periods": (
+            list(raw.opening_periods) if raw.opening_periods is not None else None
+        ),
+        "utc_offset_minutes": raw.utc_offset_minutes,
+    }
 
 
 def map_provider_error(exc: PlacesProviderError) -> tuple[int, str]:

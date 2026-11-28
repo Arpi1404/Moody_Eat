@@ -23,6 +23,8 @@ from services.places_provider import (
     RawPlace,
     ResolvedLocation,
 )
+from services.places_provider import _fmt_hhmm  # noqa: F401  (kept importable here)
+from services.places_provider import hours_for_weekday as _hours_for_weekday
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,19 @@ _MAX_SUGGESTIONS = 5
 # Enterprise + Atmosphere SKU. Extend deliberately.
 # primaryType is a Pro-tier field, like types, so it costs nothing extra on a
 # request that is already Enterprise for its rating and price fields.
+#
+# Opening hours, phone and website are Enterprise fields too (Google's Nearby
+# Search and Text Search pages list regularOpeningHours,
+# internationalPhoneNumber and websiteUri under the Enterprise SKU, and
+# utcOffsetMinutes under Pro), so asking for them here costs nothing more per
+# search. Before they were asked for, each candidate's hours took a separate
+# Place Details call: most of a quest's bill.
+_SEARCH_EXTRA_FIELDS: tuple[str, ...] = (
+    "places.regularOpeningHours.periods",
+    "places.utcOffsetMinutes",
+    "places.internationalPhoneNumber",
+    "places.websiteUri",
+)
 _NEARBY_FIELD_MASK_NEW = ",".join(
     (
         "places.id",
@@ -63,6 +78,7 @@ _NEARBY_FIELD_MASK_NEW = ",".join(
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
+        *_SEARCH_EXTRA_FIELDS,
     )
 )
 
@@ -91,6 +107,7 @@ _TEXT_SEARCH_FIELD_MASK = ",".join(
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
+        *_SEARCH_EXTRA_FIELDS,
     )
 )
 # Text Search bills per request, not per result, so ask for the most it gives
@@ -98,58 +115,6 @@ _TEXT_SEARCH_FIELD_MASK = ",".join(
 _TEXT_SEARCH_PAGE_SIZE = 20
 # Matches inside this circle rank higher. It is a lean, not a fence.
 _TEXT_SEARCH_BIAS_RADIUS_M = 5_000.0
-
-
-def _fmt_hhmm(g_time: str) -> str | None:
-    """Google returns 'HHMM' (e.g. '0900', '2130'). Convert to 'HH:MM'."""
-    if not g_time or len(g_time) != 4 or not g_time.isdigit():
-        return None
-    return f"{g_time[:2]}:{g_time[2:]}"
-
-
-def _hours_for_weekday(periods: list[dict[str, Any]], weekday: int) -> PlaceHours:
-    """Given Google's `opening_hours.periods` array, extract today's hours.
-
-    A 24h place is signalled by a single period with day=0 time='0000' and no close.
-    opens_today/closes_today describe the day's first window; `windows` lists
-    every window so split-shift places can be checked against any time slot.
-    """
-    if not periods:
-        return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
-
-    # Detect 24h: single period, day 0, open time "0000", no close field.
-    if len(periods) == 1:
-        only = periods[0]
-        opn = only.get("open") or {}
-        if opn.get("day") == 0 and opn.get("time") == "0000" and "close" not in only:
-            return PlaceHours(opens_today=None, closes_today=None, open_24h_today=True)
-
-    # A weekday can carry several periods: restaurants that close between
-    # lunch and dinner, parks open mornings and evenings. Keep them all —
-    # reading only the first made every such place look shut in the evening.
-    todays: list[tuple[str | None, str | None]] = []
-    for p in periods:
-        opn = p.get("open") or {}
-        if opn.get("day") != weekday:
-            continue
-        opens = _fmt_hhmm(str(opn.get("time") or ""))
-        close = p.get("close") or {}
-        closes = _fmt_hhmm(str(close.get("time") or "")) if close else None
-        todays.append((opens, closes))
-
-    if not todays:
-        return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
-
-    todays.sort(key=lambda window: window[0] or "")
-    first_opens, first_closes = todays[0]
-    return PlaceHours(
-        opens_today=first_opens,
-        closes_today=first_closes,
-        open_24h_today=False,
-        windows=tuple(
-            (opens, closes) for opens, closes in todays if opens and closes
-        ),
-    )
 
 
 def _new_periods_to_legacy(periods: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -619,6 +584,14 @@ class GooglePlacesProvider(PlacesProvider):
         price_range = item.get("priceRange") or {}
         start_inr = cls._inr_units(price_range.get("startPrice"))
         end_inr = cls._inr_units(price_range.get("endPrice"))
+        # Every search on this API asks for regularOpeningHours, so a place
+        # without it is one Google lists no hours for: an empty tuple, not
+        # None, and no separate lookup (Place Details reads the same record).
+        hours = item.get("regularOpeningHours") or {}
+        periods = tuple(_new_periods_to_legacy(hours.get("periods") or []))
+        offset = item.get("utcOffsetMinutes")
+        phone = str(item.get("internationalPhoneNumber") or "").strip() or None
+        website = str(item.get("websiteUri") or "").strip() or None
         return RawPlace(
             provider_id=str(item.get("id") or ""),
             name=str(display.get("text") or "").strip(),
@@ -633,6 +606,10 @@ class GooglePlacesProvider(PlacesProvider):
             price_range_start_inr=start_inr,
             price_range_end_inr=end_inr,
             primary_type=str(primary_type) if primary_type else None,
+            opening_periods=periods,
+            utc_offset_minutes=int(offset) if isinstance(offset, (int, float)) else None,
+            phone=phone,
+            website=website if website and website.startswith(("https://", "http://")) else None,
         )
 
     @staticmethod

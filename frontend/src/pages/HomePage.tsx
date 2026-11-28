@@ -1,24 +1,15 @@
-import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
-import type { Quest, Weekday } from '../types/quest'
+import { fetchCuratedQuests, generateQuest } from '../api'
+import type { Quest } from '../types/quest'
+import { HeroPlan, QuestCardButton } from '../components/CatalogueQuest'
 import { LocationInput } from '../components/LocationInput'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
 import { TourSheet, WelcomeNudge } from '../components/WelcomeTour'
 import { track } from '../lib/analytics'
-import { budgetLabel } from '../lib/budget'
-import {
-  closedTodayLast,
-  closedTodayLine,
-  indiaWeekday,
-  notOnLine,
-} from '../lib/closedDays'
-import {
-  OCCASIONS,
-  OCCASION_LABELS,
-  type OccasionKey,
-  occasionPhoto,
-} from '../lib/occasions'
+import { pickHeroQuest } from '../lib/catalogue'
+import { closedTodayLast, indiaWeekday } from '../lib/closedDays'
+import { OCCASIONS, type OccasionKey } from '../lib/occasions'
 import {
   CURATED_CITIES,
   DEFAULT_CITY,
@@ -117,83 +108,6 @@ function wait(ms: number): Promise<void> {
   })
 }
 
-function formatQuestDuration(minutes: number): string {
-  const hours = minutes / 60
-  return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`
-}
-
-function costLabel(cost: Quest['total_cost_estimate']): string {
-  return budgetLabel(cost)
-}
-
-function CuratedQuestImage({ quest }: { quest: Quest }) {
-  const [failed, setFailed] = useState(false)
-  const firstStop = quest.stops[0]
-  const placeId = firstStop?.place.provider_id
-  const src = placeId
-    ? `${getApiBase()}/api/places/photo?place_id=${encodeURIComponent(placeId)}&max_width=800`
-    : ''
-
-  const badge = (
-    <span className="curated-quest-occasion-badge">
-      {OCCASION_LABELS[quest.occasion]}
-    </span>
-  )
-
-  if (!src || failed) {
-    // No photo of the place itself: fall back to the occasion's own picture.
-    return (
-      <div className="curated-quest-image curated-quest-image--fallback">
-        <img src={occasionPhoto(quest.occasion)} alt="" />
-        {badge}
-      </div>
-    )
-  }
-
-  return (
-    <div className="curated-quest-image">
-      <img
-        src={src}
-        alt={firstStop.place.name}
-        onError={() => setFailed(true)}
-      />
-      {badge}
-    </div>
-  )
-}
-
-/** "Not on Mondays", and on that day which stop is shut. */
-function QuestDays({ quest, today }: { quest: Quest; today: Weekday }) {
-  const notOn = notOnLine(quest)
-  if (!notOn) return null
-  const shutToday = closedTodayLine(quest, today)
-  if (!shutToday) return <p className="curated-quest-days">{notOn}</p>
-  return (
-    <p className="curated-quest-days curated-quest-days--today">
-      <strong>{shutToday}.</strong> {notOn}.
-    </p>
-  )
-}
-
-function StopTrail({ count }: { count: number }) {
-  const items: ReactNode[] = []
-  for (let i = 0; i < count; i++) {
-    if (i > 0) items.push(<span key={`l${i}`} className="stop-trail-line" />)
-    items.push(
-      <span
-        key={`d${i}`}
-        className={`stop-trail-dot${i === 0 ? '' : ' stop-trail-dot--empty'}`}
-      />,
-    )
-  }
-  return (
-    <div className="stop-trail" aria-hidden>
-      {items}
-      <span className="stop-trail-label">{count} {count === 1 ? 'stop' : 'stops'}</span>
-    </div>
-  )
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const PLAN_PARAM_KEYS = new Set<OccasionKey>(['date', 'friends', 'solo', 'family'])
@@ -244,6 +158,9 @@ export function HomePage() {
   const curatedScrollRef = useRef<HTMLDivElement>(null)
   const curatedCache = useRef(new Map<CityKey, Quest[]>())
   const curatedRequest = useRef(0)
+  // The plan at the top suits the time they arrived, so it does not change
+  // under them while the page is open.
+  const [arrivedAt] = useState(() => new Date())
 
   const scrollCurated = useCallback((direction: 'prev' | 'next') => {
     const el = curatedScrollRef.current
@@ -535,10 +452,11 @@ export function HomePage() {
   }
 
   const openCuratedQuest = useCallback(
-    (quest: Quest) => {
+    (quest: Quest, from: 'hero' | 'row' | 'tour') => {
       track('curated_quest_tapped', {
         quest_id: quest.id,
         city: curatedCity ?? DEFAULT_CITY,
+        from,
       })
       sessionStorage.setItem(`quest_${quest.id}`, JSON.stringify(quest))
       navigate(`/quest/preview/${quest.id}`, { state: { quest } })
@@ -551,6 +469,11 @@ export function HomePage() {
   // Quests with a stop shut today stay in the row, at the end of it.
   const today = indiaWeekday()
   const rowQuests = closedTodayLast(curatedQuests, today)
+  // Left open past midnight, the arrival time no longer says what is open.
+  const heroQuest = pickHeroQuest(
+    curatedQuests,
+    indiaWeekday(arrivedAt) === today ? arrivedAt : new Date(),
+  )
 
   const browseQuests = useCallback(() => {
     document
@@ -562,29 +485,31 @@ export function HomePage() {
     <>
       <main className="home-page">
         <header className="home-hero">
-          <span className="home-eyebrow">
-            <span className="home-eyebrow-dot" aria-hidden />
-            Turn any outing into a quest
-          </span>
           <h1 className="home-hero-title">
             Tell us the mood.<br />
             <em>We'll handle the plans.</em>
           </h1>
+          {/* Wider screens only: on a phone the plan below says it better. */}
           <p className="home-hero-sub">
-            Pick an occasion and we'll put together a quest: a few good
-            places in the right order, mapped and timed — morning, afternoon
-            or night.
+            Pick an occasion and we'll put together a quest: a few good places
+            in the right order, mapped and timed.
           </p>
+          <HeroPlan
+            quest={heroQuest}
+            loading={curatedLoading}
+            today={today}
+            onOpen={(quest) => openCuratedQuest(quest, 'hero')}
+          />
           <div className="home-cta-row">
             <button
               type="button"
               className="home-cta-primary"
               onClick={() => openSheet('date')}
             >
-              Start a quest <span aria-hidden>→</span>
+              Build my quest <span aria-hidden>→</span>
             </button>
-            <button type="button" className="home-cta-ghost" onClick={browseQuests}>
-              Browse quests
+            <button type="button" className="home-hero-more" onClick={browseQuests}>
+              More ready-made quests <span aria-hidden>↓</span>
             </button>
           </div>
           <span className="home-hero-note">
@@ -720,30 +645,16 @@ export function HomePage() {
               <div
                 ref={curatedScrollRef}
                 className="curated-quests-row"
+                role="group"
                 aria-label={`Curated quests in ${cityName(curatedCity ?? DEFAULT_CITY)}`}
               >
                 {rowQuests.map((quest) => (
-                  <button
+                  <QuestCardButton
                     key={quest.id}
-                    type="button"
-                    className="curated-quest-card"
-                    onClick={() => openCuratedQuest(quest)}
-                  >
-                    <CuratedQuestImage quest={quest} />
-                    <div className="curated-quest-body">
-                      <p className="curated-quest-title">{quest.title}</p>
-                      <div className="curated-quest-chips">
-                        <span className="chip chip--accent">
-                          {formatQuestDuration(quest.total_duration_minutes)}
-                        </span>
-                        <span className="chip chip--gold">
-                          {costLabel(quest.total_cost_estimate)}
-                        </span>
-                      </div>
-                      <StopTrail count={quest.stops.length} />
-                      <QuestDays quest={quest} today={today} />
-                    </div>
-                  </button>
+                    quest={quest}
+                    today={today}
+                    onOpen={() => openCuratedQuest(quest, 'row')}
+                  />
                 ))}
               </div>
             </div>
@@ -999,7 +910,7 @@ export function HomePage() {
             rowQuests.length > 0
               ? () => {
                   closeTour(true)
-                  openCuratedQuest(rowQuests[0])
+                  openCuratedQuest(rowQuests[0], 'tour')
                 }
               : undefined
           }
