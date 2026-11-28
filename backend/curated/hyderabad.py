@@ -64,7 +64,7 @@ QUESTS: list[Quest] = [
                 time(17, 35),
                 time(18, 25),
                 "Stand at the counter for Irani chai and Osmania biscuits — the tables are the slower way to do it. You drink it looking straight at Charminar. Go easy on the biscuits; dinner is next.",
-                travel_to_next_minutes=12,
+                travel_to_next_minutes=16,
                 travel_mode=TravelMode.walking,
             ),
             stop(

@@ -407,7 +407,7 @@ QUESTS: list[Quest] = [
                 time(16, 0),
                 time(16, 50),
                 "The benne masala dosa is the order: crisp, with butter doing the heavy lifting. The room is small and the queue is part of it, so arrive as it reopens at four.",
-                travel_to_next_minutes=22,
+                travel_to_next_minutes=24,
                 travel_mode=TravelMode.walking,
             ),
             stop(
@@ -425,7 +425,7 @@ QUESTS: list[Quest] = [
                 time(17, 15),
                 time(18, 15),
                 "Take the waterside path at an easy pace and find somewhere to stop where the view opens up. Get there while it's still light — that's when the lake earns the walk.",
-                travel_to_next_minutes=15,
+                travel_to_next_minutes=16,
                 travel_mode=TravelMode.walking,
             ),
             stop(
