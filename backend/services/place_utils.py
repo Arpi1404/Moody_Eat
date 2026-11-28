@@ -58,3 +58,20 @@ def attach_distances(
         scored.append((p, d))
     scored.sort(key=lambda x: x[1])
     return scored
+
+
+# The shortest name worth showing. Below this a cut name is no name at all.
+_MIN_NAME_CHARS = 3
+
+
+def tidy_place_name(name: str) -> str:
+    """A place's name without the marketing tail Google keeps on it.
+
+    "Chulha Chauki Da Dhaba | Indiranagar" -> "Chulha Chauki Da Dhaba". Cut at
+    the first " | " only: " - " and brackets are too often part of the name
+    ("Jimmy - The Ginger", "1 Bar House Kitchen (1BHK)"). A cut that would
+    leave fewer than three characters keeps the original.
+    """
+    original = (name or "").strip()
+    head = original.split(" | ", 1)[0].strip()
+    return head if len(head) >= _MIN_NAME_CHARS else original

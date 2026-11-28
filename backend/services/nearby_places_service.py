@@ -19,7 +19,12 @@ from models import (
     PlaceItem,
     ResolvedLocationOut,
 )
-from services.place_utils import attach_distances, dedupe_places, haversine_meters
+from services.place_utils import (
+    attach_distances,
+    dedupe_places,
+    haversine_meters,
+    tidy_place_name,
+)
 from services.places_exceptions import (
     FeatureUnavailableError,
     LocationNotFoundError,
@@ -292,7 +297,7 @@ class NearbyPlacesService:
         for raw, dist_m in top:
             places.append(
                 PlaceItem(
-                    name=raw.name,
+                    name=tidy_place_name(raw.name),
                     address=raw.address or "",
                     lat=raw.lat,
                     lng=raw.lng,
@@ -357,7 +362,7 @@ class NearbyPlacesService:
                 continue
             places.append(
                 PlaceItem(
-                    name=raw.name,
+                    name=tidy_place_name(raw.name),
                     address=raw.address or "",
                     lat=raw.lat,
                     lng=raw.lng,
@@ -427,7 +432,7 @@ class NearbyPlacesService:
                 continue
             places.append(
                 PlaceItem(
-                    name=raw.name,
+                    name=tidy_place_name(raw.name),
                     address=raw.address or "",
                     lat=raw.lat,
                     lng=raw.lng,
