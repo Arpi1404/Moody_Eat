@@ -8008,3 +8008,43 @@ button.hero-plan:focus-visible,
     height: 130px;
   }
 }
+
+
+/* ── Quest page: Directions, Call and Website ──────────────────────────── */
+
+.qp-stop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Side by side, so each needs to be easy to hit. */
+.qp-stop-actions .qp-stop-directions {
+  min-height: 36px;
+}
+
+.qp-call-number {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qp-call-word {
+    display: none;
+  }
+
+  .qp-call-number {
+    display: inline;
+  }
+}
+
+/* On a phone the words alone fit three across. */
+@media (max-width: 600px) {
+  .qp-stop-actions .qp-stop-directions {
+    gap: 0;
+    padding-inline: 11px;
+  }
+
+  .qp-stop-actions .qp-stop-directions > [aria-hidden] {
+    display: none;
+  }
+}
