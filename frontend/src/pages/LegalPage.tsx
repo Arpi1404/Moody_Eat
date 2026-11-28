@@ -44,10 +44,16 @@ export function PrivacyPage() {
           area you gave, the occasion, budget, time of day and number of stops,
           and the IDs of places from your recent quests (so we can suggest
           different ones) are sent to our server, which asks Google for
-          matching places. A third-party AI service may be sent the area, the
-          occasion, the budget and the places picked, to write the quest's
-          introduction. We don't save your request or link it to you. Our
-          server's technical logs can record the area a search was for.
+          matching places. When a quest is built, the occasion, time of day,
+          budget, number of people, the area name as you typed or picked it,
+          and the chosen places' names, with their type and a short note on
+          each, are sent to a text-generation service to write the quest's
+          opening lines. Nothing that says who you are is
+          sent to it, and nor are your coordinates. Place suggestions outside
+          a quest send it the mood, budget, number of people and the places'
+          names and types, to describe them. We don't save your request or
+          link it to you. Our server's technical logs can record the area a
+          search was for.
         </li>
         <li>
           <strong>Location suggestions.</strong> As you type in the location

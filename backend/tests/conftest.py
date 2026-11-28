@@ -12,3 +12,16 @@ def no_network_weather(monkeypatch):
         return None
 
     monkeypatch.setattr("quest_generator.rain_expected", _unknown)
+
+
+@pytest.fixture(autouse=True)
+def no_text_model(monkeypatch):
+    """Keep the suite from calling a real text model, whatever is in the
+    developer's environment or .env. Tests of the model patch these back."""
+    from config import get_settings
+
+    for name in ("TEXT_MODEL_URL", "TEXT_MODEL_NAME", "TEXT_MODEL_API_KEY"):
+        monkeypatch.setenv(name, "")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
