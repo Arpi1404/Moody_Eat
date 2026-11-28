@@ -245,7 +245,8 @@ def test_friends_night_is_one_dinner_then_play_then_drinks(fake_narrative) -> No
         (Occasion.family, DayPart.morning, 3, ["Lake Park", "Garden Bistro", "Sweet Patisserie"]),
         # Afternoon: lunch first.
         (Occasion.date, DayPart.afternoon, 3, ["Garden Bistro", "Sweet Patisserie", "Old Fort"]),
-        (Occasion.family, DayPart.afternoon, 3, ["Garden Bistro", "Lake Park", "Sweet Patisserie"]),
+        # No park at 14:00 (the midday heat): the sight instead.
+        (Occasion.family, DayPart.afternoon, 3, ["Garden Bistro", "Old Fort", "Sweet Patisserie"]),
         (Occasion.friends, DayPart.afternoon, 3, ["Garden Bistro", "Strike Lanes", "Corner Pub"]),
         # Evening: something to do, a walk or a coffee first; dinner after.
         (Occasion.date, DayPart.evening, 3, ["Lake Park", "Corner Coffee", "Garden Bistro"]),

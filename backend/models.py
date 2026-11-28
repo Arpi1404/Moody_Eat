@@ -1,7 +1,7 @@
 import re
 import unicodedata
 import uuid
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 from enum import Enum
 from typing import Annotated, Any, Literal, Optional
 
@@ -552,6 +552,13 @@ class StoredQuestStats(BaseModel):
     created_at: str
 
 
+# The earliest and latest a quest may start, local time, in minutes, and how
+# many days ahead one may be planned. Mirrored in frontend/src/lib/startTime.ts.
+EARLIEST_START_MIN = 7 * 60
+LATEST_START_MIN = 22 * 60
+PLAN_AHEAD_DAYS = 6
+
+
 class QuestGenerationRequest(BaseModel):
     # Free text ("Banjara Hills") or "lat,lng" when the user shared their
     # position — the search is anchored wherever this resolves to.
@@ -581,3 +588,39 @@ class QuestGenerationRequest(BaseModel):
     # (soft exclusion — never at the cost of an empty stop), so regulars see
     # variety instead of the same anchor spots every time.
     exclude_place_ids: list[str] = Field(default_factory=list, max_length=30)
+    # The day of the outing, in the place's own calendar, and when it starts
+    # there ("19:30"). Both optional: without them the quest is for today at
+    # the day part's (or occasion's) usual time, as before. The start time
+    # wins over day_part for planning; day_part still names the quest when
+    # the start time is absent.
+    start_date: Optional[date] = None
+    start_time: Optional[str] = Field(default=None, pattern=r"^\d{2}:\d{2}$")
+
+    @field_validator("start_time")
+    @classmethod
+    def _start_time_in_range(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        hour, minute = int(v[:2]), int(v[3:])
+        if hour > 23 or minute > 59:
+            raise ValueError("Start time must be HH:MM.")
+        minutes = hour * 60 + minute
+        if minutes < EARLIEST_START_MIN:
+            raise ValueError("Pick a start from 7 am: few places are open earlier.")
+        if minutes > LATEST_START_MIN:
+            raise ValueError(
+                "Little is open after 10 pm. Pick an earlier start, or another day."
+            )
+        return v
+
+    @field_validator("start_date")
+    @classmethod
+    def _start_date_within_a_week(cls, v: Optional[date]) -> Optional[date]:
+        if v is None:
+            return v
+        # Measured from the server's UTC date with a day either side, since the
+        # place's own date can be a day ahead or behind it.
+        today = datetime.utcnow().date()
+        if v < today - timedelta(days=1) or v > today + timedelta(days=PLAN_AHEAD_DAYS + 1):
+            raise ValueError("Pick a day within the next week.")
+        return v

@@ -445,8 +445,10 @@ def test_day_part_changes_start_time_and_filters_closed_places(monkeypatch) -> N
     afternoon_names = [s.place.name for s in afternoon.stops]
     night_names = [s.place.name for s in night.stops]
 
-    # Afternoon: the park is open, so it wins the activity slot.
-    assert "Sunset Park" in afternoon_names
+    # Afternoon: the park is open, but at 14:00 it is kept out of the midday
+    # heat; the funfair takes the activity slot.
+    assert "Sunset Park" not in afternoon_names
+    assert "Night Funfair" in afternoon_names
     assert afternoon.stops[0].time_block_start == time(13, 0)
 
     # Night: a family night is indoors after dinner (bowling or a film), so
@@ -533,6 +535,9 @@ def test_rain_gating_swaps_outdoor_stop_for_indoor(monkeypatch) -> None:
                 people=4,
                 duration_hours=3.0,
                 day_part=DayPart.afternoon,
+                # Late afternoon: a park is fair game when it is dry (at 13:00
+                # it would be kept out of the midday heat whatever the sky).
+                start_time="16:30",
             ),
             service,
         ))

@@ -340,6 +340,15 @@ FAMILY_MORE = TemplateStop(
 # dessert stop from a coffee stop once both read as a café.
 SWEET_PRIMARY_TYPES = _SWEET_TYPES | _COUNTER_TYPES
 
+# Search types that keep daylight hours: a stop of these kinds is not started
+# after _DAYLIGHT_LAST_START in quest_generator.py. And the open-air one that
+# is also kept out of the midday heat.
+DAYLIGHT_TYPES = frozenset({
+    "park", "tourist_attraction", "museum", "art_gallery", "zoo", "aquarium",
+    "amusement_park", "library",
+})
+OPEN_AIR_TYPES = frozenset({"park"})
+
 # Roles that involve eating or drinking. A plan has at most one "meal", and
 # the only food after it is dessert or drinks.
 FOOD_ROLES = frozenset({"meal", "coffee", "dessert", "drinks"})
@@ -367,15 +376,18 @@ class DayPlan:
         default_factory=dict
     )
 
-    def stops(self, count: int) -> tuple[TemplateStop, ...]:
-        if count in self.short:
+    def stops(self, count: int, *, short: bool = True) -> tuple[TemplateStop, ...]:
+        """The plan of `count` stops. short=False ignores `short` and cuts the
+        long plan down, for a start too far from the meal a short plan is
+        built around."""
+        if short and count in self.short:
             return self.short[count][0]
         chosen = self.keep[:count]
         return tuple(stop for stop in self.sequence if stop in chosen)
 
-    def spares(self, count: int) -> tuple[TemplateStop, ...]:
+    def spares(self, count: int, *, short: bool = True) -> tuple[TemplateStop, ...]:
         """What to try, in order, when a planned stop cannot be filled."""
-        if count in self.short:
+        if short and count in self.short:
             return self.short[count][1]
         return self.keep[count:]
 
