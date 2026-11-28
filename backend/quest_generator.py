@@ -44,7 +44,7 @@ from quest_templates import (
 from services.nearby_places_service import NearbyPlacesService
 from services.place_blurbs_service import generate_quest_narrative
 from services.places_exceptions import PlacesProviderError
-from services.places_provider import PlaceHours
+from services.places_provider import PlaceHours, hours_for_weekday
 from services.weather_service import OUTDOOR_TYPES, rain_expected
 
 logger = logging.getLogger(__name__)
@@ -258,6 +258,9 @@ _RADIUS_TIERS_M: tuple[int, ...] = (3_000, 6_000, 10_000)
 _STRONG_RATING_FLOOR: float = 4.0
 _STRONG_RATINGS_TOTAL_FLOOR: int = 100
 _STRONG_TARGET_COUNT: int = 3
+# How many candidates a stop tries when each one's hours cost a Place Details
+# call. Places from a search on Places API (New) carry their hours, so all of
+# them are tried for free (see _check_limit).
 _VIABILITY_CHECK_LIMIT: int = 8
 # Destination types most neighbourhoods simply don't have (around Kukatpally
 # a zoo search returns nothing and an aquarium search only pet-fish shops, at
@@ -751,11 +754,23 @@ async def _with_hours(
     end: time,
     hours_memo: dict[str, PlaceHours] | None = None,
 ) -> PlaceItem:
-    # A place can be looked at more than once in a request (both passes over
-    # a stop, or two stops searching the same type). Each lookup is a paid
-    # call, so the answer is kept for the length of the request.
+    if place.opening_periods is not None:
+        # The search brought the week's hours: no call. An empty list is a
+        # place Google lists no hours for, and a lookup would say the same.
+        hours = hours_for_weekday(place.opening_periods, weekday_g)
+        opens, closes = _window_for_slot(hours, start, end)
+        return place.model_copy(update={
+            "opens_today": opens,
+            "closes_today": closes,
+            "open_24h_today": hours.open_24h_today,
+        })
+    # The fallback: a place whose search did not ask for hours (the legacy
+    # API). A place can be looked at more than once in a request (both passes
+    # over a stop, or two stops searching the same type). Each lookup is a
+    # paid call, so the answer is kept for the length of the request.
     hours = hours_memo.get(place.provider_id) if hours_memo is not None else None
     if hours is None:
+        logger.info("place_hours_fallback lookup=details")
         try:
             hours = await service.get_place_hours(place.provider_id, weekday_g)
         except Exception as exc:
@@ -772,6 +787,18 @@ async def _with_hours(
         "closes_today": closes,
         "open_24h_today": hours.open_24h_today,
     })
+
+
+def _check_limit(ranked: list[PlaceItem]) -> int:
+    """How many of a stop's ranked candidates to try.
+
+    All of them when every one carries its hours from the search, since
+    trying one then costs nothing; otherwise _VIABILITY_CHECK_LIMIT, which
+    bounds the paid hours lookups.
+    """
+    if all(place.opening_periods is not None for place in ranked):
+        return len(ranked)
+    return _VIABILITY_CHECK_LIMIT
 
 
 async def _pick_viable_candidate(
@@ -828,7 +855,8 @@ async def _pick_viable_candidate(
     unknown_hours_fallback: _CandidatePick | None = None
     over_budget_fallback: _CandidatePick | None = None
 
-    for place in ranked[:_VIABILITY_CHECK_LIMIT]:
+    check_limit = _check_limit(ranked)
+    for place in ranked[:check_limit]:
         dist_m = (
             haversine_m(prev_lat, prev_lng, place.lat, place.lng)
             if prev_lat is not None and prev_lng is not None
@@ -851,7 +879,7 @@ async def _pick_viable_candidate(
             and level >= _CHEAP_REJECT_MIN_PRICE_LEVEL
         )
         # An over-budget place is only ever a fallback, so once one is held
-        # (or none is wanted) its hours are not worth a paid lookup.
+        # (or none is wanted) its hours are not worth checking.
         if over_budget and (strict or over_budget_fallback is not None):
             drop_counts["over_budget"] += 1
             continue
@@ -886,7 +914,7 @@ async def _pick_viable_candidate(
             "price_known=%d/%d drops=%s strict=%s",
             requested_place_type,
             tmpl.category.value,
-            min(len(ranked), _VIABILITY_CHECK_LIMIT),
+            min(len(ranked), check_limit),
             price_known,
             len(ranked),
             {rule: int(drop_counts.get(rule, 0)) for rule in _VIABILITY_RULES},
@@ -906,7 +934,7 @@ async def _pick_viable_candidate(
         "price_known=%d/%d drops=%s strict=%s",
         requested_place_type,
         tmpl.category.value,
-        min(len(ranked), _VIABILITY_CHECK_LIMIT),
+        min(len(ranked), check_limit),
         selected_label,
         price_known,
         len(ranked),

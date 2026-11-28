@@ -125,6 +125,12 @@ async def test_text_search_request_leans_to_the_area_and_asks_for_no_costlier_fi
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
+        # Enterprise, like rating and price: the same SKU, no dearer.
+        "places.regularOpeningHours.periods",
+        "places.internationalPhoneNumber",
+        "places.websiteUri",
+        # Pro.
+        "places.utcOffsetMinutes",
     }
     assert [(p.provider_id, p.name) for p in found] == [("ChIJabc", "Toit")]
 

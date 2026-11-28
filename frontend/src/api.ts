@@ -183,6 +183,14 @@ export type PlaceItem = {
   closes_today?: string | null
   /** True when the place is open 24h today. */
   open_24h_today?: boolean
+  /**
+   * The place's phone number as Google lists it, international form
+   * ("+91 80 4123 4567"). null or missing when it lists none, and on every
+   * quest made before this field existed.
+   */
+  phone?: string | null
+  /** The place's own website, always http(s). null or missing when unknown. */
+  website?: string | null
 }
 
 export type NearbyPlacesResponse = {
