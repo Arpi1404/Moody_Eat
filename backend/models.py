@@ -453,6 +453,14 @@ class Quest(BaseModel):
     est_total_per_person_max_inr: Optional[int] = None
     # Present when the rain forecast changed how the quest was planned.
     weather_note: Optional[str] = None
+    # The day the outing is for, in the place's own calendar: set on generated
+    # quests when a day was chosen or the place's today was known. Absent from
+    # the JSON when unset, so quests stored before it existed (and catalogue
+    # quests) are stored and shared exactly as before.
+    outing_date: Optional[date] = Field(default=None, exclude_if=_unset_marker)
+    # Present when the chosen start had already passed at the place and the
+    # plan was moved later; says to what and why. Absent when unset.
+    start_note: Optional[str] = Field(default=None, max_length=200, exclude_if=_unset_marker)
     # True when `narrative` is an intro the quest's creator typed. Absent on
     # automatic text, and on links stored before the field existed.
     narrative_by_creator: Optional[bool] = Field(

@@ -207,6 +207,14 @@ class _Calendar:
         return ((day + timedelta(days=rolled)).weekday() + 1) % 7
 
 
+def _clock_label(minutes: int) -> str:
+    """540 -> "9 am", 1170 -> "7:30 pm"."""
+    hour, minute = divmod(minutes % (24 * 60), 60)
+    suffix = "am" if hour < 12 else "pm"
+    hour12 = hour % 12 or 12
+    return f"{hour12} {suffix}" if minute == 0 else f"{hour12}:{minute:02d} {suffix}"
+
+
 def _round_up_quarter(minutes: int) -> int:
     return -(-minutes // 15) * 15
 
@@ -1572,6 +1580,7 @@ async def assemble_quest(
         logger.warning("weather_anchor_failed err_type=%s", exc.__class__.__name__)
 
     plan_day: date | None = req.start_date
+    start_note: str | None = None
     if utc_offset is not None:
         local_now = datetime.utcnow() + timedelta(minutes=utc_offset)
         local_today = local_now.date()
@@ -1590,6 +1599,10 @@ async def assemble_quest(
                         "Pick tomorrow or another day."
                     )
                 logger.info("quest_start_moved_past_now minutes=%d", moved - (start_hm[0] * 60 + start_hm[1]))
+                start_note = (
+                    f"It was already past {_clock_label(start_hm[0] * 60 + start_hm[1])} "
+                    f"in {where}, so this plan starts at {_clock_label(moved)}."
+                )
                 start_hm = (moved // 60, moved % 60)
 
     plan_part = _plan_day_part(req, start_hm)
@@ -1840,4 +1853,6 @@ async def assemble_quest(
         ),
         origin="generated",
         narrative=narrative,
+        outing_date=plan_day,
+        start_note=start_note,
     )

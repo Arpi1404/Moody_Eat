@@ -95,6 +95,11 @@ export interface Quest {
   est_total_per_person_max_inr?: number | null
   /** Present when the rain forecast changed how the quest was planned. */
   weather_note?: string | null
+  /** The day the outing is for, "YYYY-MM-DD", local to the place. Generated
+   * quests only; absent on catalogue quests and on any made before it existed. */
+  outing_date?: string | null
+  /** Why the start is later than the time chosen (it had already passed). */
+  start_note?: string | null
   /** True when `narrative` is an intro the quest's creator typed. It is then
    * never rewritten. */
   narrative_by_creator?: boolean | null

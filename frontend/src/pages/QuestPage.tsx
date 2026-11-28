@@ -36,6 +36,7 @@ import { shareCardFontEmbedCss } from '../lib/shareFonts'
 import { narrativeAfterEdit } from '../lib/narrative'
 import { JournalSheet } from './JournalSheet'
 import { QuestCard } from './QuestCard'
+import { questDayLabel } from '../lib/startTime'
 import { QuestIntro } from './QuestIntro'
 import { ShareableQuestCard } from './ShareableQuestCard'
 import '../App.css'
@@ -962,6 +963,9 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     })
   }
 
+  // "Today", "Tomorrow" or "Thu 3 Dec"; nothing on quests without a day.
+  const dayLabel = questDayLabel(quest.outing_date, new Date())
+
   return (
     <main className="qp-page">
       <div className="qp-inner">
@@ -1000,6 +1004,11 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
             maxLength={80}
           />
           <div className="qp-header-chips">
+            {dayLabel && (
+              <span className="qp-chip qp-chip--day" title="The day this plan is for">
+                {dayLabel}
+              </span>
+            )}
             <span className="qp-chip">{durationLabel}</span>
             <span className="qp-chip">{budgetLabel(quest.total_cost_estimate)}</span>
             {totalEstimateLabel && (
@@ -1102,6 +1111,11 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
         {quest.weather_note && (
           <p className="qp-soft-note">
             <span aria-hidden>🌧️</span> {quest.weather_note}
+          </p>
+        )}
+        {quest.start_note && (
+          <p className="qp-soft-note">
+            <span aria-hidden>🕒</span> {quest.start_note}
           </p>
         )}
         {questNotice && <p className="qp-soft-note">{questNotice}</p>}
