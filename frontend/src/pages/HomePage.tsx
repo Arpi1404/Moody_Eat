@@ -216,7 +216,7 @@ export function HomePage() {
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [budget, setBudget] = useState<Budget>('mid')
-  const [stopCount, setStopCount] = useState(3)
+  const [stopCount, setStopCount] = useState(2)
   // null = follow the occasion's default start time
   const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
   // First visit: 'nudge' is the small "New here?" card, 'open' the one-card

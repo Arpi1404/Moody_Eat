@@ -299,6 +299,7 @@ def test_assemble_quest_skips_closed_and_mood_wrong_candidates(monkeypatch) -> N
         cost_estimate=CostEstimate.mid,
         people=2,
         duration_hours=3.0,
+        stop_count=3,
     )
 
     quest = asyncio.run(assemble_quest(req, service))
@@ -423,6 +424,7 @@ def test_day_part_changes_start_time_and_filters_closed_places(monkeypatch) -> N
                 cost_estimate=CostEstimate.mid,
                 people=4,
                 duration_hours=3.0,
+                stop_count=3,
                 day_part=day_part,
             ),
             service,
@@ -673,7 +675,9 @@ def test_stop_count_selector_trims_and_extends_template(monkeypatch) -> None:
 
     assert len(_quest(1).stops) == 1
     assert len(_quest(2).stops) == 2
-    assert len(_quest(None).stops) == 3
+    # No count asked for: the default is two stops.
+    assert len(_quest(None).stops) == 2
+    assert len(_quest(3).stops) == 3
     assert len(_quest(4).stops) == 4
     # 1 stop is the occasion's anchor; 2 keeps the core pair (dinner + dessert).
     assert [s.place.name for s in _quest(1).stops] == ["Dinner Spot"]
@@ -722,6 +726,7 @@ def test_assemble_quest_surfaces_inr_estimates_and_totals(monkeypatch) -> None:
         cost_estimate=CostEstimate.mid,
         people=2,
         duration_hours=3.0,
+        stop_count=3,
     )
 
     quest = asyncio.run(assemble_quest(req, service))
