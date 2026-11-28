@@ -897,7 +897,7 @@ def test_quest_text_is_told_the_time_of_day(fake_narrative) -> None:
 
 
 def test_frontend_rebuilt_narrative_mirrors_the_backend_phrases() -> None:
-    source_path = FRONTEND_SRC / "pages" / "QuestPage.tsx"
+    source_path = FRONTEND_SRC / "lib" / "narrative.ts"
     if not source_path.is_file():
         pytest.skip("frontend sources are not in this checkout")
     source = source_path.read_text(encoding="utf-8")
