@@ -164,7 +164,11 @@ class PlacesProvider(Protocol):
         text: str,
         lat: float,
         lng: float,
+        included_type: str | None = None,
+        bias_radius_m: float | None = None,
     ) -> list[RawPlace]:
-        """Places matching a typed name, best match first, leaning towards
-        (lat, lng). Unfiltered: closed places and non-venues are included."""
+        """Places matching a typed name or a phrase, best match first, leaning
+        towards (lat, lng) within `bias_radius_m`; only places of
+        `included_type` when given.
+        Unfiltered: closed places and non-venues are included."""
         ...

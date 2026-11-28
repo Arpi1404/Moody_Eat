@@ -387,6 +387,71 @@ class NearbyPlacesService:
             count=len(places),
         )
 
+    async def search_by_intent(
+        self,
+        *,
+        location: str,
+        text: str,
+        place_type: str,
+        max_distance_m: float,
+    ) -> list[PlaceItem]:
+        """Places that fit a phrase ("romantic restaurant for a dinner date"),
+        near a typed area, in Google's relevance order.
+
+        One Text Search. The same quality filter as a type search applies, and
+        anything farther than `max_distance_m` from the area is dropped: Text
+        Search only leans towards the area, it does not stay inside it. Each
+        place's `intent_rank` is its position in Google's answer.
+        """
+        if not self._settings.use_new_places_api or not hasattr(
+            self._provider, "search_by_text"
+        ):
+            raise FeatureUnavailableError("Intent search needs Places API (New).")
+        anchor = await self.resolve_location(location)
+        found = await self._provider.search_by_text(
+            text=text,
+            lat=anchor.lat,
+            lng=anchor.lng,
+            included_type=place_type,
+            bias_radius_m=max_distance_m,
+        )
+        drop_counts: Counter[str] = Counter()
+        kept = self._quality_filter(
+            found, requested_place_type=place_type, drop_counts=drop_counts
+        )
+        places: list[PlaceItem] = []
+        for rank, raw in enumerate(dedupe_places(kept)):
+            distance = haversine_meters(anchor.lat, anchor.lng, raw.lat, raw.lng)
+            if distance > max_distance_m:
+                drop_counts["too_far"] += 1
+                continue
+            places.append(
+                PlaceItem(
+                    name=raw.name,
+                    address=raw.address or "",
+                    lat=raw.lat,
+                    lng=raw.lng,
+                    distance_meters=round(distance, 1),
+                    rating=raw.rating,
+                    user_ratings_total=raw.user_ratings_total,
+                    price_level=raw.price_level,
+                    price_range_start_inr=raw.price_range_start_inr,
+                    price_range_end_inr=raw.price_range_end_inr,
+                    business_status=raw.business_status,
+                    types=raw.types,
+                    primary_type=raw.primary_type,
+                    provider_id=raw.provider_id,
+                    intent_rank=rank,
+                    **_contact_and_hours(raw),
+                )
+            )
+        # Counts only: the phrase is ours, but the area may have been typed.
+        logger.info(
+            "places_intent_search type=%s found=%s kept=%s drops=%s",
+            place_type, len(found), len(places), dict(drop_counts),
+        )
+        return places
+
     @staticmethod
     def _is_named_venue(place: RawPlace) -> bool:
         """Whether a name-search match can be offered as a quest stop."""

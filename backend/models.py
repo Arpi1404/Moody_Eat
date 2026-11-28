@@ -169,6 +169,10 @@ class PlaceItem(BaseModel):
     opening_periods: Optional[list[dict[str, Any]]] = Field(default=None, exclude=True)
     # Minutes the place's local time is ahead of UTC. Server-side only.
     utc_offset_minutes: Optional[int] = Field(default=None, exclude=True)
+    # Position in Google's answer to a search by intent ("romantic restaurant
+    # for a dinner date"), 0 = best match. None for type searches.
+    # Server-side only.
+    intent_rank: Optional[int] = Field(default=None, exclude=True)
 
     # A shared quest is stored as the browser sent it, and the site turns these
     # two into links for everyone who opens it. Anything that is not plainly a
