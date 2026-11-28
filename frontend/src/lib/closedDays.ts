@@ -20,10 +20,22 @@ const WEEKDAYS: Weekday[] = [
 // India keeps one offset all year (no daylight saving).
 const INDIA_OFFSET_MS = 330 * 60 * 1000
 
+/** A date whose UTC fields read as the time in India. */
+const asIndiaClock = (now: Date): Date => new Date(now.getTime() + INDIA_OFFSET_MS)
+
 export function indiaWeekday(now: Date = new Date()): Weekday {
-  const inIndia = new Date(now.getTime() + INDIA_OFFSET_MS)
   // getUTCDay counts from Sunday = 0.
-  return WEEKDAYS[(inIndia.getUTCDay() + 6) % 7]
+  return WEEKDAYS[(asIndiaClock(now).getUTCDay() + 6) % 7]
+}
+
+export function indiaMinuteOfDay(now: Date): number {
+  const clock = asIndiaClock(now)
+  return clock.getUTCHours() * 60 + clock.getUTCMinutes()
+}
+
+/** A count that goes up by one each midnight in India. */
+export function indiaDayNumber(now: Date): number {
+  return Math.floor(asIndiaClock(now).getTime() / (24 * 60 * 60 * 1000))
 }
 
 /** The quest's closed days, each with the stop it is about. An entry follows
