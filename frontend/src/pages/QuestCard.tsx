@@ -5,6 +5,7 @@ import { fetchStopAdditions, fetchStopAlternatives, getApiBase } from '../api'
 import type { Quest, Stop, StopAlternative, StopKind } from '../types/quest'
 import { CoachMark } from '../components/CoachMark'
 import { PlaceLink } from '../components/PlaceLink'
+import { phoneLink, websiteLink } from '../lib/placeContact'
 import { EmptyState } from '../components/states'
 import { track } from '../lib/analytics'
 import { formatInrEstimate } from '../lib/budget'
@@ -205,6 +206,8 @@ function StopCard({
     stop.est_cost_per_person_min_inr,
     stop.est_cost_per_person_max_inr,
   )
+  const call = phoneLink(stop.place.phone)
+  const website = websiteLink(stop.place.website)
   return (
     <li
       className={`qp-stop-card${previewing ? ' qp-stop-card--preview' : ''}`}
@@ -324,20 +327,51 @@ function StopCard({
             {openingHoursText(stop) && (
               <span className="qp-stop-hours">{openingHoursText(stop)}</span>
             )}
-            <a
-              className="qp-stop-directions"
-              href={directionsUrl(stop.place)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Directions to ${stop.place.name}`}
-              onClick={() =>
-                track('directions_opened', {
-                  place_id: stop.place.provider_id,
-                })
-              }
-            >
-              <span aria-hidden>🧭</span> Directions
-            </a>
+            <div className="qp-stop-actions">
+              <a
+                className="qp-stop-directions"
+                href={directionsUrl(stop.place)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Directions to ${stop.place.name}`}
+                onClick={() =>
+                  track('directions_opened', {
+                    place_id: stop.place.provider_id,
+                  })
+                }
+              >
+                <span aria-hidden>🧭</span> Directions
+              </a>
+              {call && (
+                <a
+                  className="qp-stop-directions"
+                  href={call}
+                  aria-label={`Call ${stop.place.name} on ${stop.place.phone}`}
+                  onClick={() =>
+                    track('stop_call_tapped', { stop_index: index })
+                  }
+                >
+                  <span aria-hidden>📞</span>
+                  <span className="qp-call-word">Call</span>
+                  {/* Shown with a mouse, where a tel: link may do nothing. */}
+                  <span className="qp-call-number">{stop.place.phone}</span>
+                </a>
+              )}
+              {website && (
+                <a
+                  className="qp-stop-directions"
+                  href={website.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${website.label} for ${stop.place.name}, opens in a new tab`}
+                  onClick={() =>
+                    track('stop_website_opened', { stop_index: index })
+                  }
+                >
+                  <span aria-hidden>🌐</span> {website.label}
+                </a>
+              )}
+            </div>
             {!locked && onRemove && (
               <button
                 type="button"
