@@ -99,7 +99,7 @@ export interface QuestGenerationRequest {
   duration_hours?: number
   /** Shuffles near-tied picks; omit for the deterministic best plan. */
   variety_seed?: number
-  /** 1–4 stops; omit for the occasion default. */
+  /** 1–4 stops; omit for the default (2). */
   stop_count?: number
   /** When the outing starts; omit for the occasion's default start time. */
   day_part?: DayPart

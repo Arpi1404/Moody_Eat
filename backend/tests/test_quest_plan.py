@@ -430,6 +430,13 @@ def test_request_without_a_day_part_keeps_the_occasions_own_time_and_order(
     assert _names(solo) == ["Lake Park", "Corner Coffee", "City Gallery"]
 
 
+def test_request_without_a_stop_count_plans_two_stops(fake_narrative) -> None:
+    quest = _quest(PoolProvider(_city()), _request(Occasion.date, None, None))
+
+    assert len(quest.stops) == 2
+    assert _names(quest) == ["Garden Bistro", "Sweet Patisserie"]
+
+
 # ── Matching on Google's primary type ─────────────────────────────────────────
 
 def test_primary_type_is_requested_and_carried_to_the_place() -> None:
