@@ -13,6 +13,15 @@ class Settings(BaseSettings):
 
     google_places_api_key: str = Field(default="", validation_alias="GOOGLE_PLACES_API_KEY")
 
+    # The text model that writes quest intros and place blurbs: any provider
+    # with a chat-completions endpoint. All three are needed; with one missing,
+    # nothing is sent and fallback text is used.
+    text_model_url: str = Field(default="", validation_alias="TEXT_MODEL_URL")
+    text_model_name: str = Field(default="", validation_alias="TEXT_MODEL_NAME")
+    text_model_api_key: str = Field(
+        default="", validation_alias="TEXT_MODEL_API_KEY", repr=False
+    )
+
     # Places API (New) carries priceLevel + priceRange (INR) which the legacy
     # Nearby Search almost never returns for Indian places. Set to false to
     # fall back to the legacy endpoint without a deploy (e.g. if the key does
