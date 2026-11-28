@@ -3248,6 +3248,59 @@ a.explore-edit-filters {
   font-weight: 600;
 }
 
+/* Four buttons in a row fit a 375px screen only with less padding. */
+.sheet-pill-row--four {
+  gap: 6px;
+}
+
+.sheet-pill-row--four .sheet-pill {
+  min-width: 0;
+  padding: 10px 4px;
+}
+
+/* The day and start time under the day part buttons: two native pickers,
+   which open the phone's own wheel or list. */
+.sheet-when-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sheet-select {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background-color: var(--surface);
+  color: var(--text-h);
+  font-family: var(--sans);
+  font-size: 16px; /* 16px keeps iOS from zooming in on focus */
+  padding: 10px 36px 10px 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 13px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.sheet-select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.sheet-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
 .sheet-submit {
   width: 100%;
   border-radius: 999px;

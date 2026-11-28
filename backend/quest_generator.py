@@ -8,7 +8,7 @@ import random
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import NamedTuple
 
 from price_inference import (
@@ -20,6 +20,7 @@ from price_inference import (
     price_signal,
 )
 from models import (
+    LATEST_START_MIN,
     CostEstimate,
     DayPart,
     NearbyPlacesRequest,
@@ -33,8 +34,11 @@ from models import (
 )
 from quest_templates import (
     CAFE,
+    DAYLIGHT_TYPES,
     DESSERT,
     DINNER_FAMILY,
+    OPEN_AIR_PRIMARY_TYPES,
+    OPEN_AIR_TYPES,
     DRINKS,
     MAX_STOPS,
     MEAL,
@@ -48,6 +52,7 @@ from services.place_blurbs_service import generate_quest_narrative
 from services.places_exceptions import PlacesProviderError
 from services.places_provider import PlaceHours, hours_for_weekday
 from services.weather_service import OUTDOOR_TYPES, rain_expected
+from services.weather_service import utc_offset_minutes as place_utc_offset
 
 logger = logging.getLogger(__name__)
 
@@ -104,43 +109,105 @@ _DAY_PART_START: dict[DayPart, tuple[int, int]] = {
 
 
 def _quest_start(req: QuestGenerationRequest) -> tuple[int, int]:
+    if req.start_time is not None:
+        return int(req.start_time[:2]), int(req.start_time[3:])
     if req.day_part is not None:
         return _DAY_PART_START[req.day_part]
     return _START[req.occasion]
 
 
-def _spoken_day_part(req: QuestGenerationRequest) -> DayPart:
-    """What a person would call the start time. Names the quest and its text."""
-    if req.day_part is not None:
-        return req.day_part
-    hour = _START[req.occasion][0]
-    if hour < 12:
+def _spoken_part_at(start_min: int) -> DayPart:
+    """What a person calls a time of day. Mirrored in
+    frontend/src/lib/startTime.ts (the planner's day part buttons)."""
+    if start_min < 12 * 60:
         return DayPart.morning
-    if hour < 17:
+    if start_min < 17 * 60:
         return DayPart.afternoon
-    if hour < 20:
+    if start_min < 20 * 60:
         return DayPart.evening
     return DayPart.night
 
 
-def _plan_day_part(req: QuestGenerationRequest) -> DayPart:
+def _spoken_day_part(req: QuestGenerationRequest, start: tuple[int, int] | None = None) -> DayPart:
+    """What a person would call the start time. Names the quest and its text."""
+    if start is not None and req.start_time is not None:
+        return _spoken_part_at(start[0] * 60 + start[1])
+    if req.day_part is not None:
+        return req.day_part
+    return _spoken_part_at(_START[req.occasion][0] * 60)
+
+
+# Which order of stops suits a start time (see quest_templates.PLANS):
+#   before 11:30  morning   a walk, then coffee or breakfast
+#   before 15:00  afternoon lunch first
+#   before 18:30  evening   something to do first, dinner held to 19:00
+#   from 18:30    night     dinner first, then only what is open late
+# Mirrored in frontend/src/lib/startTime.ts.
+_PLAN_PART_FROM: tuple[tuple[int, DayPart], ...] = (
+    (18 * 60 + 30, DayPart.night),
+    (15 * 60, DayPart.evening),
+    (11 * 60 + 30, DayPart.afternoon),
+    (0, DayPart.morning),
+)
+
+
+def _plan_part_at(start_min: int) -> DayPart:
+    for begins, part in _PLAN_PART_FROM:
+        if start_min >= begins:
+            return part
+    return DayPart.morning
+
+
+def _plan_day_part(req: QuestGenerationRequest, start: tuple[int, int] | None = None) -> DayPart:
     """Which order of stops suits the start time.
 
-    The same as the spoken day part except close to dinner: a request with no
-    day part starts at the occasion's own time, and a date at 19:00 is an
-    evening by name but opens with dinner, like a night plan.
+    A chosen start time decides it. Without one, a chosen day part does; and
+    without either, the occasion's own start time (a date at 19:00 is an
+    evening by name but opens with dinner, like a night plan).
     """
+    if start is not None and req.start_time is not None:
+        return _plan_part_at(start[0] * 60 + start[1])
     if req.day_part is not None:
         return req.day_part
     hour, minute = _START[req.occasion]
-    start = hour * 60 + minute
-    if start < 11 * 60 + 30:
-        return DayPart.morning
-    if start < 16 * 60:
-        return DayPart.afternoon
-    if start < 18 * 60 + 45:
-        return DayPart.evening
-    return DayPart.night
+    return _plan_part_at(hour * 60 + minute)
+
+
+# ── The day, at the place ─────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class _Calendar:
+    """Which weekday a visit falls on, in the place's own calendar.
+
+    `day` is the outing's date where it is known: chosen, or today at the
+    place. Without it (the place's clock is unknown and no day was chosen),
+    each place's own UTC offset says what "today" is there, and the server's
+    clock is the last resort. A visit that starts before the plan's start time
+    has crossed midnight and falls on the next day.
+    """
+
+    day: date | None
+    start_min: int
+    utc_offset_min: int | None = None
+
+    def weekday_g(self, place: PlaceItem, visit_start: time) -> int:
+        """Google's weekday (0 = Sunday) for a visit to `place`."""
+        rolled = 1 if _minutes(visit_start) < self.start_min else 0
+        if self.day is not None:
+            day = self.day
+        else:
+            offset = place.utc_offset_minutes
+            if offset is None:
+                offset = self.utc_offset_min
+            if offset is not None:
+                day = (datetime.utcnow() + timedelta(minutes=offset)).date()
+            else:
+                day = datetime.now().date()
+        return ((day + timedelta(days=rolled)).weekday() + 1) % 7
+
+
+def _round_up_quarter(minutes: int) -> int:
+    return -(-minutes // 15) * 15
 
 
 # ── Meal hours ────────────────────────────────────────────────────────────────
@@ -161,6 +228,25 @@ _LINGER_MAX_MIN: int = 30
 # kitchen that is not open yet at 11:30.
 _LINGER_MAX_MIN_OUTING: int = 60
 _LINGER_OUTING_CATEGORIES = frozenset({StopCategory.activity, StopCategory.attraction})
+
+# ── What the clock allows ─────────────────────────────────────────────────────
+# A plan built around its meal (a one- or two-stop evening date is dinner at
+# 19:00) moves its start to the meal hour only when that is at most this far
+# from the chosen start. From further away the long plan, cut down, is used:
+# a date chosen for 15:00 is a walk and a coffee, not dinner at 19:00.
+_MEAL_LED_MAX_SHIFT_MIN: int = 120
+# When a meal may start, local time. A breakfast or lunch stop (the MEAL
+# family takes breakfast places) in the first two, dinner in the third. A meal
+# stop that cannot start inside its windows, even held, is left out and a
+# spare stop is tried instead: no lunch at 16:30, no dinner at 17:00.
+_DAY_MEAL_WINDOWS: tuple[tuple[int, int], ...] = ((7 * 60 + 30, 10 * 60 + 30), (11 * 60 + 30, 15 * 60 + 30))
+_DINNER_WINDOW: tuple[int, int] = (18 * 60, 22 * 60 + 30)
+# Parks, sights, galleries and museums keep to the day: none is started after
+# this. And parks keep out of the midday heat: none is started in this window
+# when the stop has another kind of place to try (the owner's example: a park
+# at 8 am is a fine morning; at 11 am it is not).
+_DAYLIGHT_LAST_START_MIN: int = 18 * 60 + 45
+_HEAT_WINDOW: tuple[int, int] = (10 * 60 + 30, 16 * 60)
 _LINGER_STEP_MIN: int = 5
 
 # ── Scoring weights per budget tier ──────────────────────────────────────────
@@ -818,22 +904,34 @@ async def _with_hours(
     start: time,
     end: time,
     hours_memo: dict[str, PlaceHours] | None = None,
-) -> PlaceItem:
+) -> tuple[PlaceItem, str | None]:
+    """The place with the hours that apply to a visit at [start, end] on
+    `weekday_g`, and the hours rule it breaks (None when it is open)."""
     if place.opening_periods is not None:
         # The search brought the week's hours: no call. An empty list is a
         # place Google lists no hours for, and a lookup would say the same.
         hours = hours_for_weekday(place.opening_periods, weekday_g)
-        opens, closes = _window_for_slot(hours, start, end)
+        window = _week_window(place.opening_periods, weekday_g, start, end)
+        if hours.open_24h_today:
+            rule = None
+            opens, closes = None, None
+        elif window is not None:
+            rule = None
+            opens, closes = window
+        else:
+            rule = "hours_unknown" if not place.opening_periods else "hours_closed"
+            opens, closes = hours.opens_today, hours.closes_today
         return place.model_copy(update={
             "opens_today": opens,
             "closes_today": closes,
             "open_24h_today": hours.open_24h_today,
-        })
+        }), rule
     # The fallback: a place whose search did not ask for hours (the legacy
     # API). A place can be looked at more than once in a request (both passes
     # over a stop, or two stops searching the same type). Each lookup is a
     # paid call, so the answer is kept for the length of the request.
-    hours = hours_memo.get(place.provider_id) if hours_memo is not None else None
+    memo_key = f"{place.provider_id}:{weekday_g}"
+    hours = hours_memo.get(memo_key) if hours_memo is not None else None
     if hours is None:
         logger.info("place_hours_fallback lookup=details")
         try:
@@ -843,15 +941,59 @@ async def _with_hours(
                 "place_hours_lookup_failed err_type=%s",
                 exc.__class__.__name__,
             )
-            return place
+            return place, _hours_reject_rule(place, start, end)
         if hours_memo is not None:
-            hours_memo[place.provider_id] = hours
+            hours_memo[memo_key] = hours
     opens, closes = _window_for_slot(hours, start, end)
-    return place.model_copy(update={
+    looked_up = place.model_copy(update={
         "opens_today": opens,
         "closes_today": closes,
         "open_24h_today": hours.open_24h_today,
     })
+    return looked_up, _hours_reject_rule(looked_up, start, end)
+
+
+_WEEK_MIN = 7 * 24 * 60
+
+
+def _week_window(
+    periods: list[dict] | tuple[dict, ...],
+    weekday_g: int,
+    start: time,
+    end: time,
+) -> tuple[str, str] | None:
+    """The opening period a visit on `weekday_g` from `start` to `end` falls
+    inside, as ("HH:MM", "HH:MM"), or None when the place is shut for it.
+
+    Worked in minutes of the week, so a period knows its day: a bar open
+    Friday 18:00 to Saturday 02:00 covers 00:30 on Saturday and not 00:30 on
+    Friday, which a bare "18:00-02:00" cannot tell apart.
+    """
+    visit_start = weekday_g * 1440 + _minutes(start)
+    length = (_minutes(end) - _minutes(start)) % 1440
+    visit_end = visit_start + length
+    for period in periods:
+        opn = period.get("open") or {}
+        close = period.get("close") or {}
+        open_min = _parse_hhmm(_hhmm(opn.get("time")))
+        close_min = _parse_hhmm(_hhmm(close.get("time"))) if close else None
+        if open_min is None or close_min is None:
+            continue
+        o = int(opn.get("day") or 0) * 1440 + open_min
+        c = int(close.get("day") or 0) * 1440 + close_min
+        if c <= o:
+            c += _WEEK_MIN
+        for shift in (0, _WEEK_MIN):
+            if o <= visit_start + shift and visit_end + shift <= c:
+                return _hhmm(opn.get("time")), _hhmm(close.get("time"))
+    return None
+
+
+def _hhmm(g_time: object) -> str | None:
+    text = str(g_time or "")
+    if len(text) != 4 or not text.isdigit():
+        return None
+    return f"{text[:2]}:{text[2:]}"
 
 
 def _check_limit(ranked: list[PlaceItem]) -> int:
@@ -871,7 +1013,7 @@ async def _pick_viable_candidate(
     *,
     tmpl: TemplateStop,
     service: NearbyPlacesService,
-    weekday_g: int,
+    calendar: _Calendar,
     occasion: Occasion,
     cost: CostEstimate,
     cursor: time,
@@ -949,10 +1091,9 @@ async def _pick_viable_candidate(
             drop_counts["over_budget"] += 1
             continue
 
-        place_with_hours = await _with_hours(
-            place, service, weekday_g, start, end, hours_memo
+        place_with_hours, hours_rule = await _with_hours(
+            place, service, calendar.weekday_g(place, start), start, end, hours_memo
         )
-        hours_rule = _hours_reject_rule(place_with_hours, start, end)
         candidate = _CandidatePick(
             place=place_with_hours,
             dist_from_prev_m=dist_m,
@@ -1082,7 +1223,7 @@ async def _fill_stop(
     *,
     req: QuestGenerationRequest,
     service: NearbyPlacesService,
-    weekday_g: int,
+    calendar: _Calendar,
     cursor: time,
     prev_lat: float | None,
     prev_lng: float | None,
@@ -1092,8 +1233,12 @@ async def _fill_stop(
     not_before: time | None,
     max_wait_min: int,
     hours_memo: dict[str, PlaceHours],
+    avoid_primary: frozenset[str] = frozenset(),
 ) -> _CandidatePick | None:
     """Pick a place for one stop of the plan, or None when nothing can be found.
+
+    `avoid_primary`: places that mainly are one of these are never taken, from
+    any search (a search for `tourist_attraction` also returns parks).
 
     First pass, over the stop's whole list of fallback types: only places that
     are the kind the stop is for (TemplateStop.suits: their primary type
@@ -1116,7 +1261,7 @@ async def _fill_stop(
             candidates,
             tmpl=tmpl,
             service=service,
-            weekday_g=weekday_g,
+            calendar=calendar,
             occasion=req.occasion,
             cost=req.cost_estimate,
             cursor=cursor,
@@ -1142,6 +1287,11 @@ async def _fill_stop(
             candidates = intent_pool
         else:
             candidates = await _search_with_expansion(service, req.location, place_type)
+        if avoid_primary:
+            candidates = [
+                p for p in candidates
+                if (p.primary_type or "").casefold() not in avoid_primary
+            ]
         pools[place_type] = candidates
         if not candidates:
             logger.info(
@@ -1341,6 +1491,43 @@ def _swap_kind(stop: Stop, place_type: str, occasion: Occasion) -> TemplateStop 
     return None
 
 
+# ── What the clock allows ─────────────────────────────────────────────────────
+
+def _avoid_for_the_hour(start_min: int) -> frozenset[str]:
+    """Primary types not taken for a stop starting at `start_min`, whatever
+    was searched: open-air places in the midday heat and after dark."""
+    if start_min > _DAYLIGHT_LAST_START_MIN or _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]:
+        return OPEN_AIR_PRIMARY_TYPES
+    return frozenset()
+
+
+def _types_for_the_hour(tmpl: TemplateStop, start_min: int) -> tuple[str, ...]:
+    """The stop's search types that suit a start at `start_min`.
+
+    After _DAYLIGHT_LAST_START_MIN no park, sight, gallery or museum: a stop
+    made only of those is left out (empty result). In the midday heat no park,
+    when the stop has something else to try.
+    """
+    types = tmpl.places_types
+    if start_min > _DAYLIGHT_LAST_START_MIN:
+        return tuple(t for t in types if t not in DAYLIGHT_TYPES)
+    if _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]:
+        shaded = tuple(t for t in types if t not in OPEN_AIR_TYPES)
+        if shaded:
+            return shaded
+    return types
+
+
+def _meal_can_start(tmpl: TemplateStop, start_min: int, max_wait_min: int) -> bool:
+    """Whether a meal stop reached at `start_min` can start at a meal hour,
+    waiting at most `max_wait_min` (see _DAY_MEAL_WINDOWS)."""
+    windows = (_DINNER_WINDOW,) if tmpl.family is DINNER_FAMILY else _DAY_MEAL_WINDOWS
+    return any(
+        opens <= start_min + max_wait_min and start_min <= closes
+        for opens, closes in windows
+    )
+
+
 # ── Main orchestration ────────────────────────────────────────────────────────
 
 async def assemble_quest(
@@ -1353,17 +1540,59 @@ async def assemble_quest(
         wanted = MAX_STOPS
     else:
         wanted = _DEFAULT_STOP_COUNT
-    plan_part = _plan_day_part(req)
+    where = _display_location(req)
+    start_hm = _quest_start(req)
+
+    # The place's own clock, from the forecast call the rain check makes
+    # anyway (no Google call). Unknown when the forecast cannot be had; then
+    # the chosen day is trusted as it is and no start is moved.
+    anchor = None
+    utc_offset: int | None = None
+    try:
+        anchor = await service.resolve_location(req.location)
+        utc_offset = await place_utc_offset(anchor.lat, anchor.lng)
+    except Exception as exc:
+        logger.warning("weather_anchor_failed err_type=%s", exc.__class__.__name__)
+
+    plan_day: date | None = req.start_date
+    if utc_offset is not None:
+        local_now = datetime.utcnow() + timedelta(minutes=utc_offset)
+        local_today = local_now.date()
+        if plan_day is None or plan_day < local_today:
+            plan_day = local_today
+        # A start already past today, there, moves to the next quarter hour.
+        # Only for a start time chosen in the planner: a day part on its own
+        # keeps its usual hour, as before.
+        if req.start_time is not None and plan_day == local_today:
+            now_min = local_now.hour * 60 + local_now.minute
+            if start_hm[0] * 60 + start_hm[1] < now_min:
+                moved = _round_up_quarter(now_min)
+                if moved > LATEST_START_MIN:
+                    raise ValueError(
+                        f"It's already late in {where} and little is open from now. "
+                        "Pick tomorrow or another day."
+                    )
+                logger.info("quest_start_moved_past_now minutes=%d", moved - (start_hm[0] * 60 + start_hm[1]))
+                start_hm = (moved // 60, moved % 60)
+
+    plan_part = _plan_day_part(req, start_hm)
     plan = PLANS[req.occasion][plan_part]
-    template = plan.stops(wanted)
     meal_hour = _MEAL_NOT_BEFORE.get(plan_part)
     meal_not_before = time(*meal_hour) if meal_hour is not None else None
     # A plan that opens with the meal starts at the meal hour: a one-stop
     # evening date is dinner at 19:00, not at 17:30. The quest is still named
-    # for the day part that was asked for.
-    start_hm = _quest_start(req)
+    # for the day part that was asked for. When the meal hour is too far from
+    # the chosen start, the long plan is cut down instead.
+    chosen_start = start_hm
+    short = True
+    template = plan.stops(wanted)
     if meal_hour is not None and template and template[0].role == "meal":
-        start_hm = max(start_hm, meal_hour)
+        shift = (meal_hour[0] * 60 + meal_hour[1]) - (start_hm[0] * 60 + start_hm[1])
+        if req.start_time is not None and shift > _MEAL_LED_MAX_SHIFT_MIN:
+            short = False
+            template = plan.stops(wanted, short=False)
+        if template and template[0].role == "meal":
+            start_hm = max(start_hm, meal_hour)
 
     used_ids: set[str] = set()
     seen_ids = frozenset(req.exclude_place_ids)
@@ -1373,23 +1602,37 @@ async def assemble_quest(
     prev_lng: float | None = None
     sh, sm = start_hm
     cursor = time(hour=sh, minute=sm)
-    # Google's weekday convention: 0=Sunday, 1=Monday, ..., 6=Saturday.
-    weekday_g = (datetime.now().weekday() + 1) % 7
+    calendar = _Calendar(
+        day=plan_day,
+        start_min=chosen_start[0] * 60 + chosen_start[1],
+        utc_offset_min=utc_offset,
+    )
     rng = random.Random(req.variety_seed) if req.variety_seed is not None else None
 
     # Rain check for the quest window (fail-open: unknown weather = no change).
     rain_risk: bool | None = None
-    try:
-        anchor = await service.resolve_location(req.location)
-        rain_risk = await rain_expected(anchor.lat, anchor.lng, sh)
-    except Exception as exc:
-        logger.warning("weather_anchor_failed err_type=%s", exc.__class__.__name__)
+    if anchor is not None:
+        try:
+            rain_risk = (
+                await rain_expected(anchor.lat, anchor.lng, sh, on_date=plan_day)
+                if plan_day is not None
+                else await rain_expected(anchor.lat, anchor.lng, sh)
+            )
+        except Exception as exc:
+            logger.warning("weather_check_failed err_type=%s", exc.__class__.__name__)
     outdoor_skipped = False
+    # Meal stops left out because the clock was wrong for them. Tried again,
+    # at whatever time it is, only if nothing else could be placed at all:
+    # a sparse area's one restaurant at 17:30 beats no plan.
+    skipped_meals: list[TemplateStop] = []
 
-    async def _place_stop(tmpl: TemplateStop) -> bool:
+    async def _place_stop(tmpl: TemplateStop, *, any_hour: bool = False) -> bool:
         """Fill one stop at the end of the plan so far. False when nothing fits."""
         nonlocal prev_lat, prev_lng, cursor, outdoor_skipped
-        stop_place_types = tmpl.places_types
+        stop_place_types = _types_for_the_hour(tmpl, _minutes(cursor))
+        if not stop_place_types:
+            logger.info("stop_skipped_for_hour role=%s start=%s", tmpl.role, cursor)
+            return False
         if rain_risk:
             indoor_only = tuple(t for t in stop_place_types if t not in OUTDOOR_TYPES)
             # Only narrow when an indoor fallback exists — never empty a stop.
@@ -1413,23 +1656,42 @@ async def assemble_quest(
                 if before.tmpl.category in _LINGER_OUTING_CATEGORIES
                 else _LINGER_MAX_MIN,
             )
+        if (
+            not any_hour
+            and tmpl.role == "meal"
+            and not _meal_can_start(tmpl, _minutes(cursor), max_wait_min)
+        ):
+            logger.info("meal_skipped_for_hour start=%s", cursor)
+            skipped_meals.append(tmpl)
+            return False
 
-        picked = await _fill_stop(
-            tmpl,
-            stop_place_types,
-            req=req,
-            service=service,
-            weekday_g=weekday_g,
-            cursor=cursor,
-            prev_lat=prev_lat,
-            prev_lng=prev_lng,
-            used=used_ids,
-            rng=rng,
-            seen=seen_ids,
-            not_before=not_before,
-            max_wait_min=max_wait_min,
-            hours_memo=hours_memo,
-        )
+        async def _fill(types: tuple[str, ...], avoid: frozenset[str]) -> _CandidatePick | None:
+            return await _fill_stop(
+                tmpl,
+                types,
+                req=req,
+                service=service,
+                calendar=calendar,
+                cursor=cursor,
+                prev_lat=prev_lat,
+                prev_lng=prev_lng,
+                used=used_ids,
+                rng=rng,
+                seen=seen_ids,
+                not_before=not_before,
+                max_wait_min=max_wait_min,
+                hours_memo=hours_memo,
+                avoid_primary=avoid,
+            )
+
+        start_min = _minutes(cursor)
+        picked = await _fill(stop_place_types, _avoid_for_the_hour(start_min))
+        if picked is None and _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]:
+            # The heat is a preference, the dark is not: an area with nothing
+            # but parks still gets its park at midday. Searches already made
+            # are cached by the service, so this costs no new call unless the
+            # park search itself was left out.
+            picked = await _fill(tmpl.places_types, frozenset())
         if picked is None:
             logger.info(
                 "All fallback types exhausted for stop category=%s in %r",
@@ -1465,19 +1727,31 @@ async def assemble_quest(
     # a longer version of the same outing would have added), so that ordering
     # by time of day does not cost a sparse area a stop it used to get.
     if len(slots) < len(template):
-        for tmpl in plan.spares(wanted):
+        if not slots:
+            # Nothing placed yet, so a plan moved to its meal hour can go
+            # back to the time that was chosen for its spares.
+            cursor = time(hour=chosen_start[0], minute=chosen_start[1])
+        for tmpl in plan.spares(wanted, short=short):
             if len(slots) >= len(template):
                 break
             await _place_stop(tmpl)
+    if not slots:
+        for tmpl in skipped_meals:
+            if await _place_stop(tmpl, any_hour=True):
+                break
 
-    where = _display_location(req)
     if not slots:
         raise ValueError(
             f"No places could be found for any stop in {where!r}. "
             "Check that the location is recognisable and the Places API key is valid."
         )
 
-    stops = _schedule(slots, req.cost_estimate, start_hm, req.duration_hours)
+    stops = _schedule(
+        slots,
+        req.cost_estimate,
+        (slots[0].start.hour, slots[0].start.minute),
+        req.duration_hours,
+    )
 
     priced = [s for s in stops if s.est_cost_per_person_min_inr is not None]
     est_total_min = sum(s.est_cost_per_person_min_inr or 0 for s in priced) if priced else None
@@ -1502,7 +1776,7 @@ async def assemble_quest(
         }
         for s in stops
     ]
-    day_part = _spoken_day_part(req)
+    day_part = _spoken_day_part(req, start_hm)
     narrative = await generate_quest_narrative(
         location=where,
         occasion=req.occasion.value,

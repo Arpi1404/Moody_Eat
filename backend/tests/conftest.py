@@ -12,6 +12,9 @@ def no_network_weather(monkeypatch):
         return None
 
     monkeypatch.setattr("quest_generator.rain_expected", _unknown)
+    # And the place's clock (from the same forecast call) is unknown, so the
+    # chosen day is trusted as it is and no start is moved.
+    monkeypatch.setattr("quest_generator.place_utc_offset", _unknown)
 
 
 @pytest.fixture(autouse=True)

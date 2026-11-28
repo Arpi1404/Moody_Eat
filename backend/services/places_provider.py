@@ -112,8 +112,28 @@ def hours_for_weekday(periods: list[dict[str, Any]] | tuple[dict[str, Any], ...]
         closes = _fmt_hhmm(str(close.get("time") or "")) if close else None
         todays.append((opens, closes))
 
+    # The night before can still be going: a bar open Friday 18:00 to
+    # Saturday 01:00 is open at 00:30 on Saturday. Such windows join `windows`
+    # (not opens_today/closes_today, which describe the day's own opening).
+    yesterday = (weekday - 1) % 7
+    overnight: list[tuple[str, str]] = []
+    for p in periods:
+        opn = p.get("open") or {}
+        close = p.get("close") or {}
+        if opn.get("day") != yesterday or not close or close.get("day") != weekday:
+            continue
+        opens = _fmt_hhmm(str(opn.get("time") or ""))
+        closes = _fmt_hhmm(str(close.get("time") or ""))
+        if opens and closes:
+            overnight.append((opens, closes))
+
     if not todays:
-        return PlaceHours(opens_today=None, closes_today=None, open_24h_today=False)
+        return PlaceHours(
+            opens_today=None,
+            closes_today=None,
+            open_24h_today=False,
+            windows=tuple(overnight),
+        )
 
     todays.sort(key=lambda window: window[0] or "")
     first_opens, first_closes = todays[0]
@@ -123,7 +143,7 @@ def hours_for_weekday(periods: list[dict[str, Any]] | tuple[dict[str, Any], ...]
         open_24h_today=False,
         windows=tuple(
             (opens, closes) for opens, closes in todays if opens and closes
-        ),
+        ) + tuple(overnight),
     )
 
 
