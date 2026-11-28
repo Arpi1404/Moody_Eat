@@ -158,57 +158,72 @@ QUESTS: list[Quest] = [
         ],
     ),
     Quest(
-        id=uuid.UUID("20000000-0000-4000-8000-000000000021"),
-        title="Brunch, Then Vintage Wheels",
-        audience_line="For a daytime date that doesn't mind an hour on the road.",
+        id=uuid.UUID("20000000-0000-4000-8000-000000000023"),
+        title="On Ice, Then Lunch",
+        audience_line="For a daytime date that would rather wobble before it sits.",
         occasion=Occasion.date,
-        total_duration_minutes=270,
-        total_cost_estimate=CostEstimate.mid,
+        total_duration_minutes=200,
+        total_cost_estimate=CostEstimate.splurge,
         narrative=(
-            "A daytime date that gets you properly out of town. Eat first, at DiGhent opposite Galleria "
-            "Market, a Belgian cafe where sharing a waffle is a reasonable way to start a long "
-            "conversation. Then head south to the Heritage Transport Museum near Taoru: about an hour on "
-            "the road, which is time for a playlist each. Inside are vintage cars, old buses and trains, "
-            "even aircraft, with enough of it to fill the afternoon. Pick a day with no early evening "
-            "plans."
+            "A daytime date that stays under one roof. Be at ISKATE, on the sixth floor of Ambience Mall, "
+            "as it opens at noon, and get on the ice before lunch. Whoever finds their feet first does "
+            "the steadying. Then head down to Punjab Grill for a long North Indian lunch with the dal "
+            "makhani in the middle, and finish on the ground floor at PAUL, a French bakery, with "
+            "something sweet and coffee while you argue over who fell more gracefully."
         ),
-        closed_days=[
-            ClosedDay(day="monday", stop_index=1),
-        ],
         created_at=CREATED_AT,
         stops=[
             stop(
                 place(
-                    "ChIJa5bce94YDTkRGM1q2A3zsUU",
-                    "DiGhent Cafe",
-                    "Cross Point Mall, opposite Galleria Market, DLF Phase 4, Gurugram 122009",
-                    28.4683,
-                    77.0830,
+                    "ChIJbVcEG0wZDTkR1YJDC2d-Ijs",
+                    "ISKATE by Roseate",
+                    "6th Floor, Ambience Mall, NH 48, Gurugram 122010",
+                    28.5033,
+                    77.0975,
                     4.4,
-                    ["belgian_restaurant", "cafe", "breakfast_restaurant"],
-                    user_ratings_total=2824,
+                    ["ice_skating_rink"],
+                    user_ratings_total=4501,
                 ),
-                StopCategory.restaurant,
-                time(11, 0),
-                time(12, 10),
-                "Come hungry enough for brunch, and split a waffle rather than ordering two — there's an hour in the car next. Aim to leave soon after noon.",
-                travel_to_next_minutes=60,
+                StopCategory.activity,
+                time(12, 0),
+                time(13, 5),
+                "An indoor rink, so the weather doesn't come into it. Skating is sold in time slots: book the first you can, and bring a warm layer, because a rink is a cold room. Hold the rail as long as you like.",
+                travel_to_next_minutes=5,
+                travel_mode=TravelMode.walking,
             ),
             stop(
                 place(
-                    "ChIJV5IVICI6DTkRoeLV9HB7uHA",
-                    "Heritage Transport Museum",
-                    "Bilaspur-Taoru Road, off NH 48, Taoru, Haryana 122105",
-                    28.2529,
-                    76.9243,
-                    4.6,
-                    ["museum", "tourist_attraction"],
-                    user_ratings_total=3876,
+                    "ChIJD-UYiE4ZDTkRxSzteYNsIk4",
+                    "Punjab Grill",
+                    "Level 3, Ambience Mall, NH 48, Gurugram 122010",
+                    28.5031,
+                    77.0975,
+                    4.7,
+                    ["north_indian_restaurant", "restaurant"],
+                    user_ratings_total=9051,
                 ),
-                StopCategory.attraction,
+                StopCategory.restaurant,
                 time(13, 15),
-                time(15, 30),
-                "Plan on at least two hours, and take turns choosing which hall comes next. Sort out your ride home before you go in. Closed Mondays, and it shuts at seven.",
+                time(14, 35),
+                "Order the dal makhani for the table, with garlic naan and a plate of kebabs to start, and share all of it. Your legs will be glad of the sit, so don't rush the second naan.",
+                travel_to_next_minutes=8,
+                travel_mode=TravelMode.walking,
+            ),
+            stop(
+                place(
+                    "ChIJDZn_h_sZDTkR1xJSxz18B7E",
+                    "PAUL",
+                    "Ground Floor, Ambience Mall, NH 48, Gurugram 122010",
+                    28.5058,
+                    77.0961,
+                    4.1,
+                    ["cafe", "bakery"],
+                    user_ratings_total=3252,
+                ),
+                StopCategory.cafe,
+                time(14, 45),
+                time(15, 20),
+                "A French bakery and cafe on the ground floor, on your way out. Choose one pastry each, swap halfway through, and decide who picked better.",
             ),
         ],
     ),

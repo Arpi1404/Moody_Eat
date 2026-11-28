@@ -171,7 +171,6 @@ CLOSED_DAYS = {
     "Aravali Trails, Then Cameras": [("monday", "Museo Camera")],
     "White Marble to Noon Clock": [("friday", "Salar Jung Museum")],
     "Modern Art, Then a Long Lunch": [("monday", "National Gallery of Modern Art")],
-    "Brunch, Then Vintage Wheels": [("monday", "Heritage Transport Museum")],
 }
 
 

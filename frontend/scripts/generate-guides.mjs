@@ -42,6 +42,7 @@ const LEGACY_REDIRECTS = {
   'gachibowli-green-hours': 'hyderabad',
   'necklace-road-picnic': 'hyderabad',
   'hitec-family-weekend': 'hyderabad',
+  'gurgaon/brunch-then-vintage-wheels': 'gurgaon',
 }
 
 const snapshot = JSON.parse(
