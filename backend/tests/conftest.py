@@ -15,6 +15,8 @@ def no_network_weather(monkeypatch):
     # And the place's clock (from the same forecast call) is unknown, so the
     # chosen day is trusted as it is and no start is moved.
     monkeypatch.setattr("quest_generator.place_utc_offset", _unknown)
+    # No feels-like forecast either: parks stay out of the midday window.
+    monkeypatch.setattr("quest_generator.place_feels_like", _unknown)
 
 
 @pytest.fixture(autouse=True)

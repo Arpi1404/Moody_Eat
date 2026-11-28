@@ -74,7 +74,7 @@ async def _forecast(lat: float, lng: float) -> dict | None:
                 params={
                     "latitude": lat,
                     "longitude": lng,
-                    "hourly": "precipitation_probability",
+                    "hourly": "precipitation_probability,apparent_temperature",
                     "forecast_days": _FORECAST_DAYS,
                     "timezone": "auto",
                 },
@@ -118,3 +118,27 @@ async def utc_offset_minutes(lat: float, lng: float) -> int | None:
     if not isinstance(seconds, (int, float)):
         return None
     return int(seconds) // 60
+
+
+async def feels_like_by_hour(
+    lat: float, lng: float, on_date: date | None = None
+) -> dict[int, float] | None:
+    """The forecast feels-like temperature (°C) for each local hour of
+    `on_date` (the forecast's first day when None), from the same cached call.
+    None when the forecast could not be had."""
+    data = await _forecast(lat, lng)
+    if not data:
+        return None
+    hourly = data.get("hourly") or {}
+    times = hourly.get("time") or []
+    temps = hourly.get("apparent_temperature") or []
+    day = on_date.isoformat() if on_date is not None else (str(times[0])[:10] if times else "")
+    out: dict[int, float] = {}
+    for t, v in zip(times, temps):
+        if v is None or str(t)[:10] != day:
+            continue
+        try:
+            out[int(str(t)[11:13])] = float(v)
+        except (ValueError, IndexError):
+            continue
+    return out or None
