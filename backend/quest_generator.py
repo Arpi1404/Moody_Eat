@@ -37,6 +37,7 @@ from quest_templates import (
     DAYLIGHT_TYPES,
     DESSERT,
     DINNER_FAMILY,
+    OPEN_AIR_PRIMARY_TYPES,
     OPEN_AIR_TYPES,
     DRINKS,
     MAX_STOPS,
@@ -1232,8 +1233,12 @@ async def _fill_stop(
     not_before: time | None,
     max_wait_min: int,
     hours_memo: dict[str, PlaceHours],
+    avoid_primary: frozenset[str] = frozenset(),
 ) -> _CandidatePick | None:
     """Pick a place for one stop of the plan, or None when nothing can be found.
+
+    `avoid_primary`: places that mainly are one of these are never taken, from
+    any search (a search for `tourist_attraction` also returns parks).
 
     First pass, over the stop's whole list of fallback types: only places that
     are the kind the stop is for (TemplateStop.suits: their primary type
@@ -1282,6 +1287,11 @@ async def _fill_stop(
             candidates = intent_pool
         else:
             candidates = await _search_with_expansion(service, req.location, place_type)
+        if avoid_primary:
+            candidates = [
+                p for p in candidates
+                if (p.primary_type or "").casefold() not in avoid_primary
+            ]
         pools[place_type] = candidates
         if not candidates:
             logger.info(
@@ -1483,6 +1493,14 @@ def _swap_kind(stop: Stop, place_type: str, occasion: Occasion) -> TemplateStop 
 
 # ── What the clock allows ─────────────────────────────────────────────────────
 
+def _avoid_for_the_hour(start_min: int) -> frozenset[str]:
+    """Primary types not taken for a stop starting at `start_min`, whatever
+    was searched: open-air places in the midday heat and after dark."""
+    if start_min > _DAYLIGHT_LAST_START_MIN or _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]:
+        return OPEN_AIR_PRIMARY_TYPES
+    return frozenset()
+
+
 def _types_for_the_hour(tmpl: TemplateStop, start_min: int) -> tuple[str, ...]:
     """The stop's search types that suit a start at `start_min`.
 
@@ -1647,22 +1665,33 @@ async def assemble_quest(
             skipped_meals.append(tmpl)
             return False
 
-        picked = await _fill_stop(
-            tmpl,
-            stop_place_types,
-            req=req,
-            service=service,
-            calendar=calendar,
-            cursor=cursor,
-            prev_lat=prev_lat,
-            prev_lng=prev_lng,
-            used=used_ids,
-            rng=rng,
-            seen=seen_ids,
-            not_before=not_before,
-            max_wait_min=max_wait_min,
-            hours_memo=hours_memo,
-        )
+        async def _fill(types: tuple[str, ...], avoid: frozenset[str]) -> _CandidatePick | None:
+            return await _fill_stop(
+                tmpl,
+                types,
+                req=req,
+                service=service,
+                calendar=calendar,
+                cursor=cursor,
+                prev_lat=prev_lat,
+                prev_lng=prev_lng,
+                used=used_ids,
+                rng=rng,
+                seen=seen_ids,
+                not_before=not_before,
+                max_wait_min=max_wait_min,
+                hours_memo=hours_memo,
+                avoid_primary=avoid,
+            )
+
+        start_min = _minutes(cursor)
+        picked = await _fill(stop_place_types, _avoid_for_the_hour(start_min))
+        if picked is None and _HEAT_WINDOW[0] <= start_min < _HEAT_WINDOW[1]:
+            # The heat is a preference, the dark is not: an area with nothing
+            # but parks still gets its park at midday. Searches already made
+            # are cached by the service, so this costs no new call unless the
+            # park search itself was left out.
+            picked = await _fill(tmpl.places_types, frozenset())
         if picked is None:
             logger.info(
                 "All fallback types exhausted for stop category=%s in %r",

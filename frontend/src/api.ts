@@ -25,6 +25,10 @@ export async function generateQuest(payload: {
   day_part?: string
   /** Recently seen places to avoid (soft — never at the cost of a stop). */
   exclude_place_ids?: string[]
+  /** The day, "YYYY-MM-DD", within the coming week. Omit for today. */
+  start_date?: string
+  /** "HH:MM", 07:00–22:00, local to the place. Wins over day_part. */
+  start_time?: string
 }): Promise<Quest> {
   const res = await fetch(`${getApiBase()}/api/quest/generate`, {
     method: 'POST',

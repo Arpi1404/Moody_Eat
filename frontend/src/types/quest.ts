@@ -132,6 +132,10 @@ export interface QuestGenerationRequest {
   day_part?: DayPart
   /** Recently seen places to avoid (soft — never at the cost of a stop). */
   exclude_place_ids?: string[]
+  /** The day, "YYYY-MM-DD", within the coming week. Omit for today. */
+  start_date?: string
+  /** "HH:MM", 07:00–22:00, local to the place. Wins over day_part. */
+  start_time?: string
 }
 
 export type DayPart = 'morning' | 'afternoon' | 'evening' | 'night'

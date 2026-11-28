@@ -319,3 +319,42 @@ def test_the_rain_check_reads_the_chosen_day() -> None:
     }
     assert _window_max_probability(hourly, 18) == 10
     assert _window_max_probability(hourly, 18, on_date=date(2026, 11, 29)) == 90
+
+
+def test_midday_heat_keeps_out_parks_whichever_search_finds_them() -> None:
+    """A search for sights also returns parks; at 13:00 they are passed over
+    while something else is there, and taken when nothing else is."""
+    always = _every_day(0, 24)
+    park_as_sight = _place("garden_sight", "park", always, reviews=9000)
+    museum = _place("city_museum", "museum", always, reviews=900)
+    with_museum = {"tourist_attraction": [park_as_sight, museum], "cafe": _open_city()["cafe"]}
+    only_park = {"tourist_attraction": [park_as_sight], "cafe": _open_city()["cafe"]}
+
+    hot = _run(Pools(with_museum), _req(Occasion.date, stops=2, start_time="15:00"))
+    assert "Garden Sight" not in _names(hot)
+    assert "City Museum" in _names(hot)
+
+    sparse = _run(Pools(only_park), _req(Occasion.date, stops=2, start_time="15:00"))
+    assert "Garden Sight" in _names(sparse)
+
+
+def test_the_planner_mirrors_the_engines_clock() -> None:
+    """frontend/src/lib/startTime.ts copies these numbers; they must agree."""
+    import re
+    from pathlib import Path
+
+    from models import EARLIEST_START_MIN, LATEST_START_MIN, PLAN_AHEAD_DAYS
+    from quest_generator import _DAY_PART_START
+
+    source = (Path(__file__).resolve().parents[2] / "frontend/src/lib/startTime.ts").read_text()
+
+    def const(name: str) -> int:
+        match = re.search(rf"export const {name} = ([\d\s*+]+)\n", source)
+        assert match, name
+        return eval(match.group(1))  # noqa: S307 - our own arithmetic literal
+
+    assert const("EARLIEST_START_MIN") == EARLIEST_START_MIN
+    assert const("LATEST_START_MIN") == LATEST_START_MIN
+    assert const("PLAN_AHEAD_DAYS") == PLAN_AHEAD_DAYS
+    for part, (hour, minute) in _DAY_PART_START.items():
+        assert f"{part.value}: '{hour:02d}:{minute:02d}'" in source

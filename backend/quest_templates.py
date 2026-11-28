@@ -348,6 +348,13 @@ DAYLIGHT_TYPES = frozenset({
     "amusement_park", "library",
 })
 OPEN_AIR_TYPES = frozenset({"park"})
+# What a place mainly is when it is an open-air park or garden, whichever
+# search found it.
+OPEN_AIR_PRIMARY_TYPES = frozenset({
+    "park", "city_park", "national_park", "state_park", "garden",
+    "botanical_garden", "hiking_area", "picnic_ground", "playground",
+    "dog_park",
+})
 
 # Roles that involve eating or drinking. A plan has at most one "meal", and
 # the only food after it is dessert or drinks.

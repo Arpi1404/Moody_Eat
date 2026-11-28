@@ -8,6 +8,18 @@ import { EmptyState, ErrorState, LoadingState } from '../components/states'
 import { TourSheet, WelcomeNudge } from '../components/WelcomeTour'
 import { track } from '../lib/analytics'
 import { pickHeroQuest } from '../lib/catalogue'
+import {
+  DAY_PART_START,
+  type Start,
+  dayChoices,
+  isoDay,
+  keepStartValid,
+  maxStopsFor,
+  spokenDayPart,
+  startForDayPart,
+  timeChoices,
+  timeLabel,
+} from '../lib/startTime'
 import { closedTodayLast, indiaWeekday } from '../lib/closedDays'
 import { OCCASIONS, type OccasionKey } from '../lib/occasions'
 import {
@@ -48,11 +60,13 @@ type Budget = (typeof BUDGET_OPTIONS)[number]['value']
 const MIN_STOPS = 1
 const MAX_STOPS = 4
 
+// One tap for the usual start of each part of the day; the day and time
+// pickers under them set anything else.
 const DAY_PART_OPTIONS = [
-  { value: 'morning', label: 'Morning', hint: '~10am' },
-  { value: 'afternoon', label: 'Afternoon', hint: '~1pm' },
-  { value: 'evening', label: 'Evening', hint: '~5:30pm' },
-  { value: 'night', label: 'Night', hint: '~8pm' },
+  { value: 'morning', label: 'Morning' },
+  { value: 'afternoon', label: 'Afternoon' },
+  { value: 'evening', label: 'Evening' },
+  { value: 'night', label: 'Night' },
 ] as const
 
 type DayPart = (typeof DAY_PART_OPTIONS)[number]['value']
@@ -131,8 +145,8 @@ export function HomePage() {
   const [geoError, setGeoError] = useState<string | null>(null)
   const [budget, setBudget] = useState<Budget>('mid')
   const [stopCount, setStopCount] = useState(2)
-  // null = follow the occasion's default start time
-  const [dayPartChoice, setDayPartChoice] = useState<DayPart | null>(null)
+  // null = the occasion's usual start, today (or tomorrow once it is past).
+  const [startChoice, setStartChoice] = useState<Start | null>(null)
   // First visit: 'nudge' is the small "New here?" card, 'open' the one-card
   // "How it works" sheet it leads to.
   const [tour, setTour] = useState<'hidden' | 'nudge' | 'open'>('hidden')
@@ -381,6 +395,21 @@ export function HomePage() {
     }
   }, [activeOccasion, closeSheet])
 
+  // The start on show in the sheet: as chosen, or the occasion's usual
+  // part of the day, today or (once that is over) tomorrow. Read from the
+  // clock at each render, so a time that passes while the sheet is open moves
+  // on.
+  const now = new Date()
+  const start: Start | null = activeOccasion
+    ? keepStartValid(
+        now,
+        startChoice ?? startForDayPart(now, 0, DAY_PART_DEFAULT_BY_OCCASION[activeOccasion]),
+      )
+    : null
+  const stopsMax =
+    activeOccasion && start ? maxStopsFor(activeOccasion, start.time) : MAX_STOPS
+  const stopsShown = Math.min(stopCount, stopsMax)
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!activeOccasion || !location.trim() || submitting) return
@@ -391,7 +420,16 @@ export function HomePage() {
       setSubmitSlow(true)
     }, 3000)
 
-    const dayPart = dayPartChoice ?? DAY_PART_DEFAULT_BY_OCCASION[activeOccasion]
+    // The day and time as chosen, moved on if they passed while the sheet
+    // was open. The server checks again at the place's own clock.
+    const submitNow = new Date()
+    const chosen = keepStartValid(
+      submitNow,
+      startChoice ??
+        startForDayPart(submitNow, 0, DAY_PART_DEFAULT_BY_OCCASION[activeOccasion]),
+    )
+    const dayPart = spokenDayPart(chosen.time)
+    const stopsWanted = Math.min(stopCount, maxStopsFor(activeOccasion, chosen.time))
     const typedLocation = location.trim()
     const request = {
       // A 📍 or picked location is searched around its coordinates, not
@@ -409,8 +447,11 @@ export function HomePage() {
       occasion: activeOccasion,
       cost_estimate: budget,
       people: PEOPLE_BY_OCCASION[activeOccasion],
-      stop_count: stopCount,
+      stop_count: stopsWanted,
       day_part: dayPart,
+      // The day in this device's calendar and the start time there.
+      start_date: isoDay(submitNow, chosen.offset),
+      start_time: chosen.time,
       // Avoid repeating places from recent quests (soft exclusion).
       exclude_place_ids: getRecentPlaceIds(),
     }
@@ -421,14 +462,21 @@ export function HomePage() {
         occasion: activeOccasion,
         budget,
         day_part: dayPart,
-        stops_requested: stopCount,
+        // How many days ahead and the hour: never a date or anything typed.
+        day_offset: chosen.offset,
+        start_hour: Number(chosen.time.slice(0, 2)),
+        stops_requested: stopsWanted,
         stop_count: quest.stops.length,
       })
       // Only flag a shortfall against what the user actually asked for — a
       // 1- or 2-stop quest is a deliberate choice now, not a failure.
+      const found = quest.stops.length
+      const plural = found === 1 ? '' : 's'
       const softMessage =
-        quest.stops.length > 0 && quest.stops.length < stopCount
-          ? `Found ${quest.stops.length} great stop${quest.stops.length === 1 ? '' : 's'} — couldn't fill all ${stopCount} in this area.`
+        found > 0 && found < stopsWanted
+          ? Number(chosen.time.slice(0, 2)) >= 21
+            ? `It's late, so fewer places are open: found ${found} stop${plural}.`
+            : `Found ${found} great stop${plural} — couldn't fill all ${stopsWanted} at this time and place.`
           : undefined
       recordQuestPlaces(quest)
       // They found their way to a quest; no need to offer the tour again.
@@ -783,30 +831,69 @@ export function HomePage() {
                 )}
               </div>
 
-              {/* Day part */}
+              {/* When: a part of the day in one tap, then the day and time */}
               <div>
                 <span className="sheet-field-label">When?</span>
-                <div className="sheet-pill-row" role="group" aria-label="Time of day">
+                <div
+                  className="sheet-pill-row sheet-pill-row--four"
+                  role="group"
+                  aria-label="Time of day"
+                >
                   {DAY_PART_OPTIONS.map((d) => {
-                    const selected =
-                      (dayPartChoice ??
-                        (activeOccasion
-                          ? DAY_PART_DEFAULT_BY_OCCASION[activeOccasion]
-                          : null)) === d.value
+                    const selected = start !== null && spokenDayPart(start.time) === d.value
                     return (
                       <button
                         key={d.value}
                         type="button"
                         className={`sheet-pill${selected ? ' sheet-pill--active' : ''}`}
                         aria-pressed={selected}
-                        title={`Starts ${d.hint}`}
-                        onClick={() => setDayPartChoice(d.value)}
+                        title={`Starts ${timeLabel(DAY_PART_START[d.value])}`}
+                        onClick={() =>
+                          setStartChoice(startForDayPart(now, start?.offset ?? 0, d.value))
+                        }
                       >
                         {d.label}
                       </button>
                     )
                   })}
                 </div>
+                {start && (
+                  <div className="sheet-when-row">
+                    <select
+                      className="sheet-select"
+                      aria-label="Day"
+                      value={start.offset}
+                      onChange={(e) =>
+                        setStartChoice(
+                          keepStartValid(now, {
+                            offset: Number(e.target.value),
+                            time: start.time,
+                          }),
+                        )
+                      }
+                    >
+                      {dayChoices(now).map((d) => (
+                        <option key={d.offset} value={d.offset} disabled={d.disabled}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="sheet-select"
+                      aria-label="Start time"
+                      value={start.time}
+                      onChange={(e) =>
+                        setStartChoice({ offset: start.offset, time: e.target.value })
+                      }
+                    >
+                      {timeChoices(now, start.offset).map((t) => (
+                        <option key={t} value={t}>
+                          {timeLabel(t)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Budget */}
@@ -835,24 +922,27 @@ export function HomePage() {
                     type="button"
                     className="sheet-stepper-btn"
                     aria-label="Fewer stops"
-                    disabled={stopCount <= MIN_STOPS}
-                    onClick={() => setStopCount((c) => Math.max(MIN_STOPS, c - 1))}
+                    disabled={stopsShown <= MIN_STOPS}
+                    onClick={() => setStopCount(Math.max(MIN_STOPS, stopsShown - 1))}
                   >
                     −
                   </button>
                   <span className="sheet-stepper-value" aria-live="polite">
-                    {stopCount} {stopCount === 1 ? 'stop' : 'stops'}
+                    {stopsShown} {stopsShown === 1 ? 'stop' : 'stops'}
                   </span>
                   <button
                     type="button"
                     className="sheet-stepper-btn"
                     aria-label="More stops"
-                    disabled={stopCount >= MAX_STOPS}
-                    onClick={() => setStopCount((c) => Math.min(MAX_STOPS, c + 1))}
+                    disabled={stopsShown >= stopsMax}
+                    onClick={() => setStopCount(Math.min(stopsMax, stopsShown + 1))}
                   >
                     +
                   </button>
                 </div>
+                {stopsMax < MAX_STOPS && (
+                  <p className="sheet-hint">A family night is three stops at most.</p>
+                )}
               </div>
 
               {/* Submit */}
