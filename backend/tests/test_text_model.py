@@ -106,7 +106,8 @@ async def test_a_good_answer_is_used(settings, provider, logs):
     assert request.headers["authorization"] == f"Bearer {KEY}"
     body = json.loads(request.content)
     assert set(body) == {"model", "max_tokens", "messages"}
-    assert body["model"] == NAME and body["max_tokens"] == 256
+    assert body["model"] == NAME
+    assert body["max_tokens"] == blurbs.NARRATIVE_MAX_TOKENS
     assert "in Old Town." in provider.prompt
     assert _fallback_lines(logs) == []
 
@@ -360,6 +361,33 @@ def test_the_check_prints_the_answer(settings, provider, capsys):
     out = capsys.readouterr().out
     assert "A fine evening." in out and KEY not in out
     assert len(provider.requests) == 1
+
+
+async def test_the_check_asks_with_the_intros_ceiling(settings, provider):
+    await _narrative()
+    # The script starts an event loop of its own.
+    await asyncio.to_thread(check_text_model.main)
+
+    ceilings = [json.loads(r.content)["max_tokens"] for r in provider.requests]
+    assert ceilings == [blurbs.NARRATIVE_MAX_TOKENS] * 2
+
+
+def test_the_intro_leaves_room_to_think():
+    assert blurbs.NARRATIVE_MAX_TOKENS == 800
+
+
+@pytest.mark.parametrize(
+    "response, reason",
+    [(_answer("", "length"), "empty_answer"), (_answer("Half a", "length"), "cut_off")],
+)
+def test_the_check_says_what_thinking_may_have_done(
+    settings, provider, capsys, response, reason
+):
+    provider.respond = lambda request: response
+    assert check_text_model.main() == 1
+    out = capsys.readouterr().out
+    assert f"Failed: {reason}" in out
+    assert "lower thinking setting" in out and "lighter model" in out
 
 
 def test_the_check_prints_the_status_and_error_but_not_the_key(settings, provider, capsys):

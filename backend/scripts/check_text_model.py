@@ -24,16 +24,19 @@ if str(_BACKEND_DIR) not in sys.path:
 
 from config import get_settings  # noqa: E402
 from services.place_blurbs_service import (  # noqa: E402
+    NARRATIVE_MAX_TOKENS,
     NARRATIVE_TIMEOUT_SECONDS,
     ask_model,
     configured_text_model,
 )
 
 _PROMPT = "Write one short sentence that wishes someone a good evening out."
-# The same ceiling the quest intro gets, so a model that spends it all before
-# answering shows up here too.
-_MAX_TOKENS = 256
 
+_THINKING_HINT = (
+    "A model that thinks first can use up the ceiling before it has finished "
+    "answering: it may need a lower thinking setting on the provider's side, "
+    "or a lighter model."
+)
 _HINTS = {
     "http_status": "The provider refused the request. Check the address, the model "
     "name and the key against its documentation. If it says max_tokens is not "
@@ -45,9 +48,10 @@ _HINTS = {
     "is the full address, starting with https://.",
     "not_json": "The answer was not JSON. TEXT_MODEL_URL may point at a web page "
     "instead of the chat-completions endpoint.",
-    "empty_answer": "The reply held no text in choices[0].message.content. If "
-    "finish_reason is length, the model used the whole ceiling before answering.",
-    "cut_off": "The answer hit the token ceiling, so the app would not use it.",
+    "empty_answer": "The reply held no text in choices[0].message.content. "
+    + _THINKING_HINT,
+    "cut_off": "The answer hit the token ceiling, so the app would not use it. "
+    + _THINKING_HINT,
 }
 
 
@@ -67,8 +71,10 @@ def main() -> int:
         print(f"Not configured. Missing: {', '.join(missing)}")
         return 2
 
+    # The same ceiling and time limit as the quest intro, so a model that
+    # spends either before answering shows up here too.
     reply = asyncio.run(
-        ask_model(model, _PROMPT, _MAX_TOKENS, NARRATIVE_TIMEOUT_SECONDS)
+        ask_model(model, _PROMPT, NARRATIVE_MAX_TOKENS, NARRATIVE_TIMEOUT_SECONDS)
     )
     if reply.problem is None:
         print(f"OK (HTTP {reply.status}). The model wrote:\n{reply.text}")
