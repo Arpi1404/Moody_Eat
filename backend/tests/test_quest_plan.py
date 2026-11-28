@@ -461,9 +461,10 @@ def test_primary_type_is_requested_and_carried_to_the_place() -> None:
 
 
 def test_nearby_field_mask_is_exactly_these_fields() -> None:
-    """Every field is billed. primaryType is in the same tier as types, below
-    the tier the rating and price fields already put this request in; anything
-    added here should be added on purpose."""
+    """Every field is billed. primaryType and utcOffsetMinutes are in the same
+    tier as types; hours, phone and website in the Enterprise tier the rating
+    and price fields already put this request in. Nothing here may come from
+    Enterprise + Atmosphere, and anything added should be added on purpose."""
     assert set(_NEARBY_FIELD_MASK_NEW.split(",")) == {
         "places.id",
         "places.displayName",
@@ -476,6 +477,12 @@ def test_nearby_field_mask_is_exactly_these_fields() -> None:
         "places.businessStatus",
         "places.priceLevel",
         "places.priceRange",
+        # Enterprise, like rating and price: the same SKU, no dearer.
+        "places.regularOpeningHours.periods",
+        "places.internationalPhoneNumber",
+        "places.websiteUri",
+        # Pro.
+        "places.utcOffsetMinutes",
     }
 
 

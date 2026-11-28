@@ -3,7 +3,7 @@ import unicodedata
 import uuid
 from datetime import datetime, time
 from enum import Enum
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
@@ -124,6 +124,13 @@ class ResolvedLocationOut(BaseModel):
     lng: float
 
 
+# "+91 80 4123 4567", "080-4123 4567", "(022) 2202 3456": digits with the usual
+# separators, an optional leading +, and at least six digits.
+_PHONE_RE = re.compile(r"\+?(?:[\d\-\s().]){6,30}")
+_WEBSITE_RE = re.compile(r"https?://[^\s<>\"']+\Z", re.IGNORECASE)
+_WEBSITE_MAX_CHARS = 500
+
+
 class PlaceItem(BaseModel):
     name: str
     address: str
@@ -150,6 +157,42 @@ class PlaceItem(BaseModel):
     closes_today: Optional[str] = None
     # True when the place is open 24h today.
     open_24h_today: bool = False
+    # How to reach the place, as Google lists it: an international number
+    # ("+91 80 4123 4567") and an http(s) address. None when the place lists
+    # none, and on every quest made before these were asked for.
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    # The week's opening hours as the search returned them (see
+    # RawPlace.opening_periods), so a visit can be judged open without a
+    # separate paid lookup. Server-side only: never sent to the browser or
+    # stored with a quest, and None on any place read back from one.
+    opening_periods: Optional[list[dict[str, Any]]] = Field(default=None, exclude=True)
+    # Minutes the place's local time is ahead of UTC. Server-side only.
+    utc_offset_minutes: Optional[int] = Field(default=None, exclude=True)
+
+    # A shared quest is stored as the browser sent it, and the site turns these
+    # two into links for everyone who opens it. Anything that is not plainly a
+    # phone number or a web address is dropped rather than refused, so one bad
+    # value never costs a whole quest.
+    @field_validator("phone", mode="before")
+    @classmethod
+    def _plain_phone(cls, v: object) -> Optional[str]:
+        if not isinstance(v, str):
+            return None
+        text = " ".join(v.split())
+        if not _PHONE_RE.fullmatch(text):
+            return None
+        return text
+
+    @field_validator("website", mode="before")
+    @classmethod
+    def _plain_website(cls, v: object) -> Optional[str]:
+        if not isinstance(v, str):
+            return None
+        text = v.strip()
+        if len(text) > _WEBSITE_MAX_CHARS or not _WEBSITE_RE.match(text):
+            return None
+        return text
 
 
 class NearbyPlacesResponse(BaseModel):
