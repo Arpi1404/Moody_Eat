@@ -290,14 +290,19 @@ _SPARSE_PLACE_TYPES = frozenset({"zoo", "aquarium"})
 # Only dates: for friends a busy, popular place is usually what is wanted, and
 # a solo meal is rarely about the room. Text Search also has its own daily cap
 # (1,000 requests), half that of Nearby Search.
+#
+# No cheap entries, on purpose: a cheap date keeps the type search. Asked for
+# "affordable cozy" dinners, Text Search answered with moderate places
+# (₹200–1,200 a head) where the type search found ₹1–200 ones, which changed
+# what a plan labelled "Cheap" costs. To add cheap, the intent pool would need
+# a price ceiling first: only places with a known price range starting at or
+# below a set amount (say ₹300 a head) counting towards _INTENT_MIN_USABLE.
 _INTENT_QUERIES: dict[tuple[Occasion, str], dict[CostEstimate, str]] = {
     (Occasion.date, "dinner"): {
-        CostEstimate.cheap: "affordable cozy restaurant for a dinner date",
         CostEstimate.mid: "romantic restaurant for a dinner date",
         CostEstimate.splurge: "fine dining restaurant for a romantic dinner",
     },
     (Occasion.date, "lunch"): {
-        CostEstimate.cheap: "affordable cozy restaurant for a lunch date",
         CostEstimate.mid: "nice restaurant for a lunch date",
         CostEstimate.splurge: "upscale restaurant for a lunch date",
     },

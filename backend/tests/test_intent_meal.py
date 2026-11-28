@@ -122,16 +122,25 @@ def test_a_place_outside_the_area_is_never_picked() -> None:
         assert quest.stops[0].place.name != "Faraway Fine Dining"
 
 
-def test_a_cheap_date_does_not_get_an_expensive_dinner() -> None:
-    pricey = [
-        _raw(f"p{i}", f"Pricey {i}", "fine_dining_restaurant", price_level=4) for i in range(3)
-    ]
-    cheap_ok = _raw("ok", "Corner Bistro", "italian_restaurant", price_level=1, reviews=300)
-    provider = IntentProvider(pricey + [cheap_ok])
-    quest = _quest(provider, cost=CostEstimate.cheap)
+@pytest.mark.parametrize("day_part", [DayPart.evening, DayPart.afternoon])
+def test_a_cheap_date_keeps_the_type_search_and_makes_no_text_search(day_part) -> None:
+    provider = IntentProvider(DATE_PLACES)
+    quest = _quest(provider, cost=CostEstimate.cheap, day_part=day_part)
 
-    assert provider.texts[0]["text"] == _INTENT_QUERIES[(Occasion.date, "dinner")][CostEstimate.cheap]
-    assert quest.stops[0].place.name == "Corner Bistro"
+    assert provider.texts == []
+    assert provider.nearby[0] == "restaurant"
+    assert quest.stops[0].place.name in {p.name for p in CHAINS}
+
+
+def test_no_cheap_phrase_is_defined() -> None:
+    for phrases in _INTENT_QUERIES.values():
+        assert CostEstimate.cheap not in phrases
+
+
+def test_a_splurge_date_uses_the_splurge_phrase() -> None:
+    provider = IntentProvider(DATE_PLACES)
+    _quest(provider, cost=CostEstimate.splurge)
+    assert provider.texts[0]["text"] == _INTENT_QUERIES[(Occasion.date, "dinner")][CostEstimate.splurge]
 
 
 def test_shuffle_still_varies_the_dinner() -> None:
