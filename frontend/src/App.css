@@ -7583,7 +7583,8 @@ a.explore-edit-filters {
     padding-top: 10px;
   }
 
-  .qp-back {
+  /* /create uses this class too. */
+  .qp-page .qp-back {
     margin-bottom: 8px;
   }
 
@@ -7651,7 +7652,8 @@ a.explore-edit-filters {
     padding-top: 16px;
   }
 
-  .qp-back {
+  /* /create uses this class too. */
+  .qp-page .qp-back {
     margin-bottom: 10px;
   }
 
