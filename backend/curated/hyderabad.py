@@ -113,7 +113,7 @@ QUESTS: list[Quest] = [
                 StopCategory.attraction,
                 time(18, 0),
                 time(18, 52),
-                "The lakefront walkway faces the cable bridge head-on — come for the last of the daylight and stay until the bridge lights come up. Evening entry runs 4 to 8pm.",
+                "The lakefront walkway faces the cable bridge head-on — walk it as the evening settles in and stay until the bridge is lit up across the water. Evening entry runs 4 to 8pm.",
                 travel_to_next_minutes=8,
             ),
             stop(
@@ -217,7 +217,7 @@ QUESTS: list[Quest] = [
                 StopCategory.bar,
                 time(21, 16),
                 time(22, 30),
-                "A proper brewpub a couple of minutes from the mall doors, open past midnight — order a tasting flight for the table instead of arguing over pints.",
+                "A proper brewpub a couple of minutes from the mall doors, open till midnight and till 1am on Fridays and Saturdays — order a tasting flight for the table instead of arguing over pints.",
             ),
         ],
     ),
@@ -229,8 +229,8 @@ QUESTS: list[Quest] = [
         total_cost_estimate=CostEstimate.cheap,
         narrative=(
             "The Hyderabad starter pack, on a budget. Paradise's Secunderabad flagship is the one "
-            "— go early and you skip the worst of the queue. The biryani is calibrated. Then "
-            "Lumbini Park for the walk you owe yourself after that quantity of rice, with the "
+            "— go early and you skip the worst of the queue. Order the biryani and come hungry. "
+            "Then Lumbini Park for the walk you owe yourself after that quantity of rice, with the "
             "Buddha statue lit up out on the water and boats running to it. End at Mozamjahi "
             "Market, where Famous has been scooping hand-churned fruit ice cream under the clock "
             "tower for decades."

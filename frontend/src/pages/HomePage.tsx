@@ -1,12 +1,18 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchCuratedQuests, generateQuest, getApiBase } from '../api'
-import type { Quest } from '../types/quest'
+import type { Quest, Weekday } from '../types/quest'
 import { LocationInput } from '../components/LocationInput'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
 import { TourSheet, WelcomeNudge } from '../components/WelcomeTour'
 import { track } from '../lib/analytics'
 import { budgetLabel } from '../lib/budget'
+import {
+  closedTodayLast,
+  closedTodayLine,
+  indiaWeekday,
+  notOnLine,
+} from '../lib/closedDays'
 import {
   OCCASIONS,
   OCCASION_LABELS,
@@ -153,6 +159,19 @@ function CuratedQuestImage({ quest }: { quest: Quest }) {
       />
       {badge}
     </div>
+  )
+}
+
+/** "Not on Mondays", and on that day which stop is shut. */
+function QuestDays({ quest, today }: { quest: Quest; today: Weekday }) {
+  const notOn = notOnLine(quest)
+  if (!notOn) return null
+  const shutToday = closedTodayLine(quest, today)
+  if (!shutToday) return <p className="curated-quest-days">{notOn}</p>
+  return (
+    <p className="curated-quest-days curated-quest-days--today">
+      <strong>{shutToday}.</strong> {notOn}.
+    </p>
   )
 }
 
@@ -529,6 +548,10 @@ export function HomePage() {
 
   const activeData = OCCASIONS.find((o) => o.key === activeOccasion) ?? null
 
+  // Quests with a stop shut today stay in the row, at the end of it.
+  const today = indiaWeekday()
+  const rowQuests = closedTodayLast(curatedQuests, today)
+
   const browseQuests = useCallback(() => {
     document
       .getElementById('curated-quests')
@@ -699,7 +722,7 @@ export function HomePage() {
                 className="curated-quests-row"
                 aria-label={`Curated quests in ${cityName(curatedCity ?? DEFAULT_CITY)}`}
               >
-                {curatedQuests.map((quest) => (
+                {rowQuests.map((quest) => (
                   <button
                     key={quest.id}
                     type="button"
@@ -718,6 +741,7 @@ export function HomePage() {
                         </span>
                       </div>
                       <StopTrail count={quest.stops.length} />
+                      <QuestDays quest={quest} today={today} />
                     </div>
                   </button>
                 ))}
@@ -972,10 +996,10 @@ export function HomePage() {
         <TourSheet
           onClose={closeTour}
           onExample={
-            curatedQuests.length > 0
+            rowQuests.length > 0
               ? () => {
                   closeTour(true)
-                  openCuratedQuest(curatedQuests[0])
+                  openCuratedQuest(rowQuests[0])
                 }
               : undefined
           }

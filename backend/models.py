@@ -300,6 +300,21 @@ QuestOrigin = Literal["generated", "curated", "custom"]
 PLACE_ID_PATTERN = r"^[A-Za-z0-9_-]{10,400}$"
 PlaceId = Annotated[str, StringConstraints(pattern=PLACE_ID_PATTERN)]
 
+# Monday first. Mirrored in frontend/src/lib/closedDays.ts.
+Weekday = Literal[
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
+]
+
+
+class ClosedDay(BaseModel):
+    """A weekday a catalogue quest does not work, and the stop that is why."""
+
+    day: Weekday
+    stop_index: int = Field(ge=0, le=9)
+    # Filled in from that stop. A saved copy can have its stops removed,
+    # swapped or reordered, and the entry has to stay with the place.
+    place_id: Optional[str] = Field(default=None, max_length=400)
+
 
 class Stop(BaseModel):
     place: PlaceItem
@@ -366,6 +381,43 @@ class Quest(BaseModel):
     narrative_by_creator: Optional[bool] = Field(
         default=None, exclude_if=_unset_marker
     )
+
+    # Weekdays on which a stop is shut. Set only on catalogue quests (and saved
+    # or shared copies of them), and absent from the JSON when empty.
+    closed_days: Optional[list[ClosedDay]] = Field(
+        default=None, max_length=70, exclude_if=_unset_marker
+    )
+
+    @model_validator(mode="after")
+    def closed_days_follow_their_stops(self) -> "Quest":
+        """An entry written without a place id must name a stop that exists.
+
+        One that has a place id came back from a browser, where the stops may
+        have changed since: it moves with its place, and goes when the place
+        has gone. Refusing the quest instead would stop an edited copy from
+        being shared.
+        """
+        if not self.closed_days:
+            return self
+        place_ids = [stop.place.provider_id for stop in self.stops]
+        kept: dict[tuple[str, int], ClosedDay] = {}
+        for entry in self.closed_days:
+            index = entry.stop_index
+            if entry.place_id is None:
+                if index >= len(place_ids):
+                    raise ValueError(
+                        f"closed_days names stop {index}, but the quest has "
+                        f"{len(place_ids)} stops."
+                    )
+            elif index >= len(place_ids) or place_ids[index] != entry.place_id:
+                if entry.place_id not in place_ids:
+                    continue
+                index = place_ids.index(entry.place_id)
+            kept[(entry.day, index)] = entry.model_copy(
+                update={"stop_index": index, "place_id": place_ids[index]}
+            )
+        self.closed_days = list(kept.values()) or None
+        return self
 
     @field_validator("narrative")
     @classmethod

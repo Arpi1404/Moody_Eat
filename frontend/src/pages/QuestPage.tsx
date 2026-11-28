@@ -18,6 +18,7 @@ import { CoachMark } from '../components/CoachMark'
 import { ErrorState, LoadingState } from '../components/states'
 import { track } from '../lib/analytics'
 import { budgetLabel, formatInrEstimate } from '../lib/budget'
+import { closedNotice, indiaWeekday } from '../lib/closedDays'
 import { CONTACT_URL } from '../lib/contact'
 import { addMyQuest, CreatorError, isDeadKey } from '../lib/creatorApi'
 import { forgetKeys, storedKey } from '../lib/creatorKey'
@@ -567,6 +568,8 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
     quest.est_total_per_person_min_inr,
     quest.est_total_per_person_max_inr,
   )
+
+  const daysNotice = closedNotice(quest, indiaWeekday())
 
   const openOwnVersion = () => {
     if (!ownVersion) return
@@ -1167,6 +1170,14 @@ export function QuestPage({ preview = false }: { preview?: boolean }) {
           </p>
         )}
         {quest.narrative && <p className="qp-narrative">{quest.narrative}</p>}
+        {daysNotice && (
+          <p
+            className={`qp-closed-note${daysNotice.today ? ' qp-closed-note--today' : ''}`}
+            role="note"
+          >
+            <strong>{daysNotice.headline}</strong> {daysNotice.detail}
+          </p>
+        )}
         {quest.weather_note && (
           <p className="qp-soft-note">
             <span aria-hidden>🌧️</span> {quest.weather_note}
