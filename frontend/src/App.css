@@ -7464,3 +7464,44 @@ a.explore-edit-filters {
   align-self: center;
 }
 
+
+/* ── Catalogue: days a quest does not work ─────────────────────────────── */
+
+.curated-quest-days {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #8C5E12;
+  text-align: left;
+}
+
+.curated-quest-days--today {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(232, 176, 75, 0.32);
+  background: rgba(232, 176, 75, 0.10);
+}
+
+.curated-quest-days--today strong {
+  color: var(--text-h);
+}
+
+.qp-closed-note {
+  overflow-wrap: anywhere;
+  margin: -10px 0 22px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #8C5E12;
+  text-align: left;
+}
+
+.qp-closed-note--today {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 176, 75, 0.32);
+  background: rgba(232, 176, 75, 0.10);
+}
+
+.qp-closed-note--today strong {
+  color: var(--text-h);
+}

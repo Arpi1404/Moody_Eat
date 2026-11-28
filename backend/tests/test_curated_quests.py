@@ -22,7 +22,7 @@ from curated_quests import (
     find_quest,
 )
 from main import app
-from models import Occasion
+from models import ClosedDay, Occasion, Quest
 
 EXPECTED_MIX = {Occasion.date: 2, Occasion.friends: 2, Occasion.solo: 1, Occasion.family: 1}
 MAX_KM_FROM_CENTRE = 40
@@ -128,6 +128,87 @@ def test_schedules_add_up(city: CuratedCity) -> None:
         assert stops[-1].travel_to_next_minutes is None, quest.title
         span = _minutes(stops[-1].time_block_end) - _minutes(stops[0].time_block_start)
         assert quest.total_duration_minutes == span, quest.title
+
+
+# ── Closed days ──
+
+# What a check against Google found on 28 Nov 2026. `verify_curated` is what
+# tells when this stops being true.
+CLOSED_DAYS = {
+    "Lalbagh Light, Food Street Night": [("monday", "MTR (Mavalli Tiffin Rooms)")],
+    "Church Street, One Book Each": [("monday", "Bar Spirit Forward")],
+    "Cubbon Park, Then a Bookshop": [
+        ("monday", "Cubbon Park"),
+        ("monday", "Champaca Bookstore"),
+    ],
+    "Basavanagudi: Bull Temple to Butter Dosa": [("friday", "Vidyarthi Bhavan")],
+    "Aravali Trails, Then Cameras": [("monday", "Museo Camera")],
+}
+
+
+def _quest(title: str) -> Quest:
+    return next(q for c in CURATED_CITIES for q in c.quests if q.title == title)
+
+
+def test_the_quests_that_do_not_work_every_day_say_which_stop_and_when() -> None:
+    declared = {
+        q.title: [(e.day, q.stops[e.stop_index].place.name) for e in q.closed_days]
+        for c in CURATED_CITIES
+        for q in c.quests
+        if q.closed_days
+    }
+    assert declared == CLOSED_DAYS
+
+
+def test_closed_days_are_served_and_left_out_when_there_are_none() -> None:
+    with TestClient(app) as c:
+        body = c.get("/api/quests/curated", params={"city": "bangalore"}).json()
+
+    by_title = {q["title"]: q for q in body}
+    lalbagh = _quest("Lalbagh Light, Food Street Night")
+    assert by_title[lalbagh.title]["closed_days"] == [
+        {"day": "monday", "stop_index": 1, "place_id": lalbagh.stops[1].place.provider_id}
+    ]
+    assert "closed_days" not in by_title["Koramangala: Burgers, Locked Rooms, Beer"]
+
+
+def _rebuilt(quest: Quest, **changes) -> Quest:
+    """The quest as it comes back from a browser."""
+    data = quest.model_dump(mode="json")
+    data.update(changes)
+    return Quest.model_validate(data)
+
+
+def test_a_quest_with_no_closed_days_serialises_as_before() -> None:
+    quest = _quest("Koramangala: Burgers, Locked Rooms, Beer")
+    assert "closed_days" not in quest.model_dump(mode="json")
+    assert "closed_days" not in _rebuilt(quest, closed_days=[]).model_dump_json()
+
+
+def test_an_unknown_weekday_is_refused() -> None:
+    with pytest.raises(ValueError):
+        ClosedDay(day="funday", stop_index=0)
+
+
+def test_a_written_entry_must_name_a_stop_that_exists() -> None:
+    quest = _quest("Lalbagh Light, Food Street Night")
+    with pytest.raises(ValueError, match="names stop 3"):
+        _rebuilt(quest, closed_days=[{"day": "monday", "stop_index": 3}])
+
+
+def test_a_closed_day_stays_with_its_place_when_stops_move() -> None:
+    quest = _quest("Lalbagh Light, Food Street Night")
+    stops = quest.model_dump(mode="json")["stops"]
+    moved = _rebuilt(quest, stops=[stops[1], stops[0], stops[2]])
+    assert [(e.day, e.stop_index) for e in moved.closed_days] == [("monday", 0)]
+
+
+@pytest.mark.parametrize("keep", [[0, 2], [0]], ids=["removed", "index now out of range"])
+def test_a_closed_day_goes_with_its_place_instead_of_refusing_the_quest(keep) -> None:
+    quest = _quest("Lalbagh Light, Food Street Night")
+    stops = quest.model_dump(mode="json")["stops"]
+    edited = _rebuilt(quest, stops=[stops[i] for i in keep])
+    assert edited.closed_days is None
 
 
 # ── Endpoints ──

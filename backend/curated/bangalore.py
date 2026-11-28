@@ -10,7 +10,7 @@ import uuid
 from datetime import time
 
 from curated.builders import CREATED_AT, place, stop
-from models import CostEstimate, Occasion, Quest, StopCategory, TravelMode
+from models import ClosedDay, CostEstimate, Occasion, Quest, StopCategory, TravelMode
 
 QUESTS: list[Quest] = [
     # ── DATE ──
@@ -28,6 +28,9 @@ QUESTS: list[Quest] = [
             "the real eating is ten minutes away at VV Puram: a single all-vegetarian lane where "
             "you graze stall to stall and argue about who found the better holige."
         ),
+        closed_days=[
+            ClosedDay(day="monday", stop_index=1),
+        ],
         created_at=CREATED_AT,
         stops=[
             stop(
@@ -97,6 +100,9 @@ QUESTS: list[Quest] = [
             "for Bar Spirit Forward, a bar that takes its cocktails more seriously than its "
             "lighting. The whole evening is walkable end to end, so nobody has to open a cab app."
         ),
+        closed_days=[
+            ClosedDay(day="monday", stop_index=2),
+        ],
         created_at=CREATED_AT,
         stops=[
             stop(
@@ -307,6 +313,10 @@ QUESTS: list[Quest] = [
             "Champaca, the kind of bookshop that chooses its shelves carefully, and stay until "
             "you've read the first chapter of something."
         ),
+        closed_days=[
+            ClosedDay(day="monday", stop_index=0),
+            ClosedDay(day="monday", stop_index=2),
+        ],
         created_at=CREATED_AT,
         stops=[
             stop(
@@ -378,6 +388,9 @@ QUESTS: list[Quest] = [
             "town: Vidyarthi Bhavan's thick, crisp masala dosa, delivered by waiters carrying a "
             "stack of plates up one arm."
         ),
+        closed_days=[
+            ClosedDay(day="friday", stop_index=2),
+        ],
         created_at=CREATED_AT,
         stops=[
             stop(

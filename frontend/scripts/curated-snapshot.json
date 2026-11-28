@@ -26,6 +26,7 @@
                   "monument",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJm5MaboqXyzsR-xPxquRpWss",
                 "opens_today": null,
                 "closes_today": null,
@@ -58,6 +59,7 @@
                   "indian_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJKyxGIoiXyzsRPY8PASGdTW0",
                 "opens_today": null,
                 "closes_today": null,
@@ -90,6 +92,7 @@
                   "bakery",
                   "cafe"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ1Z7b5_mXyzsR_6g6Az9fWjk",
                 "opens_today": null,
                 "closes_today": null,
@@ -112,6 +115,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "The old city after work, before the rush. Climb Charminar in the last hour before it closes, when the stone goes amber, then walk ten minutes up towards Madina for biryani at Shadab — the un-gentrified one, shared tables, and you'll understand why Hyderabadis argue about which place is best. Walk it off on the way back and finish with Irani chai and Osmania biscuits at Nimrah, standing a few steps from the monument you started at.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -137,6 +141,7 @@
                   "park",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJzaa0JS2RyzsR1O23hu3H7dU",
                 "opens_today": null,
                 "closes_today": null,
@@ -147,7 +152,7 @@
               "time_block_end": "18:52:00",
               "travel_to_next_minutes": 8,
               "travel_mode": "driving",
-              "why_this_place": "The lakefront walkway faces the cable bridge head-on — come for the last of the daylight and stay until the bridge lights come up. Evening entry runs 4 to 8pm.",
+              "why_this_place": "The lakefront walkway faces the cable bridge head-on — walk it as the evening settles in and stay until the bridge is lit up across the water. Evening entry runs 4 to 8pm.",
               "est_cost_per_person_min_inr": null,
               "est_cost_per_person_max_inr": null,
               "price_source": null
@@ -170,6 +175,7 @@
                   "italian_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJBdTHClGRyzsRjU5SWqXEeJk",
                 "opens_today": null,
                 "closes_today": null,
@@ -202,6 +208,7 @@
                   "cafe",
                   "bakery"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJZ3mAREiRyzsRIxCCJu8JwzU",
                 "opens_today": null,
                 "closes_today": null,
@@ -224,6 +231,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "The version of date night that doesn't try too hard. Start on the Durgam Cheruvu lakefront while the light goes and the cable bridge switches on across the water. Olive is a few minutes around the lake — whitewashed walls and a terrace over the water; order the wood-fired pizza and a glass of wine because that's what the place is for. Then Conçu, where the desserts are the reason you skipped tiramisu earlier.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -250,6 +258,7 @@
                   "bowling_alley",
                   "video_arcade"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJj9g7iFeRyzsRbTszJRXfmk8",
                 "opens_today": null,
                 "closes_today": null,
@@ -283,6 +292,7 @@
                   "indian_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ9VO8kviRyzsRGOR_Ak74IA8",
                 "opens_today": null,
                 "closes_today": null,
@@ -315,6 +325,7 @@
                   "brewpub",
                   "bar"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJAXLLciCRyzsROQZN8vHIprw",
                 "opens_today": null,
                 "closes_today": null,
@@ -325,7 +336,7 @@
               "time_block_end": "22:30:00",
               "travel_to_next_minutes": null,
               "travel_mode": null,
-              "why_this_place": "A proper brewpub a couple of minutes from the mall doors, open past midnight — order a tasting flight for the table instead of arguing over pints.",
+              "why_this_place": "A proper brewpub a couple of minutes from the mall doors, open till midnight and till 1am on Fridays and Saturdays — order a tasting flight for the table instead of arguing over pints.",
               "est_cost_per_person_min_inr": null,
               "est_cost_per_person_max_inr": null,
               "price_source": null
@@ -337,6 +348,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "For the group that says 'let's just hang' but never agrees on what. Smaaash takes care of the first hour and a half — bowling, arcade machines, VR; whoever loses pays for the first round. Am Aha is one floor down: Telugu food done properly, with a bar, which settles the where-do-we-eat argument before it starts. Finish a short walk from the mall at Akan, a brewpub with house beers and enough room that nobody has to stand.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -362,6 +374,7 @@
                   "indian_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJG_3xjA-ayzsRFh3aJZ-Rbjg",
                 "opens_today": null,
                 "closes_today": null,
@@ -394,6 +407,7 @@
                   "park",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJpeyxLF-XyzsRXBhk5vcfEmU",
                 "opens_today": null,
                 "closes_today": null,
@@ -426,6 +440,7 @@
                   "ice_cream_shop",
                   "cafe"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ____P32XyzsRr9xZqE9F7RU",
                 "opens_today": null,
                 "closes_today": null,
@@ -448,7 +463,8 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
-          "narrative": "The Hyderabad starter pack, on a budget. Paradise's Secunderabad flagship is the one — go early and you skip the worst of the queue. The biryani is calibrated. Then Lumbini Park for the walk you owe yourself after that quantity of rice, with the Buddha statue lit up out on the water and boats running to it. End at Mozamjahi Market, where Famous has been scooping hand-churned fruit ice cream under the clock tower for decades.",
+          "origin": "curated",
+          "narrative": "The Hyderabad starter pack, on a budget. Paradise's Secunderabad flagship is the one — go early and you skip the worst of the queue. Order the biryani and come hungry. Then Lumbini Park for the walk you owe yourself after that quantity of rice, with the Buddha statue lit up out on the water and boats running to it. End at Mozamjahi Market, where Famous has been scooping hand-churned fruit ice cream under the clock tower for decades.",
           "created_at": "2026-05-05T18:00:00"
         },
         {
@@ -473,6 +489,7 @@
                   "coffee_shop",
                   "cafe"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJWUl-wiqXyzsRud1hDiZM0aM",
                 "opens_today": null,
                 "closes_today": null,
@@ -506,6 +523,7 @@
                   "park",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJZe78QtKWyzsRA7_hetcQNG4",
                 "opens_today": null,
                 "closes_today": null,
@@ -538,6 +556,7 @@
                   "cafe",
                   "bakery"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJVy0-aGiXyzsRWMiIWZ1fC30",
                 "opens_today": null,
                 "closes_today": null,
@@ -560,6 +579,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "A solo route built around the small luxuries Hyderabad does well: good coffee, public greenery, neighbourhood chai. Roastery for an hour with a book — the garden tables are forgiving and nobody rushes you out. KBR is actual forest in the middle of the city; peacocks if you're lucky. Niloufer's tea is the unfussy reward — you stand at the counter, you don't sit, you watch the city do its evening commute.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -585,6 +605,7 @@
                   "monument",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJEadvQpeWyzsR9dHNyw6hS4A",
                 "opens_today": null,
                 "closes_today": null,
@@ -617,6 +638,7 @@
                   "historical_landmark",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJj6mupo6WyzsRWjNa1t_sdms",
                 "opens_today": null,
                 "closes_today": null,
@@ -649,6 +671,7 @@
                   "indian_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJkb1NjRCXyzsR3qnUdAZWi-0",
                 "opens_today": null,
                 "closes_today": null,
@@ -671,6 +694,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "Two halves of the same dynasty in one afternoon. Start at the Qutb Shahi tombs, where the domes sit in gardens wide enough for kids to run and grandparents to find a bench. Then Golconda itself: clap under the entrance portico and the sound carries to the top of the hill — the one piece of history children remember. Climb while the light softens; the gates shut at five. Dinner is a short drive away in Tolichowki, at Pista House, with biryani sized for a hungry table.",
           "created_at": "2026-05-05T18:00:00"
         }
@@ -703,6 +727,7 @@
                   "garden",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJHdPykcEVrjsRIr4v35kLEY4",
                 "opens_today": null,
                 "closes_today": null,
@@ -735,6 +760,7 @@
                   "vegetarian_restaurant",
                   "south_indian_restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJaaWjpN0VrjsRAsmfiafDlN4",
                 "opens_today": null,
                 "closes_today": null,
@@ -767,6 +793,7 @@
                   "food_court",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJH-raknwVrjsRoJppMsw-y2U",
                 "opens_today": null,
                 "closes_today": null,
@@ -788,7 +815,15 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "closed_days": [
+            {
+              "day": "monday",
+              "stop_index": 1,
+              "place_id": "ChIJaaWjpN0VrjsRAsmfiafDlN4"
+            }
+          ],
           "created_by": null,
+          "origin": "curated",
           "narrative": "South Bangalore, the way the city did date night before the breweries arrived. Walk Lalbagh in the last hour of light — the Glass House loop, then up the rock for the view — and come out by the main gate to MTR, where the coffee arrives in a silver tumbler and the rava idli is the house invention. Split one dosa, not two, because the real eating is ten minutes away at VV Puram: a single all-vegetarian lane where you graze stall to stall and argue about who found the better holige.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -813,6 +848,7 @@
                 "types": [
                   "book_store"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJq6qa730WrjsRuZg7TTRYPow",
                 "opens_today": null,
                 "closes_today": null,
@@ -845,6 +881,7 @@
                   "european_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJwWzHW5cXrjsRSUYk6pvrsjU",
                 "opens_today": null,
                 "closes_today": null,
@@ -876,6 +913,7 @@
                 "types": [
                   "bar"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJk1UT0hoXrjsRnVPEieFPPfQ",
                 "opens_today": null,
                 "closes_today": null,
@@ -897,7 +935,15 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "closed_days": [
+            {
+              "day": "monday",
+              "stop_index": 2,
+              "place_id": "ChIJk1UT0hoXrjsRnVPEieFPPfQ"
+            }
+          ],
           "created_by": null,
+          "origin": "curated",
           "narrative": "A date with a built-in conversation starter: give yourselves an hour in Blossom and one rule — each of you buys the other a book. Carry them five minutes up to MG Road for dinner at Lupa, Manu Chandra's big, grown-up European room, where the menu rewards ordering slowly and sharing everything. Then walk it off down to Lavelle Road for Bar Spirit Forward, a bar that takes its cocktails more seriously than its lighting. The whole evening is walkable end to end, so nobody has to open a cab app.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -923,6 +969,7 @@
                   "mexican_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJGe0PTrsWrjsRwiOUSdxHiq0",
                 "opens_today": null,
                 "closes_today": null,
@@ -955,6 +1002,7 @@
                   "brewpub",
                   "pub"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJc0JAFaUWrjsRRXSXJPX7YFo",
                 "opens_today": null,
                 "closes_today": null,
@@ -987,6 +1035,7 @@
                   "ice_cream_shop",
                   "dessert_shop"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJcUFZIqcXrjsRgmngcu1QQVk",
                 "opens_today": null,
                 "closes_today": null,
@@ -1009,6 +1058,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "The Indiranagar loop every Bangalore friend group ends up running eventually, in the right order. Start with tacos at Chinita while you can still hear each other, then walk five minutes to Toit — floors of house beer and the loudest good mood on 100 Feet Road. When the table starts negotiating one more pitcher, call it and head down to Corner House, because a Death by Chocolate split four ways is how nights here are supposed to end.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -1034,6 +1084,7 @@
                   "hamburger_restaurant",
                   "cafe"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJdz4L2VEUrjsRvSsPGCwDl2I",
                 "opens_today": null,
                 "closes_today": null,
@@ -1066,6 +1117,7 @@
                   "amusement_center",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJO87U12kUrjsRNiANLOxsCdo",
                 "opens_today": null,
                 "closes_today": null,
@@ -1099,6 +1151,7 @@
                   "pub",
                   "bar"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJsaosImcVrjsRPP5rNvYTmLc",
                 "opens_today": null,
                 "closes_today": null,
@@ -1121,6 +1174,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "A plan for the group that gets bored of just sitting. Get to Truffles early, before the queue becomes the evening, and eat burgers the size of a decision. Then drive across to Breakout and let them lock you in a room for an hour — you'll learn who panics, who hoards clues, and who was secretly useful all along. The Bier Library is a seven-minute walk from the exit, which is exactly how long it takes to finish arguing about the last puzzle.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -1145,6 +1199,7 @@
                 "types": [
                   "park"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJL2fQ53MWrjsRuN9D6aalLMY",
                 "opens_today": null,
                 "closes_today": null,
@@ -1177,6 +1232,7 @@
                   "restaurant",
                   "hotel"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ1Wpce3kWrjsRnJRhLAVNM4M",
                 "opens_today": null,
                 "closes_today": null,
@@ -1209,6 +1265,7 @@
                   "book_store",
                   "cafe"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJIYetAv0XrjsRxgT8FROZk_o",
                 "opens_today": null,
                 "closes_today": null,
@@ -1230,7 +1287,20 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "closed_days": [
+            {
+              "day": "monday",
+              "stop_index": 0,
+              "place_id": "ChIJL2fQ53MWrjsRuN9D6aalLMY"
+            },
+            {
+              "day": "monday",
+              "stop_index": 2,
+              "place_id": "ChIJIYetAv0XrjsRxgT8FROZk_o"
+            }
+          ],
           "created_by": null,
+          "origin": "curated",
           "narrative": "A morning for nobody but you. Cubbon Park before nine is the city at its best — bamboo groves, joggers, dogs, and the red library building glowing through the trees. Walk out towards Lavelle Road for a dosa and filter coffee under the banyan at Airlines Hotel, where no one will hurry you. Then take a short ride up to Champaca, the kind of bookshop that chooses its shelves carefully, and stay until you've read the first chapter of something.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -1257,6 +1327,7 @@
                   "place_of_worship",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJX9XqWswVrjsRRH3ymQ8yCDQ",
                 "opens_today": null,
                 "closes_today": null,
@@ -1289,6 +1360,7 @@
                   "park",
                   "tourist_attraction"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJmwJpvowVrjsR0JVGQxxLHms",
                 "opens_today": null,
                 "closes_today": null,
@@ -1322,6 +1394,7 @@
                   "breakfast_restaurant",
                   "vegetarian_restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJNdCK6PIVrjsR3I4feeftf-0",
                 "opens_today": null,
                 "closes_today": null,
@@ -1343,7 +1416,15 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "closed_days": [
+            {
+              "day": "friday",
+              "stop_index": 2,
+              "place_id": "ChIJNdCK6PIVrjsR3I4feeftf-0"
+            }
+          ],
           "created_by": null,
+          "origin": "curated",
           "narrative": "Old Bangalore in one easy morning, and nobody has to get in a car between stops. Start at the Bull Temple, where the Nandi is carved from a single enormous boulder and the kids will want to walk all the way around it. Bugle Rock is next door — ancient rock, big trees, room to run — and it shuts at ten, so go before breakfast, not after. Then walk down to Gandhi Bazaar for the reason half the city crosses town: Vidyarthi Bhavan's thick, crisp masala dosa, delivered by waiters carrying a stack of plates up one arm.",
           "created_at": "2026-05-05T18:00:00"
         }
@@ -1375,6 +1456,7 @@
                   "cafe",
                   "italian_restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJt7k-XjgZDTkRz4b0XF5ozDk",
                 "opens_today": null,
                 "closes_today": null,
@@ -1408,6 +1490,7 @@
                   "tea_house",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJF6QrXDgZDTkRXOymqHJU35o",
                 "opens_today": null,
                 "closes_today": null,
@@ -1440,6 +1523,7 @@
                   "bakery",
                   "food_store"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ_6-KOpwfDTkRd-BEi_zLNfM",
                 "opens_today": null,
                 "closes_today": null,
@@ -1462,6 +1546,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "CyberHub is easy to do badly: wander in at eight, join a queue, settle for whichever chain has a table. Do it in this order instead. A drink first at Olly, because dinner is dry — Burma Burma is vegetarian and pours no alcohol, and it's still one of the best tables in the complex. Split the samosa soup, the tea leaf salad and a khow suey, then walk it off across the courtyard to The Big Chill's dessert counter for a slice of something you'll pretend to share.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -1487,6 +1572,7 @@
                   "book_store",
                   "art_gallery"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJO4lOY9wYDTkR1eNa4RQG2E8",
                 "opens_today": null,
                 "closes_today": null,
@@ -1519,6 +1605,7 @@
                   "indian_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJPdvhrs0ZDTkRJQws-tJOEKw",
                 "opens_today": null,
                 "closes_today": null,
@@ -1551,6 +1638,7 @@
                   "cocktail_bar",
                   "bar_and_grill"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJbTc5i7UYDTkRSEKSd63it4U",
                 "opens_today": null,
                 "closes_today": null,
@@ -1573,6 +1661,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "The night you both agreed to make an effort. Start slow at Quill and Canvas in South Point Mall — a bookshop with an art gallery attached, and the quickest way to find out what the other person actually likes. Then cross Golf Course Road to Two Horizon Center for dinner at Comorin: regional Indian comfort food from the people behind Indian Accent, with a fraction of the ceremony. Whisky Samba is a few doors down for the nightcap, so the car stays parked until you leave.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -1599,6 +1688,7 @@
                   "breakfast_restaurant",
                   "coffee_shop"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ0WNzy-IYDTkRmSJmV7yXnPw",
                 "opens_today": null,
                 "closes_today": null,
@@ -1632,6 +1722,7 @@
                   "brewpub",
                   "pub"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ-yw62ZgZDTkRU2-mfRo2OGc",
                 "opens_today": null,
                 "closes_today": null,
@@ -1665,6 +1756,7 @@
                   "pub",
                   "brewery"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJg8Bhyv0YDTkRhp9dG7jYfBo",
                 "opens_today": null,
                 "closes_today": null,
@@ -1687,6 +1779,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "Sector 29 is Gurgaon's brewery strip, and the names on it change faster than anyone can keep up with — these two haven't needed to. Line your stomach first at Roots, the cafe in the park on the edge of Leisure Valley, because nobody makes good decisions on an empty one. Then Downtown for the first round of fresh beer and a proper dinner, and Open Tap a few doors along for the comparison round. The whole night is on foot, which matters by the third pint.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -1712,6 +1805,7 @@
                   "cocktail_bar",
                   "tibetan_restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJIbYc908YDTkRT6nYkAzAAzc",
                 "opens_today": null,
                 "closes_today": null,
@@ -1744,6 +1838,7 @@
                   "pizza_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJkTk5C-EZDTkR4xVMNDKDWaU",
                 "opens_today": null,
                 "closes_today": null,
@@ -1776,6 +1871,7 @@
                   "live_music_venue",
                   "night_club"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJM_anaxQZDTkR9VXoQw3rakU",
                 "opens_today": null,
                 "closes_today": null,
@@ -1798,6 +1894,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "A night with a plot. Start in the Sector 15 market at Cocktails and Dreams Speakeasy, Yangdup Lama's bar and still the one other Gurgaon bars get measured against — sit at the counter and let them make what they want to make. Walk ten minutes to 32nd Avenue, split pizzas at COMO, and be at The Piano Man next door before the band starts. It's the one room on the strip where people stop talking to listen.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -1823,6 +1920,7 @@
                   "park",
                   "nature_preserve"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ8beaD9YfDTkRLQF3QzM6QyY",
                 "opens_today": null,
                 "closes_today": null,
@@ -1854,6 +1952,7 @@
                 "types": [
                   "cafe"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJjZ5VkrsZDTkR0Y3IHIU8yAE",
                 "opens_today": null,
                 "closes_today": null,
@@ -1885,6 +1984,7 @@
                 "types": [
                   "museum"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJEy4Nq-IZDTkR-S0-YZmI7jU",
                 "opens_today": null,
                 "closes_today": null,
@@ -1906,7 +2006,15 @@
           "est_total_per_person_min_inr": null,
           "est_total_per_person_max_inr": null,
           "weather_note": null,
+          "closed_days": [
+            {
+              "day": "monday",
+              "stop_index": 2,
+              "place_id": "ChIJEy4Nq-IZDTkR-S0-YZmI7jU"
+            }
+          ],
           "created_by": null,
+          "origin": "curated",
           "narrative": "The Gurgaon most people drive past. Be at Aravali Biodiversity Park by half past seven — an old mining site replanted with the native forest that used to cover these hills, with trails long enough that the city noise actually drops out. Walk over to Fig on MG Road for coffee and a slow breakfast with whatever you're reading. Then Museo Camera when it opens at eleven: a museum of cameras and photography that rewards going alone, at your own pace, with nobody asking if you're done yet.",
           "created_at": "2026-05-05T18:00:00"
         },
@@ -1932,6 +2040,7 @@
                   "amusement_park",
                   "amusement_center"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJrWQPWEXnDDkR9Qs0C1tJd_4",
                 "opens_today": null,
                 "closes_today": null,
@@ -1964,6 +2073,7 @@
                   "bowling_alley",
                   "sports_complex"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJN_co5HMjDTkRp6zmZGWOKCg",
                 "opens_today": null,
                 "closes_today": null,
@@ -1996,6 +2106,7 @@
                   "pizza_restaurant",
                   "restaurant"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJ86Qv_wkjDTkRxLAEP8grZl0",
                 "opens_today": null,
                 "closes_today": null,
@@ -2028,6 +2139,7 @@
                   "ice_cream_shop",
                   "dessert_shop"
                 ],
+                "primary_type": null,
                 "provider_id": "ChIJqVkfl3IjDTkRwxZ8KoHXRZ0",
                 "opens_today": null,
                 "closes_today": null,
@@ -2050,6 +2162,7 @@
           "est_total_per_person_max_inr": null,
           "weather_note": null,
           "created_by": null,
+          "origin": "curated",
           "narrative": "A family evening that keeps moving, so nobody ends up bored in a food court. Start at SkyJumper on Sohna Road, where more than a hundred trampolines take the edge off the kids before anyone asks them to sit still. A short drive south, Airia Mall settles the family rivalry over a game of bowling at Smaaash — the one sport grandparents and eight-year-olds lose at equally. Then across to Joy Street for pizza at Tossin, and one last stop at Dach & Nona, because an evening like this is supposed to end with ice cream.",
           "created_at": "2026-05-05T18:00:00"
         }

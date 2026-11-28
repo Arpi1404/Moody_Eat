@@ -61,6 +61,23 @@ export interface StopAlternative extends Stop {
 /** Who chose a quest's stops: the engine, an editor, or the person. */
 export type QuestOrigin = 'generated' | 'curated' | 'custom'
 
+export type Weekday =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday'
+
+/** A weekday a catalogue quest does not work, and the stop that is why. */
+export interface ClosedDay {
+  day: Weekday
+  stop_index: number
+  /** The place at that stop: the entry follows it if stops are moved. */
+  place_id?: string | null
+}
+
 export interface Quest {
   /** UUID v4 */
   id: string
@@ -81,6 +98,8 @@ export interface Quest {
   created_by?: string | null
   /** Absent on quests made before the field existed. */
   origin?: QuestOrigin | null
+  /** Catalogue quests only; absent when the quest works all week. */
+  closed_days?: ClosedDay[] | null
   narrative: string
   /** ISO 8601 datetime string */
   created_at: string

@@ -13,7 +13,7 @@ import uuid
 from datetime import time
 
 from curated.builders import CREATED_AT, place, stop
-from models import CostEstimate, Occasion, Quest, StopCategory, TravelMode
+from models import ClosedDay, CostEstimate, Occasion, Quest, StopCategory, TravelMode
 
 QUESTS: list[Quest] = [
     # ── DATE ──
@@ -312,6 +312,9 @@ QUESTS: list[Quest] = [
             "Then Museo Camera when it opens at eleven: a museum of cameras and photography that "
             "rewards going alone, at your own pace, with nobody asking if you're done yet."
         ),
+        closed_days=[
+            ClosedDay(day="monday", stop_index=2),
+        ],
         created_at=CREATED_AT,
         stops=[
             stop(
